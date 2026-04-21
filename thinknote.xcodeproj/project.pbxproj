@@ -24,6 +24,10 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		14DDAA3A4F00100000000001 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		14DDAA3A4F00100000000002 /* engineering.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = engineering.md; sourceTree = "<group>"; };
+		14DDAA3A4F00100000000003 /* product.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = product.md; sourceTree = "<group>"; };
+		14DDAA3A4F00100000000004 /* ux.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = ux.md; sourceTree = "<group>"; };
 		9608C84C2F82E2F40036D45E /* thinknote.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = thinknote.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9608C85B2F82E2F70036D45E /* thinknoteTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = thinknoteTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9608C8652F82E2F70036D45E /* thinknoteUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = thinknoteUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -75,6 +79,10 @@
 		9608C8432F82E2F40036D45E = {
 			isa = PBXGroup;
 			children = (
+				14DDAA3A4F00100000000001 /* README.md */,
+				14DDAA3A4F00100000000002 /* engineering.md */,
+				14DDAA3A4F00100000000003 /* product.md */,
+				14DDAA3A4F00100000000004 /* ux.md */,
 				9608C84E2F82E2F40036D45E /* thinknote */,
 				9608C85E2F82E2F70036D45E /* thinknoteTests */,
 				9608C8682F82E2F70036D45E /* thinknoteUITests */,
@@ -399,12 +407,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 44U2S8ADH2;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -431,12 +435,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 44U2S8ADH2;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

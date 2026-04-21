@@ -73,7 +73,15 @@ AI retrieves relevant external knowledge and sources, then uses them to deepen t
 
 ### 7.1 Quick Idea Capture
 
-The user opens the app and records a thought quickly with minimal friction.
+The user opens the app into a living idea canvas rather than a traditional list-based home screen.
+
+On this canvas:
+
+- Existing cards represent prior notes and ideas
+- Empty cards act as lightweight entry points for new thoughts
+- Users can drag cards freely to explore and organize their thinking space
+
+Capturing a thought should feel immediate and low-friction.
 
 ### 7.2 Background Idea Development
 
@@ -81,13 +89,14 @@ After the user records a thought, the system processes it in the background befo
 
 Possible outcomes include:
 
-- Idea expansion
-- Related idea suggestions
-- Links to existing notes
-- Relevant web knowledge and citations
-- Prompts that trigger further thinking
+- Expanded interpretation or structured development of the original thought
+- Related idea suggestions and affinity grouping with nearby themes
+- Links to existing notes, patterns, or prior thinking threads
+- Relevant web knowledge with visible source attribution
+- Follow-up prompts that encourage deeper reflection
+- A visible sense of how the note evolved over time through system and user contributions
 
-The experience should feel like the idea has quietly evolved while the user was away.
+The experience should feel like the idea has quietly matured while the user was away, not merely been auto-filled with AI output.
 
 ### 7.3 Manual AI Trigger
 
@@ -96,6 +105,17 @@ The user can explicitly ask the system to grow, connect, or research an idea on 
 ### 7.4 Direct AI Conversation
 
 The user can actively chat with the AI about a note, a cluster of notes, or a developing idea.
+
+### 7.5 Ambient AI Assistant
+
+The home experience includes a persistent but lightweight AI assistant entry point, such as a floating widget.
+
+This assistant should help users:
+
+- Start a conversation from anywhere in the canvas
+- Generate inspiration when the user does not know what to write
+- Turn a chat exchange into a structured idea note
+- Summarize an ongoing discussion into something worth keeping
 
 ## 8. Functional Requirements
 
@@ -124,6 +144,7 @@ The app must support semantic linking between user notes, including:
 - Complementary ideas
 - Contradictory or tension-based ideas
 - Shared themes or concepts
+- Affinity-grouped clusters that can emerge in the background over time
 
 ### 8.4 Knowledge Retrieval and Grounding
 
@@ -142,6 +163,14 @@ By default, AI enrichment should happen after a user records an idea and before 
 
 This should create the feeling that idea development happened in the background, even if the user did not manually initiate it.
 
+Background processing may include:
+
+- Idea expansion
+- Semantic linking
+- Related note grouping
+- Knowledge retrieval
+- Timeline-style updates that reflect what changed since the last visit
+
 ### 8.6 Manual Control
 
 The app must also provide user-controlled ways to:
@@ -149,6 +178,28 @@ The app must also provide user-controlled ways to:
 - Manually trigger AI processing
 - Ask the AI to focus on a specific note
 - Start an intentional conversation with the AI
+
+### 8.7 Canvas-Based Home Experience
+
+The app home must support a spatial canvas interaction model rather than relying only on a standard vertically scrolling feed.
+
+The canvas should:
+
+- Present notes and ideas as movable cards
+- Mix existing ideas with visible opportunities to create new ones
+- Make the knowledge garden feel alive, explorable, and non-linear
+- Support direct entry into note detail, related ideas, and note evolution
+
+### 8.8 Note Detail Evolution View
+
+When a user opens a note, the app should be able to show not just the note content but also the surrounding thinking context, including:
+
+- Related ideas
+- Expanded interpretations
+- Linked notes
+- Relevant sourced knowledge
+- Follow-up prompts
+- A timeline or history of how the idea has grown
 
 ## 9. User Experience Requirements
 
@@ -160,6 +211,7 @@ The app must deliver:
 - Highly fluid transitions between states and views
 - A feeling of intelligence and responsiveness in motion
 - Minimal friction between capture, review, and AI interaction
+- A spatial interaction model that feels playful, alive, and intentional rather than rigid or document-like
 
 Animation and interaction are not cosmetic. They are a core part of the product’s differentiation.
 
@@ -174,6 +226,7 @@ The user should feel that:
 - Their notes are becoming part of a larger thinking system
 - AI responses are helpful, relevant, and well connected to their existing context
 - The interface feels premium, fluid, and deeply intentional
+- The home screen feels like an evolving thought space, not a static note list
 
 ## 11. Product Differentiation
 
@@ -209,6 +262,9 @@ These areas still need explicit decisions in future product and design documents
 - How should the idea graph or knowledge garden be represented visually?
 - What kinds of manual AI actions should be first-class in the MVP?
 - Which parts of the AI experience must feel on-device or native versus cloud-assisted?
+- How freeform should canvas organization be versus system-managed grouping?
+- How should note evolution history be visualized without creating clutter?
+- How prominent should the floating AI assistant be in the default home state?
 
 ## 14. MVP Direction
 
