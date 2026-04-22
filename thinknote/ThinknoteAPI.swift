@@ -106,6 +106,11 @@ final class ContentViewModel: ObservableObject {
     private let client = ThinknoteAPIClient()
     private var isUsingLocalFallback = false
 
+    init(notes: [APINote] = []) {
+        self.notes = notes
+        self.isUsingLocalFallback = !notes.isEmpty
+    }
+
     var currentNote: APINote? {
         guard let selectedNoteID else { return nil }
         return note(for: selectedNoteID)
@@ -159,11 +164,13 @@ final class ContentViewModel: ObservableObject {
     }
 
     func openNote(noteID: String) {
+        debugNoteLog("openNote", "before", screen, "noteID:", noteID)
         selectedNoteID = noteID
         followUpDraft = ""
         showTimeline = false
         reorderSourceID = nil
         screen = .detail(noteID)
+        debugNoteLog("openNote", "after", screen, "selectedNoteID:", selectedNoteID ?? "nil")
     }
 
     func returnHome() {
@@ -179,6 +186,11 @@ final class ContentViewModel: ObservableObject {
         if let draftNoteID {
             selectedNoteID = draftNoteID
         }
+        screen = .home
+    }
+
+    func addDraftToHome() async {
+        await autosaveDraftIfNeeded()
         screen = .home
     }
 
@@ -483,114 +495,134 @@ final class ContentViewModel: ObservableObject {
     }
 
     static let demoNotes: [APINote] = [
-        APINote(
-            id: UUID().uuidString,
-            title: "Mouse snoring",
-            text: "我发现老鼠真的会打鼾",
-            createdAt: Date().addingTimeInterval(-8600),
-            updatedAt: Date().addingTimeInterval(-1800),
+        seededPrototypeNote(
+            id: "seed-reading-compression",
+            title: "Reading is compression. Writing is decompression. The ratio between them tells you how clearly you actually understand something.",
+            text: "reading is compression, writing is decompression",
             status: "enriched",
-            enrichments: [
-                APIEnrichment(
-                    id: UUID().uuidString,
-                    createdAt: Date().addingTimeInterval(-1800),
-                    provider: "local",
-                    expansion: "The observation may be interesting because it turns a tiny animal behavior into something unexpectedly human and memorable.",
-                    relatedIdeas: [],
-                    prompts: ["你为什么这么说", "可我没有养老鼠"],
-                    links: [],
-                    sources: [
-                        APISource(
-                            title: "Research link",
-                            url: "https://example.com/mice",
-                            snippet: "Some mice vocalize during sleep-like states, which makes the observation plausible."
-                        )
-                    ]
-                )
+            updatedAt: seedDate(hour: 14, minute: 32),
+            grownCount: 3,
+            growthParagraphs: [
+                "When you read, you're absorbing many people's thinking, condensed. When you write, you're forced to unpack a single thread and make it survive daylight. The act of writing reveals where the compression was doing the thinking for you.",
+                "A useful test: if you can't decompress an idea into your own words without the scaffolding falling apart, you probably imported the conclusion but not the path.",
+                "That makes writing a diagnostic, not just an output format. It exposes whether the idea has actually become yours."
             ],
-            links: [],
+            prompts: [
+                "Is the inverse true — does decompression (writing) actually compress future reading?",
+                "What's the equivalent for listening and conversation?",
+                "Could this reframe how we evaluate AI-generated summaries?"
+            ],
             sources: [
                 APISource(
-                    title: "Research link",
-                    url: "https://example.com/mice",
-                    snippet: "Some mice vocalize during sleep-like states, which makes the observation plausible."
+                    title: "Writing and Speaking",
+                    url: "https://paulgraham.com/writing44.html",
+                    snippet: "Having good ideas is most of writing well. If you know what you're talking about, you can say it in the plainest words."
+                ),
+                APISource(
+                    title: "The Noncentral Fallacy",
+                    url: "https://www.lesswrong.com/posts/2J6iHq8x7P8N6L9XK/the-noncentral-fallacy-the-worst-argument-in-the-world",
+                    snippet: "Compression loses information; the question is which information you can afford to lose."
                 )
-            ],
-            prompts: ["你为什么这么说", "可我没有养老鼠"],
-            timeline: [
-                APITimelineEvent(
-                    id: UUID().uuidString,
-                    type: "note_enriched",
-                    createdAt: Date().addingTimeInterval(-1800),
-                    summary: "AI responded yesterday"
-                )
-            ],
-            latestChatReply: nil
+            ]
         ),
-        APINote(
-            id: UUID().uuidString,
-            title: "Work and hugs",
-            text: "以后或许人类最有价值的工作是提供拥抱服务",
-            createdAt: Date().addingTimeInterval(-5400),
-            updatedAt: Date().addingTimeInterval(-3600),
-            status: "captured",
-            enrichments: [],
-            links: [],
-            sources: [],
-            prompts: ["What would make this feel more concrete?"],
-            timeline: [
-                APITimelineEvent(
-                    id: UUID().uuidString,
-                    type: "note_created",
-                    createdAt: Date().addingTimeInterval(-5400),
-                    summary: "Note created"
-                )
-            ],
-            latestChatReply: nil
+        seededPrototypeNote(
+            id: "seed-tool-worldview",
+            title: "Every tool quietly teaches you its worldview. Figma teaches layers. Excel teaches tables. What does a feed teach?",
+            text: "every tool teaches you a worldview",
+            status: "queued",
+            updatedAt: seedDate(hour: 13, minute: 18),
+            grownCount: 2,
+            growthParagraphs: [
+                "The UI of a tool is its epistemology: the categories it makes easy become the categories you think in.",
+                "A feed, for example, may teach recency and reaction before reflection. Over time the interface becomes a quiet tutor for attention itself."
+            ]
         ),
-        APINote(
-            id: UUID().uuidString,
-            title: "Work type change",
-            text: "人类的工作类型将会大变...",
-            createdAt: Date().addingTimeInterval(-3200),
-            updatedAt: Date().addingTimeInterval(-2200),
-            status: "captured",
-            enrichments: [],
-            links: [],
-            sources: [],
-            prompts: [],
-            timeline: [
-                APITimelineEvent(
-                    id: UUID().uuidString,
-                    type: "note_created",
-                    createdAt: Date().addingTimeInterval(-3200),
-                    summary: "Note created"
-                )
-            ],
-            latestChatReply: nil
+        seededPrototypeNote(
+            id: "seed-taste-pattern-recognition",
+            title: "Taste is just pattern recognition across a huge dataset of things you paid full attention to.",
+            text: "taste = pattern recognition at scale",
+            status: "enriched",
+            updatedAt: seedDate(hour: 11, minute: 47),
+            grownCount: 1,
+            growthParagraphs: [
+                "Taste compounds when attention gets specific enough to remember structure, not just preference. What feels intuitive later is often the residue of many slow comparisons you once made on purpose."
+            ]
         ),
-        APINote(
-            id: UUID().uuidString,
-            title: "Cats and humans",
-            text: "一个想法不一定对：也许以后人类真的不需要养宠物了，因为猫咪会把人当宠物",
-            createdAt: Date().addingTimeInterval(-2500),
-            updatedAt: Date().addingTimeInterval(-1200),
-            status: "captured",
-            enrichments: [],
-            links: [],
-            sources: [],
-            prompts: [],
-            timeline: [
-                APITimelineEvent(
-                    id: UUID().uuidString,
-                    type: "note_created",
-                    createdAt: Date().addingTimeInterval(-2500),
-                    summary: "Note created"
-                )
-            ],
-            latestChatReply: nil
+        seededPrototypeNote(
+            id: "seed-productivity-anxiety",
+            title: "Most \"productivity\" advice is actually about managing anxiety, not output.",
+            text: "productivity is anxiety management in disguise",
+            status: "enriched",
+            updatedAt: seedDate(hour: 10, minute: 3),
+            grownCount: 2,
+            growthParagraphs: [
+                "A lot of systems promise clarity, but what they really deliver is temporary emotional relief. The ritual matters because it reduces uncertainty, even when it does little to increase the amount of meaningful work that gets finished.",
+                "That is why productivity theater can feel effective even when nothing meaningful moved: the system successfully soothed the operator."
+            ]
         )
     ]
+
+    static func previewModel() -> ContentViewModel {
+        ContentViewModel(notes: demoNotes)
+    }
+}
+
+private func seededPrototypeNote(
+    id: String,
+    title: String,
+    text: String,
+    status: String,
+    updatedAt: Date,
+    grownCount: Int,
+    growthParagraphs: [String],
+    prompts: [String] = [],
+    sources: [APISource] = []
+) -> APINote {
+    let timelineType = status == "queued" ? "note_growing" : "note_enriched"
+    let createdAt = updatedAt.addingTimeInterval(-900)
+    let enrichment = APIEnrichment(
+        id: "\(id)-enrichment",
+        createdAt: updatedAt,
+        provider: "prototype",
+        expansion: growthParagraphs.joined(separator: "\n\n"),
+        relatedIdeas: [],
+        prompts: prompts,
+        links: [],
+        sources: sources
+    )
+
+    return APINote(
+        id: id,
+        title: title,
+        text: text,
+        createdAt: createdAt,
+        updatedAt: updatedAt,
+        status: status,
+        enrichments: growthParagraphs.isEmpty ? [] : [enrichment],
+        links: [],
+        sources: sources,
+        prompts: prompts,
+        timeline: [
+            APITimelineEvent(
+                id: "\(id)-timeline",
+                type: timelineType,
+                createdAt: updatedAt,
+                summary: "Growth \(grownCount)x"
+            )
+        ],
+        latestChatReply: nil
+    )
+}
+
+private func seedDate(hour: Int, minute: Int) -> Date {
+    let calendar = Calendar.current
+    let now = Date()
+    return calendar.date(
+        bySettingHour: hour,
+        minute: minute,
+        second: 0,
+        of: now
+    ) ?? now
 }
 
 struct ThinknoteAPIClient {

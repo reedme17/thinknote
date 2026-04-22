@@ -7,58 +7,72 @@
 
 import SwiftUI
 
-private let noteTransitionAnimation = Animation.spring(response: 0.56, dampingFraction: 0.88, blendDuration: 0.12)
+private let noteTransitionAnimation = Animation.timingCurve(0.2, 0.9, 0.1, 1.0, duration: 0.55)
+private let noteMorphDuration: Double = 0.55
 private let noteAccentColor = Color(red: 0.53, green: 0.66, blue: 0.61)
 private let noteBorderColor = Color(red: 0.88, green: 0.88, blue: 0.86)
 private let noteShadowColor = Color.black.opacity(0.08)
+private let debugDisableNoteSurfaceTransition = true
+private let debugLogNoteTapFlow = false
+let isRunningInPreviews = ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
+
+func debugNoteLog(_ items: Any...) {
+#if DEBUG
+    guard debugLogNoteTapFlow else { return }
+    print("[ThinknoteDebug]", items.map { String(describing: $0) }.joined(separator: " "))
+#endif
+}
 
 private enum AppFont {
     static func heading(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        switch weight {
-        case .semibold, .bold:
-            return .custom("AlegreyaSans-Medium", size: size)
-        default:
-            return .custom("AlegreyaSans-Regular", size: size)
-        }
+        .custom("Fraunces72pt-Regular", size: size)
     }
 
     static func body(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        switch weight {
-        case .medium, .semibold, .bold:
-            return .custom("DavidLibre-Medium", size: size)
-        default:
-            return .custom("DavidLibre-Regular", size: size)
-        }
+        .custom("DavidLibre-Regular", size: size)
     }
 
     static func meta(_ size: CGFloat) -> Font {
-        .custom("AlegreyaSans-Regular", size: size)
+        .custom("GeistMono-Regular", size: size)
     }
 }
 
+@MainActor
 struct ContentView: View {
-    @StateObject private var viewModel = ContentViewModel()
+    @StateObject private var viewModel: ContentViewModel
+    private let shouldBootstrap: Bool
     @Namespace private var noteTransitionNamespace
+    @Namespace private var newThoughtNamespace
+
+    init() {
+        _viewModel = StateObject(wrappedValue: ContentViewModel())
+        self.shouldBootstrap = true
+    }
+
+    init(viewModel: ContentViewModel, shouldBootstrap: Bool) {
+        _viewModel = StateObject(wrappedValue: viewModel)
+        self.shouldBootstrap = shouldBootstrap
+    }
 
     var body: some View {
         ZStack {
             Color(red: 0.95, green: 0.95, blue: 0.95)
                 .ignoresSafeArea()
 
-            if viewModel.screen != .newNote {
+            if activeDetailNote == nil {
                 HomeScreen(
                     viewModel: viewModel,
                     transitionNamespace: noteTransitionNamespace,
-                    expandedNoteID: activeDetailNote?.id
+                    expandedNoteID: activeDetailNote?.id,
+                    newThoughtNamespace: newThoughtNamespace
                 )
-                .opacity(activeDetailNote == nil ? 1 : 0.35)
-                .allowsHitTesting(activeDetailNote == nil)
+                .opacity(viewModel.screen == .newNote ? 0.35 : 1)
+                .allowsHitTesting(viewModel.screen != .newNote)
                 .zIndex(0)
             }
 
             if viewModel.screen == .newNote {
-                NewNoteScreen(viewModel: viewModel)
-                    .transition(.move(edge: .trailing).combined(with: .opacity))
+                NewNoteScreen(viewModel: viewModel, transitionNamespace: newThoughtNamespace)
                     .zIndex(1)
             }
 
@@ -68,6 +82,7 @@ struct ContentView: View {
                     note: note,
                     transitionNamespace: noteTransitionNamespace
                 )
+                .transition(.opacity.combined(with: .scale(scale: 0.985, anchor: .center)))
                 .zIndex(2)
             }
 
@@ -92,13 +107,20 @@ struct ContentView: View {
             }
         }
         .task {
+            guard shouldBootstrap else { return }
             await viewModel.bootstrap()
         }
     }
 
     private var activeDetailNote: APINote? {
-        guard case .detail(let noteID) = viewModel.screen else { return nil }
-        return viewModel.note(for: noteID)
+        guard case .detail(let noteID) = viewModel.screen else {
+            debugNoteLog("activeDetailNote", "screen is not detail")
+            return nil
+        }
+
+        let note = viewModel.note(for: noteID)
+        debugNoteLog("activeDetailNote", "lookup", noteID, "found:", note != nil)
+        return note
     }
 }
 
@@ -106,6 +128,7 @@ private struct HomeScreen: View {
     @ObservedObject var viewModel: ContentViewModel
     let transitionNamespace: Namespace.ID
     let expandedNoteID: String?
+    let newThoughtNamespace: Namespace.ID
     @State private var orderedNoteIDs: [String] = []
     @State private var affinityGroup: AffinityGroup?
     @State private var activeDragNoteID: String?
@@ -122,6 +145,9 @@ private struct HomeScreen: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
+                        homeHeader
+                            .padding(.bottom, 18)
+
                         homeLayout(containerWidth: max(geometry.size.width - 36, 0))
                     }
                     .frame(maxWidth: .infinity, minHeight: geometry.size.height, alignment: .topLeading)
@@ -173,6 +199,30 @@ private struct HomeScreen: View {
         }
     }
 
+    private var homeHeader: some View {
+        HStack(alignment: .center, spacing: 12) {
+            Text("garden · \(viewModel.notes.count) thoughts")
+                .font(AppFont.meta(11))
+                .tracking(1.8)
+                .textCase(.uppercase)
+                .foregroundStyle(.black.opacity(0.5))
+
+            Spacer(minLength: 0)
+
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(noteAccentColor)
+                    .frame(width: 7, height: 7)
+
+                Text("\(growingSeedCount) growing")
+                    .font(AppFont.meta(11))
+                    .tracking(1.8)
+                    .textCase(.uppercase)
+                    .foregroundStyle(noteAccentColor)
+            }
+        }
+    }
+
     private func homeLayout(containerWidth: CGFloat) -> some View {
         let columns = buildColumns()
         let spacing: CGFloat = 16
@@ -197,24 +247,23 @@ private struct HomeScreen: View {
     }
 
     private func rotation(for index: Int) -> Double {
-        let values: [Double] = [-2.2, 1.4, -1.2, 1.8, -1.5, 2.0]
+        let values: [Double] = [-1.1, 0.7, -0.6, 0.9, -0.75, 1.0]
         return values[index % values.count]
     }
 
     private func handleTap(on noteID: String) {
+        debugNoteLog("handleTap", noteID, "isReorderMode:", isReorderMode)
         withAnimation(noteTransitionAnimation) {
             viewModel.openNote(noteID: noteID)
         }
     }
 
     private var displayNotes: [APINote] {
-        if viewModel.notes.count >= 4 {
-            return Array(viewModel.notes.prefix(4))
-        }
+        Array(viewModel.notes.prefix(4))
+    }
 
-        let existingIDs = Set(viewModel.notes.map(\.id))
-        let filler = ContentViewModel.demoNotes.filter { !existingIDs.contains($0.id) }
-        return Array((viewModel.notes + filler).prefix(4))
+    private var growingSeedCount: Int {
+        viewModel.notes.filter { ["queued", "retrying", "running"].contains($0.status) }.count
     }
 
     @ViewBuilder
@@ -248,8 +297,13 @@ private struct HomeScreen: View {
             }
         case .seed:
             if !isReorderMode {
-                EmptyNoteCard {
-                    viewModel.openNewNote()
+                EmptyNoteCard(
+                    transitionNamespace: newThoughtNamespace,
+                    isExpanded: viewModel.screen == .newNote
+                ) {
+                    withAnimation(noteTransitionAnimation) {
+                        viewModel.openNewNote()
+                    }
                 }
             }
         }
@@ -264,9 +318,11 @@ private struct HomeScreen: View {
             phaseSeed: phaseSeed(for: note.id),
             jiggleProgress: jiggleProgress,
             transitionNamespace: transitionNamespace,
-            isExpanded: expandedNoteID == note.id
+            isExpanded: expandedNoteID == note.id,
+            isTransitionSource: expandedNoteID == note.id
         )
         .frame(maxWidth: .infinity)
+        .contentShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
         .offset(activeDragNoteID == note.id ? dragTranslation : .zero)
         .zIndex(activeDragNoteID == note.id ? 100 : 0)
         .background(
@@ -278,6 +334,7 @@ private struct HomeScreen: View {
             }
         )
         .onTapGesture {
+            debugNoteLog("tap note", note.id, "expanded:", expandedNoteID == note.id)
             if isReorderMode {
                 cancelDragging()
             } else {
@@ -297,7 +354,7 @@ private struct HomeScreen: View {
 
         let existing = Set(orderedNoteIDs)
         let missing = ids.filter { !existing.contains($0) }
-        orderedNoteIDs = orderedNoteIDs.filter(ids.contains) + missing
+        orderedNoteIDs = deduplicated(orderedNoteIDs.filter(ids.contains) + missing)
 
         if let group = affinityGroup {
             let visible = Set(ids)
@@ -560,101 +617,107 @@ private struct HomeBackgroundView: View {
 
 private struct NewNoteScreen: View {
     @ObservedObject var viewModel: ContentViewModel
+    let transitionNamespace: Namespace.ID
     @FocusState private var isEditorFocused: Bool
+    @State private var showContent: Bool = false
 
     var body: some View {
+        GeometryReader { geometry in
+            ZStack {
+                Color.black.opacity(0.04)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        isEditorFocused = false
+                        withAnimation(noteTransitionAnimation) {
+                            viewModel.discardDraft()
+                        }
+                    }
+
+                VStack {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 30, style: .continuous)
+                            .fill(Color.white.opacity(0.98))
+                            .matchedGeometryEffect(id: "new-thought-surface", in: transitionNamespace)
+                            .shadow(color: noteShadowColor.opacity(0.72), radius: 18, x: 0, y: 12)
+
+                        RoundedRectangle(cornerRadius: 30, style: .continuous)
+                            .stroke(noteBorderColor, lineWidth: 1)
+
+                        VStack(alignment: .leading, spacing: 0) {
+                            if showContent {
+                                newNoteContent
+                            }
+                        }
+                        .opacity(showContent ? 1 : 0)
+                    }
+                    .frame(width: max(geometry.size.width - 36, 0), height: 248, alignment: .topLeading)
+                    .padding(.top, geometry.safeAreaInsets.top)
+
+                    Spacer(minLength: 0)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            }
+        }
+        .ignoresSafeArea(.keyboard)
+        .task {
+            try? await Task.sleep(nanoseconds: UInt64(noteMorphDuration * 1_000_000_000))
+            withAnimation(.easeOut(duration: 0.22)) {
+                showContent = true
+            }
+            try? await Task.sleep(nanoseconds: 120_000_000)
+            isEditorFocused = true
+        }
+    }
+
+    private var newNoteContent: some View {
         VStack(alignment: .leading, spacing: 0) {
-            topBar
-
-            TextEditor(text: $viewModel.draftText)
+            TextField("start a thought", text: $viewModel.draftText, axis: .vertical)
                 .focused($isEditorFocused)
-                .scrollContentBackground(.hidden)
-                .background(Color.clear)
-                .font(AppFont.body(22))
+                .textFieldStyle(.plain)
+                .font(AppFont.body(21))
                 .foregroundStyle(.black)
-                .padding(.horizontal, 18)
-                .padding(.top, 18)
+                .lineLimit(1...8)
+                .padding(.horizontal, 20)
+                .padding(.top, 20)
+                .frame(maxWidth: .infinity, minHeight: 172, alignment: .topLeading)
 
-            Spacer(minLength: 0)
-
-            HStack(alignment: .center) {
-                Menu {
-                    Button("Discard draft") {
+            HStack {
+                Button("Cancel") {
+                    isEditorFocused = false
+                    withAnimation(noteTransitionAnimation) {
                         viewModel.discardDraft()
                     }
-                } label: {
-                    Text("...")
-                        .font(AppFont.heading(24, weight: .semibold))
-                        .foregroundStyle(.black)
                 }
+                .font(AppFont.meta(12))
+                .foregroundStyle(.black.opacity(0.58))
 
                 Spacer()
 
                 Button {
+                    isEditorFocused = false
                     Task {
-                        await viewModel.requestResponseForDraft()
+                        await viewModel.autosaveDraftIfNeeded()
+                        withAnimation(noteTransitionAnimation) {
+                            viewModel.screen = .home
+                        }
                     }
                 } label: {
-                    if viewModel.isDraftResponding {
-                        ProgressView()
-                            .tint(.black)
-                    } else {
-                        Text("Request response")
-                            .font(AppFont.body(18))
-                            .foregroundStyle(.black)
-                    }
+                    Text("Add")
+                        .font(AppFont.body(18))
+                        .foregroundStyle(.black)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 12)
+                        .background(Color.white.opacity(0.92), in: Capsule())
+                        .overlay {
+                            Capsule()
+                                .stroke(noteBorderColor, lineWidth: 1)
+                        }
                 }
-                .disabled(viewModel.trimmedDraftText.isEmpty || viewModel.isDraftResponding)
+                .disabled(viewModel.trimmedDraftText.isEmpty || viewModel.isDraftSaving)
             }
-            .padding(.horizontal, 18)
-            .padding(.vertical, 18)
-        }
-        .task {
-            isEditorFocused = true
-        }
-        .task(id: viewModel.draftText) {
-            guard !viewModel.trimmedDraftText.isEmpty else {
-                return
-            }
-
-            try? await Task.sleep(nanoseconds: 700_000_000)
-
-            if !Task.isCancelled {
-                await viewModel.autosaveDraftIfNeeded()
-            }
-        }
-    }
-
-    private var topBar: some View {
-        HStack {
-            Spacer()
-
-            Button {
-                Task {
-                    await viewModel.returnHomeFromDraft()
-                }
-            } label: {
-                Text("home")
-                    .font(AppFont.heading(16, weight: .semibold))
-                    .foregroundStyle(.black)
-            }
-        }
-        .padding(.horizontal, 18)
-        .padding(.top, 12)
-        .overlay(alignment: .bottomTrailing) {
-            if viewModel.isDraftSaving {
-                Text("auto-saving...")
-                    .font(AppFont.meta(13))
-                    .foregroundStyle(.black.opacity(0.65))
-                    .padding(.trailing, 18)
-                    .padding(.top, 60)
-            } else if viewModel.didAutosaveDraft {
-                Text("saved")
-                    .font(AppFont.meta(13))
-                    .foregroundStyle(.black.opacity(0.55))
-                    .padding(.trailing, 18)
-                    .padding(.top, 60)
-            }
+            .padding(.horizontal, 20)
+            .padding(.top, 12)
+            .padding(.bottom, 18)
         }
     }
 }
@@ -707,13 +770,13 @@ private struct NoteFullPageScreen: View {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 0) {
                     metaStrip
-                        .padding(.top, topInset + 54)
+                        .padding(.top, topInset + 14)
 
-                    sectionLabel("seed")
-                        .padding(.top, 26)
+                    sectionLabel("thought")
+                        .padding(.top, 18)
 
                     Text(note.text)
-                        .font(AppFont.body(28))
+                        .font(AppFont.heading(26))
                         .lineSpacing(4)
                         .foregroundStyle(.black)
                         .padding(.top, 12)
@@ -724,13 +787,13 @@ private struct NoteFullPageScreen: View {
                     aiGrowthSection
                         .padding(.top, 26)
 
-                    if !note.prompts.isEmpty {
-                        openAnglesSection
+                    if !note.sources.isEmpty {
+                        footnotesSection
                             .padding(.top, 28)
                     }
 
-                    if !note.sources.isEmpty {
-                        footnotesSection
+                    if !note.prompts.isEmpty {
+                        openAnglesSection
                             .padding(.top, 28)
                     }
 
@@ -756,7 +819,12 @@ private struct NoteFullPageScreen: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(noteDetailBackground)
         .clipShape(RoundedRectangle(cornerRadius: showPrimaryContent ? 0 : 30, style: .continuous))
-        .matchedGeometryEffect(id: "note-surface-\(note.id)", in: transitionNamespace)
+        .applyNoteSurfaceTransition(
+            id: "note-surface-\(note.id)",
+            namespace: transitionNamespace,
+            isEnabled: true,
+            isSource: false
+        )
     }
 
     private var metaStrip: some View {
@@ -767,36 +835,30 @@ private struct NoteFullPageScreen: View {
                 .textCase(.uppercase)
                 .foregroundStyle(.black.opacity(0.5))
 
-            Text(aiStatusText)
-                .font(AppFont.meta(11))
-                .tracking(1.6)
-                .textCase(.uppercase)
-                .foregroundStyle(noteAccentColor)
+            if let statusLabel = detailStatusLabel {
+                Text(statusLabel)
+                    .font(AppFont.meta(11))
+                    .tracking(1.6)
+                    .textCase(.uppercase)
+                    .foregroundStyle(noteAccentColor)
+            }
         }
         .opacity(showPrimaryContent ? 1 : 0)
     }
 
     private var aiGrowthSection: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack(spacing: 8) {
-                Circle()
-                    .fill(noteAccentColor)
-                    .frame(width: 7, height: 7)
+        VStack(alignment: .leading, spacing: 20) {
+            ForEach(Array(growthParagraphs.enumerated()), id: \.offset) { index, paragraph in
+                VStack(alignment: .leading, spacing: 20) {
+                    Text(paragraph)
+                        .font(AppFont.body(19))
+                        .lineSpacing(4)
+                        .foregroundStyle(.black)
 
-                sectionLabel("AI growth", useAccent: true)
-            }
-
-            Text(latestInterpretation)
-                .font(AppFont.body(21))
-                .lineSpacing(4)
-                .foregroundStyle(.black)
-                .padding(.top, 12)
-
-            if !summaryLine.isEmpty {
-                Text(summaryLine)
-                    .font(AppFont.body(16))
-                    .foregroundStyle(.black.opacity(0.68))
-                    .padding(.top, 14)
+                    if index < growthParagraphs.count - 1 {
+                        divider
+                    }
+                }
             }
         }
         .opacity(showGrowthContent ? 1 : 0)
@@ -903,29 +965,32 @@ private struct NoteFullPageScreen: View {
 
     private func bottomBar(bottomInset: CGFloat) -> some View {
         VStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 10) {
-                sectionLabel("continue the thread")
-
-                TextField("Ask a follow-up...", text: $viewModel.followUpDraft, axis: .vertical)
-                    .textFieldStyle(.plain)
-                    .font(AppFont.body(17))
-                    .foregroundStyle(.black)
-                    .lineLimit(1...4)
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 16)
-                    .background(
-                        RoundedRectangle(cornerRadius: 26, style: .continuous)
-                            .fill(Color(red: 0.985, green: 0.985, blue: 0.98))
-                    )
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 26, style: .continuous)
-                            .stroke(noteBorderColor.opacity(0.92), lineWidth: 1)
-                    }
-                    .shadow(color: .black.opacity(0.035), radius: 10, x: 0, y: 6)
-            }
+            TextField("Continue the thread...", text: $viewModel.followUpDraft, axis: .vertical)
+                .textFieldStyle(.plain)
+                .font(AppFont.body(17))
+                .foregroundStyle(.black)
+                .lineLimit(1...4)
+                .padding(.horizontal, 18)
+                .padding(.vertical, 16)
+                .background(
+                    RoundedRectangle(cornerRadius: 26, style: .continuous)
+                        .fill(Color(red: 0.985, green: 0.985, blue: 0.98))
+                )
+                .overlay {
+                    RoundedRectangle(cornerRadius: 26, style: .continuous)
+                        .stroke(noteBorderColor.opacity(0.92), lineWidth: 1)
+                }
+                .shadow(color: .black.opacity(0.035), radius: 10, x: 0, y: 6)
 
             HStack {
                 Menu {
+                    Button(primaryDetailActionTitle) {
+                        Task {
+                            await performPrimaryDetailAction()
+                        }
+                    }
+                    .disabled(viewModel.isEnriching || viewModel.isSendingFollowUp)
+
                     Button(viewModel.showTimeline ? "Hide evolution" : "Show evolution") {
                         viewModel.toggleTimeline()
                     }
@@ -937,41 +1002,18 @@ private struct NoteFullPageScreen: View {
                     }
                 } label: {
                     Text("...")
-                        .font(AppFont.heading(24, weight: .semibold))
+                        .font(AppFont.heading(18))
                         .foregroundStyle(.black)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .background(Color.white.opacity(0.82), in: Capsule())
+                        .overlay {
+                            Capsule()
+                                .stroke(Color.black.opacity(0.08), lineWidth: 1)
+                        }
                 }
 
                 Spacer()
-
-                Button {
-                    Task {
-                        if viewModel.followUpDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                            await viewModel.requestResponse(for: note.id)
-                        } else {
-                            await viewModel.sendFollowUp()
-                        }
-                    }
-                } label: {
-                    Group {
-                        if viewModel.isEnriching || viewModel.isSendingFollowUp {
-                            ProgressView()
-                                .tint(.black)
-                        } else {
-                            Text("Request response")
-                                .font(AppFont.body(18))
-                                .foregroundStyle(.black)
-                        }
-                    }
-                    .frame(minWidth: 152)
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 12)
-                    .background(Color.white.opacity(0.92), in: Capsule())
-                    .overlay {
-                        Capsule()
-                            .stroke(noteBorderColor, lineWidth: 1)
-                    }
-                }
-                .disabled(viewModel.isEnriching || viewModel.isSendingFollowUp)
             }
         }
         .padding(.horizontal, 18)
@@ -992,25 +1034,40 @@ private struct NoteFullPageScreen: View {
         .offset(y: showChrome ? 0 : 10)
     }
 
-    private var latestInterpretation: String {
-        note.enrichments.first?.expansion ?? "Request response to grow this thought."
+    private var primaryDetailActionTitle: String {
+        viewModel.followUpDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Request response" : "Send follow-up"
     }
 
-    private var summaryLine: String {
-        if let event = note.timeline.first {
-            return event.summary.lowercased()
+    private func performPrimaryDetailAction() async {
+        if viewModel.followUpDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            await viewModel.requestResponse(for: note.id)
+        } else {
+            await viewModel.sendFollowUp()
         }
-        return note.status
     }
 
-    private var aiStatusText: String {
-        if !note.enrichments.isEmpty {
-            return "grown \(note.enrichments.count)x"
+    private var growthParagraphs: [String] {
+        let expansion = note.enrichments.first?.expansion.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let paragraphs = expansion
+            .components(separatedBy: "\n\n")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+
+        if !paragraphs.isEmpty {
+            return paragraphs
         }
+
+        return ["Request response to grow this thought."]
+    }
+
+    private var detailStatusLabel: String? {
         if note.latestChatReply != nil {
-            return "conversation active"
+            return "in conversation"
         }
-        return "captured"
+        if note.enrichments.isEmpty {
+            return "noted"
+        }
+        return nil
     }
 
     private var noteTimestamp: String {
@@ -1101,6 +1158,7 @@ private struct NoteFullPageScreen: View {
             .foregroundStyle(useAccent ? noteAccentColor : .black.opacity(0.5))
     }
 
+
     private func sourceHost(_ urlString: String) -> String {
         guard let url = URL(string: urlString), let host = url.host else {
             return "citation"
@@ -1163,6 +1221,7 @@ private struct NoteCard: View {
     let jiggleProgress: CGFloat
     let transitionNamespace: Namespace.ID
     let isExpanded: Bool
+    let isTransitionSource: Bool
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 24.0)) { timeline in
@@ -1201,7 +1260,11 @@ private struct NoteCard: View {
                             )
                     }
             )
-            .matchedGeometryEffect(id: "note-surface-\(note.id)", in: transitionNamespace)
+            .applyNoteSurfaceTransition(
+                id: "note-surface-\(note.id)",
+                namespace: transitionNamespace,
+                isEnabled: isTransitionSource
+            )
             .overlay {
                 RoundedRectangle(cornerRadius: 30, style: .continuous)
                     .fill(
@@ -1216,6 +1279,7 @@ private struct NoteCard: View {
                         )
                     )
             }
+            .contentShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
             .rotationEffect(.degrees(rotation + jiggle.rotation))
             .offset(x: jiggle.offset.width, y: jiggle.offset.height)
             .scaleEffect(isReordering ? 1.02 : 1.0)
@@ -1231,14 +1295,20 @@ private struct NoteCard: View {
     }
 
     private var cardStatus: String {
-        if hasAIResponse {
+        if isActivelyGrowing {
             return "growing"
+        }
+        if note.status == "enriched" {
+            return "grown"
+        }
+        if note.status == "captured" {
+            return "noted"
         }
         return note.status
     }
 
     private var summaryText: some View {
-        Text(note.text)
+        Text(cardBodyText)
             .font(AppFont.body(18))
             .foregroundStyle(Color(red: 0.17, green: 0.17, blue: 0.17))
             .multilineTextAlignment(.leading)
@@ -1249,6 +1319,21 @@ private struct NoteCard: View {
 
     private var hasAIResponse: Bool {
         !note.enrichments.isEmpty || !note.sources.isEmpty || !note.prompts.isEmpty || note.latestChatReply != nil
+    }
+
+    private var isActivelyGrowing: Bool {
+        ["queued", "retrying", "running"].contains(note.status)
+    }
+
+    private var cardBodyText: String {
+        let title = note.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let text = note.text.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if !title.isEmpty, title.count > text.count {
+            return title
+        }
+
+        return text
     }
 
     private var noteTimestamp: String {
@@ -1282,57 +1367,65 @@ private struct NoteCard: View {
 }
 
 private struct EmptyNoteCard: View {
+    let transitionNamespace: Namespace.ID
+    let isExpanded: Bool
     let onTap: () -> Void
+    @State private var showContent: Bool = true
 
     var body: some View {
         Button(action: onTap) {
-            VStack(alignment: .leading, spacing: 14) {
-                HStack {
-                    Circle()
-                        .stroke(noteBorderColor.opacity(0.9), lineWidth: 1)
-                        .frame(width: 28, height: 28)
-                        .overlay {
-                            Image(systemName: "plus")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundStyle(.black.opacity(0.52))
+            ZStack {
+                if !isExpanded {
+                    RoundedRectangle(cornerRadius: 30, style: .continuous)
+                        .fill(Color.white.opacity(0.96))
+                        .matchedGeometryEffect(id: "new-thought-surface", in: transitionNamespace)
+                        .shadow(color: noteShadowColor.opacity(0.58), radius: 12, x: 0, y: 8)
+
+                    RoundedRectangle(cornerRadius: 30, style: .continuous)
+                        .stroke(noteBorderColor.opacity(0.35), lineWidth: 1)
+
+                    RoundedRectangle(cornerRadius: 30, style: .continuous)
+                        .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4, 6]))
+                        .foregroundStyle(noteBorderColor.opacity(0.95))
+
+                    if showContent {
+                        VStack(alignment: .leading, spacing: 14) {
+                            HStack {
+                                Image(systemName: "plus")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundStyle(.black.opacity(0.52))
+
+                                Spacer()
+                            }
+
+                            Spacer(minLength: 0)
+
+                            Text("Start a thought...")
+                                .font(AppFont.body(20))
+                                .foregroundStyle(.black.opacity(0.88))
                         }
-
-                    Spacer()
-                }
-
-                Spacer(minLength: 0)
-
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Start a thought...")
-                        .font(AppFont.body(20))
-                        .foregroundStyle(.black.opacity(0.88))
-
-                    Text("tap to capture")
-                        .font(AppFont.meta(12))
-                        .tracking(1.1)
-                        .textCase(.uppercase)
-                        .foregroundStyle(.black.opacity(0.46))
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 18)
+                        .transition(.opacity)
+                    }
                 }
             }
-            .padding(.horizontal, 18)
-            .padding(.vertical, 18)
             .frame(maxWidth: .infinity, minHeight: 156, maxHeight: 156, alignment: .topLeading)
-            .background(
-                RoundedRectangle(cornerRadius: 30, style: .continuous)
-                    .fill(Color.white.opacity(0.96))
-            )
-            .overlay {
-                RoundedRectangle(cornerRadius: 30, style: .continuous)
-                    .stroke(noteBorderColor.opacity(0.35), lineWidth: 1)
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: 30, style: .continuous)
-                    .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4, 6]))
-                    .foregroundStyle(noteBorderColor.opacity(0.95))
-            }
-            .shadow(color: noteShadowColor.opacity(0.58), radius: 12, x: 0, y: 8)
+            .contentShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
         }
         .buttonStyle(.plain)
+        .onChange(of: isExpanded) { _, nowExpanded in
+            if nowExpanded {
+                showContent = false
+            } else {
+                Task {
+                    try? await Task.sleep(nanoseconds: UInt64(noteMorphDuration * 1_000_000_000))
+                    withAnimation(.easeOut(duration: 0.22)) {
+                        showContent = true
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -1362,10 +1455,12 @@ private struct RelatedNoteCluster: View {
                 phaseSeed: phaseSeed(back.id),
                 jiggleProgress: jiggleProgress,
                 transitionNamespace: transitionNamespace,
-                isExpanded: expandedNoteID == back.id
+                isExpanded: expandedNoteID == back.id,
+                isTransitionSource: expandedNoteID == back.id
             )
                 .padding(.top, 56)
                 .padding(.leading, 8)
+                .contentShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
                 .offset(activeDragNoteID == back.id ? dragTranslation : .zero)
                 .zIndex(activeDragNoteID == back.id ? 100 : 0)
                 .background(
@@ -1394,9 +1489,11 @@ private struct RelatedNoteCluster: View {
                 phaseSeed: phaseSeed(front.id),
                 jiggleProgress: jiggleProgress,
                 transitionNamespace: transitionNamespace,
-                isExpanded: expandedNoteID == front.id
+                isExpanded: expandedNoteID == front.id,
+                isTransitionSource: expandedNoteID == front.id
             )
                 .padding(.trailing, 8)
+                .contentShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
                 .offset(activeDragNoteID == front.id ? dragTranslation : .zero)
                 .zIndex(activeDragNoteID == front.id ? 100 : 1)
                 .background(
@@ -1516,8 +1613,24 @@ private extension CGRect {
     }
 }
 
+private extension View {
+    @ViewBuilder
+    func applyNoteSurfaceTransition(id: String, namespace: Namespace.ID, isEnabled: Bool, isSource: Bool = true) -> some View {
+        if isEnabled && !debugDisableNoteSurfaceTransition {
+            matchedGeometryEffect(id: id, in: namespace, isSource: isSource)
+        } else {
+            self
+        }
+    }
+}
+
+private func deduplicated(_ ids: [String]) -> [String] {
+    var seen = Set<String>()
+    return ids.filter { seen.insert($0).inserted }
+}
+
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
-        ContentView()
+        ContentView(viewModel: .previewModel(), shouldBootstrap: false)
     }
 }
