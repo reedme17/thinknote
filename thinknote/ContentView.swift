@@ -1075,14 +1075,14 @@ private struct NoteFullPageScreen: View {
                 Task { await viewModel.requestResponse(for: note.id) }
             } label: {
                 Text("Continue this thought")
-                    .font(AppFont.body(18))
+                    .font(AppFont.heading(15, weight: .semibold))
                     .foregroundStyle(.black)
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 12)
-                    .background(Color.white.opacity(0.92), in: Capsule())
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(Color.white.opacity(0.82), in: Capsule())
                     .overlay {
                         Capsule()
-                            .stroke(noteBorderColor, lineWidth: 1)
+                            .stroke(Color.black.opacity(0.08), lineWidth: 1)
                     }
             }
             .disabled(viewModel.isEnriching)
