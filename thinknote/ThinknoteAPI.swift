@@ -6,12 +6,15 @@
 import Combine
 import Foundation
 
-struct APINote: Identifiable, Codable, Hashable {
+struct APINote: Identifiable, Codable, Hashable, Sendable {
     let id: String
     var title: String
     var text: String
     let createdAt: Date
     var updatedAt: Date
+    var lastViewedAt: Date?
+    var lastEnrichedAt: Date?
+    var sortIndex: Double
     var status: String
     var enrichments: [APIEnrichment]
     var links: [APILink]
@@ -19,9 +22,117 @@ struct APINote: Identifiable, Codable, Hashable {
     var prompts: [String]
     var timeline: [APITimelineEvent]
     var latestChatReply: String?
+    var changesSinceLastViewedCount: Int
+
+    var hasChangesSinceLastVisit: Bool {
+        changesSinceLastViewedCount > 0
+    }
+
+    var displayHeadline: String {
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmedTitle.isEmpty {
+            return trimmedTitle
+        }
+        return text.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    init(
+        id: String,
+        title: String,
+        text: String,
+        createdAt: Date,
+        updatedAt: Date,
+        lastViewedAt: Date? = nil,
+        lastEnrichedAt: Date? = nil,
+        sortIndex: Double = 0,
+        status: String,
+        enrichments: [APIEnrichment],
+        links: [APILink],
+        sources: [APISource],
+        prompts: [String],
+        timeline: [APITimelineEvent],
+        latestChatReply: String?,
+        changesSinceLastViewedCount: Int = 0
+    ) {
+        self.id = id
+        self.title = title
+        self.text = text
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.lastViewedAt = lastViewedAt
+        self.lastEnrichedAt = lastEnrichedAt
+        self.sortIndex = sortIndex
+        self.status = status
+        self.enrichments = enrichments
+        self.links = links
+        self.sources = sources
+        self.prompts = prompts
+        self.timeline = timeline
+        self.latestChatReply = latestChatReply
+        self.changesSinceLastViewedCount = changesSinceLastViewedCount
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case title
+        case text
+        case createdAt
+        case updatedAt
+        case lastViewedAt
+        case lastEnrichedAt
+        case sortIndex
+        case status
+        case enrichments
+        case links
+        case sources
+        case prompts
+        case timeline
+        case latestChatReply
+        case changesSinceLastViewedCount
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        title = try container.decode(String.self, forKey: .title)
+        text = try container.decode(String.self, forKey: .text)
+        createdAt = try container.decode(Date.self, forKey: .createdAt)
+        updatedAt = try container.decode(Date.self, forKey: .updatedAt)
+        lastViewedAt = try container.decodeIfPresent(Date.self, forKey: .lastViewedAt)
+        lastEnrichedAt = try container.decodeIfPresent(Date.self, forKey: .lastEnrichedAt)
+        sortIndex = try container.decodeIfPresent(Double.self, forKey: .sortIndex) ?? 0
+        status = try container.decode(String.self, forKey: .status)
+        enrichments = try container.decodeIfPresent([APIEnrichment].self, forKey: .enrichments) ?? []
+        links = try container.decodeIfPresent([APILink].self, forKey: .links) ?? []
+        sources = try container.decodeIfPresent([APISource].self, forKey: .sources) ?? []
+        prompts = try container.decodeIfPresent([String].self, forKey: .prompts) ?? []
+        timeline = try container.decodeIfPresent([APITimelineEvent].self, forKey: .timeline) ?? []
+        latestChatReply = try container.decodeIfPresent(String.self, forKey: .latestChatReply)
+        changesSinceLastViewedCount = try container.decodeIfPresent(Int.self, forKey: .changesSinceLastViewedCount) ?? 0
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(title, forKey: .title)
+        try container.encode(text, forKey: .text)
+        try container.encode(createdAt, forKey: .createdAt)
+        try container.encode(updatedAt, forKey: .updatedAt)
+        try container.encodeIfPresent(lastViewedAt, forKey: .lastViewedAt)
+        try container.encodeIfPresent(lastEnrichedAt, forKey: .lastEnrichedAt)
+        try container.encode(sortIndex, forKey: .sortIndex)
+        try container.encode(status, forKey: .status)
+        try container.encode(enrichments, forKey: .enrichments)
+        try container.encode(links, forKey: .links)
+        try container.encode(sources, forKey: .sources)
+        try container.encode(prompts, forKey: .prompts)
+        try container.encode(timeline, forKey: .timeline)
+        try container.encodeIfPresent(latestChatReply, forKey: .latestChatReply)
+        try container.encode(changesSinceLastViewedCount, forKey: .changesSinceLastViewedCount)
+    }
 }
 
-struct APIEnrichment: Identifiable, Codable, Hashable {
+struct APIEnrichment: Identifiable, Codable, Hashable, Sendable {
     let id: String
     let createdAt: Date
     let provider: String
@@ -32,7 +143,7 @@ struct APIEnrichment: Identifiable, Codable, Hashable {
     let sources: [APISource]
 }
 
-struct APILink: Identifiable, Codable, Hashable {
+struct APILink: Identifiable, Codable, Hashable, Sendable {
     let id: String
     let title: String
     let relationship: String
@@ -44,7 +155,7 @@ struct APILink: Identifiable, Codable, Hashable {
     }
 }
 
-struct APISource: Identifiable, Codable, Hashable {
+struct APISource: Identifiable, Codable, Hashable, Sendable {
     let id: String
     let title: String
     let url: String
@@ -58,20 +169,74 @@ struct APISource: Identifiable, Codable, Hashable {
     }
 }
 
-struct APITimelineEvent: Identifiable, Codable, Hashable {
+struct APITimelineEvent: Identifiable, Codable, Hashable, Sendable {
     let id: String
     let type: String
     let createdAt: Date
     let summary: String
+    let isNewSinceLastView: Bool
+
+    init(id: String, type: String, createdAt: Date, summary: String, isNewSinceLastView: Bool = false) {
+        self.id = id
+        self.type = type
+        self.createdAt = createdAt
+        self.summary = summary
+        self.isNewSinceLastView = isNewSinceLastView
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case type
+        case createdAt
+        case summary
+        case isNewSinceLastView
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        type = try container.decode(String.self, forKey: .type)
+        createdAt = try container.decode(Date.self, forKey: .createdAt)
+        summary = try container.decode(String.self, forKey: .summary)
+        isNewSinceLastView = try container.decodeIfPresent(Bool.self, forKey: .isNewSinceLastView) ?? false
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(type, forKey: .type)
+        try container.encode(createdAt, forKey: .createdAt)
+        try container.encode(summary, forKey: .summary)
+        try container.encode(isNewSinceLastView, forKey: .isNewSinceLastView)
+    }
 }
 
-struct APIChat: Identifiable, Codable {
+struct APIChat: Identifiable, Codable, Sendable {
     let id: String
     let noteId: String?
     let message: String
     let reply: String
     let provider: String
     let createdAt: Date
+}
+
+struct APIConversationThread: Identifiable, Codable, Hashable, Sendable {
+    let id: String
+    let title: String
+    let noteID: String?
+    let relatedNoteIDs: [String]
+    let createdAt: Date
+    let updatedAt: Date
+    let messages: [APIConversationMessage]
+}
+
+struct APIConversationMessage: Identifiable, Codable, Hashable, Sendable {
+    let id: String
+    let role: String
+    let text: String
+    let provider: String
+    let createdAt: Date
+    let sources: [APISource]
 }
 
 enum AppScreen: Hashable {
@@ -102,13 +267,16 @@ final class ContentViewModel: ObservableObject {
     @Published var isEnriching = false
     @Published var isSendingFollowUp = false
     @Published var reorderSourceID: String?
+    @Published var addMorphTargetNoteID: String?
+    @Published var currentThread: APIConversationThread?
 
-    private let client = ThinknoteAPIClient()
-    private var isUsingLocalFallback = false
+    private let repository: ThinknoteRepository
+    private var hasBootstrapped = false
+    private var isProcessingDeferredGrowth = false
 
-    init(notes: [APINote] = []) {
+    init(notes: [APINote] = [], repository: ThinknoteRepository = .shared) {
         self.notes = notes
-        self.isUsingLocalFallback = !notes.isEmpty
+        self.repository = repository
     }
 
     var currentNote: APINote? {
@@ -121,26 +289,38 @@ final class ContentViewModel: ObservableObject {
     }
 
     func bootstrap() async {
-        await loadNotes()
-    }
-
-    func loadNotes() async {
         do {
-            let loaded = try await client.fetchNotes()
-            notes = loaded.isEmpty ? Self.demoNotes : loaded
-            isUsingLocalFallback = false
+            notes = try await repository.bootstrap(seedNotes: Self.demoNotes)
+            hasBootstrapped = true
+            await processDeferredGrowthIfNeeded()
             errorMessage = nil
         } catch {
             if notes.isEmpty {
                 notes = Self.demoNotes
             }
-            isUsingLocalFallback = true
-            errorMessage = "Backend unavailable. Running in local MVP mode."
+            errorMessage = "Local store could not be opened."
+        }
+    }
+
+    func loadNotes() async {
+        do {
+            notes = try await repository.loadNotes()
+            errorMessage = nil
+        } catch {
+            if notes.isEmpty {
+                notes = Self.demoNotes
+            }
+            errorMessage = "Local store could not be opened."
         }
 
         if case .detail(let noteID) = screen, note(for: noteID) == nil {
             screen = .home
         }
+    }
+
+    func refreshForForeground() async {
+        guard hasBootstrapped else { return }
+        await processDeferredGrowthIfNeeded()
     }
 
     func openNewNote() {
@@ -171,13 +351,26 @@ final class ContentViewModel: ObservableObject {
         reorderSourceID = nil
         screen = .detail(noteID)
         debugNoteLog("openNote", "after", screen, "selectedNoteID:", selectedNoteID ?? "nil")
+        Task {
+            if let viewedNote = try? await repository.markNoteViewed(noteID: noteID) {
+                replace(note: viewedNote)
+            }
+            currentThread = try? await repository.fetchConversationThread(noteID: noteID)
+        }
     }
 
     func returnHome() {
+        let noteID = selectedNoteID
         reorderSourceID = nil
         showTimeline = false
         followUpDraft = ""
         screen = .home
+        if let noteID {
+            Task {
+                _ = try? await repository.markNoteViewed(noteID: noteID)
+                await loadNotes()
+            }
+        }
     }
 
     func returnHomeFromDraft() async {
@@ -210,7 +403,7 @@ final class ContentViewModel: ObservableObject {
                 note = try await createDraft(text: text)
             }
 
-            replace(note: note)
+            await loadNotes()
             draftNoteID = note.id
             selectedNoteID = note.id
             lastSavedDraftText = text
@@ -240,14 +433,9 @@ final class ContentViewModel: ObservableObject {
         defer { isEnriching = false }
 
         do {
-            let updated: APINote
-            if isUsingLocalFallback {
-                updated = enrichLocalNote(noteID: noteID)
-            } else {
-                updated = try await client.enrich(noteID: noteID)
-            }
-
+            let updated = try await repository.requestEnrichment(noteID: noteID)
             replace(note: updated)
+            currentThread = try? await repository.fetchConversationThread(noteID: noteID)
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -264,26 +452,9 @@ final class ContentViewModel: ObservableObject {
         defer { isSendingFollowUp = false }
 
         do {
-            let updated: APINote
-            if isUsingLocalFallback {
-                updated = chatLocalNote(noteID: selectedNoteID, message: message)
-            } else {
-                let chat = try await client.chat(noteID: selectedNoteID, message: message)
-                guard var note = note(for: selectedNoteID) else { return }
-                note.latestChatReply = chat.reply
-                note.timeline.insert(
-                    APITimelineEvent(
-                        id: UUID().uuidString,
-                        type: "chat_updated",
-                        createdAt: Date(),
-                        summary: "AI conversation advanced"
-                    ),
-                    at: 0
-                )
-                updated = note
-            }
-
+            let updated = try await repository.sendFollowUp(noteID: selectedNoteID, message: message)
             replace(note: updated)
+            currentThread = try? await repository.fetchConversationThread(noteID: selectedNoteID)
             followUpDraft = ""
             errorMessage = nil
         } catch {
@@ -294,14 +465,11 @@ final class ContentViewModel: ObservableObject {
     func refreshCurrentNote() async {
         guard let selectedNoteID else { return }
 
-        if isUsingLocalFallback {
-            errorMessage = "Local MVP mode does not need a network refresh."
-            return
-        }
-
         do {
-            let refreshed = try await client.fetchNote(noteID: selectedNoteID)
-            replace(note: refreshed)
+            if let refreshed = try await repository.loadNote(noteID: selectedNoteID) {
+                replace(note: refreshed)
+            }
+            currentThread = try? await repository.fetchConversationThread(noteID: selectedNoteID)
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -337,6 +505,18 @@ final class ContentViewModel: ObservableObject {
         let adjustedTarget = sourceIndex < targetIndex ? max(0, targetIndex - 1) : targetIndex
         notes.insert(note, at: adjustedTarget)
         self.reorderSourceID = nil
+        Task {
+            _ = try? await repository.reorderNotes(noteIDs: notes.map(\.id))
+        }
+    }
+
+    func persistManualOrder(_ noteIDs: [String]) async {
+        do {
+            notes = try await repository.reorderNotes(noteIDs: noteIDs)
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     func createNoteFromAssistant() async {
@@ -361,156 +541,53 @@ final class ContentViewModel: ObservableObject {
     }
 
     private func createDraft(text: String) async throws -> APINote {
-        if isUsingLocalFallback {
-            return createLocalDraft(text: text)
-        }
-
-        return try await client.createNote(title: "", text: text)
+        try await repository.saveDraft(noteID: nil, text: text)
     }
 
     private func saveExistingDraft(noteID: String, text: String) async throws -> APINote {
-        if isUsingLocalFallback {
-            return updateLocalDraft(noteID: noteID, text: text)
-        }
-
-        return try await client.updateNote(noteID: noteID, title: nil, text: text)
+        try await repository.saveDraft(noteID: noteID, text: text)
     }
 
     private func replace(note: APINote) {
         if let index = notes.firstIndex(where: { $0.id == note.id }) {
             notes[index] = note
         } else {
-            notes.insert(note, at: 0)
+            notes.append(note)
         }
+        notes.sort { $0.sortIndex < $1.sortIndex }
     }
 
-    private func createLocalDraft(text: String) -> APINote {
-        let now = Date()
-        let note = APINote(
-            id: UUID().uuidString,
-            title: String(text.prefix(28)),
-            text: text,
-            createdAt: now,
-            updatedAt: now,
-            status: "captured",
-            enrichments: [],
-            links: [],
-            sources: [],
-            prompts: [],
-            timeline: [
-                APITimelineEvent(
-                    id: UUID().uuidString,
-                    type: "note_created",
-                    createdAt: now,
-                    summary: "Note created"
-                )
-            ],
-            latestChatReply: nil
-        )
-        notes.insert(note, at: 0)
-        return note
-    }
+    private func processDeferredGrowthIfNeeded() async {
+        guard !isProcessingDeferredGrowth else { return }
 
-    private func updateLocalDraft(noteID: String, text: String) -> APINote {
-        guard var note = note(for: noteID) else {
-            return createLocalDraft(text: text)
+        isProcessingDeferredGrowth = true
+        defer { isProcessingDeferredGrowth = false }
+
+        do {
+            _ = try await repository.processEligibleJobs()
+            await loadNotes()
+        } catch {
+            errorMessage = error.localizedDescription
         }
-
-        note.text = text
-        note.title = String(text.prefix(28))
-        note.updatedAt = Date()
-        note.status = "edited"
-        note.timeline.insert(
-            APITimelineEvent(
-                id: UUID().uuidString,
-                type: "note_edited",
-                createdAt: Date(),
-                summary: "Note updated by user"
-            ),
-            at: 0
-        )
-        return note
-    }
-
-    private func enrichLocalNote(noteID: String) -> APINote {
-        guard var note = note(for: noteID) else {
-            return Self.demoNotes[0]
-        }
-
-        let now = Date()
-        let source = APISource(
-            title: "Public article",
-            url: "https://example.com/idea",
-            snippet: "Background research attached to the current AI interpretation."
-        )
-        let enrichment = APIEnrichment(
-            id: UUID().uuidString,
-            createdAt: now,
-            provider: "local",
-            expansion: "This thought can be developed further by turning the fragment into a clearer argument and checking it against outside knowledge.",
-            relatedIdeas: [],
-            prompts: [
-                "What is the strongest version of this idea?",
-                "What evidence would make this more believable?"
-            ],
-            links: [],
-            sources: [source]
-        )
-
-        note.status = "enriched"
-        note.updatedAt = now
-        note.enrichments.insert(enrichment, at: 0)
-        note.sources = [source]
-        note.prompts = enrichment.prompts
-        note.timeline.insert(
-            APITimelineEvent(
-                id: UUID().uuidString,
-                type: "note_enriched",
-                createdAt: now,
-                summary: "AI interpretation refreshed"
-            ),
-            at: 0
-        )
-        return note
-    }
-
-    private func chatLocalNote(noteID: String, message: String) -> APINote {
-        guard var note = note(for: noteID) else {
-            return Self.demoNotes[0]
-        }
-
-        note.latestChatReply = "A useful next step is to turn that follow-up into a sharper question, then compare it against the note's current interpretation."
-        note.updatedAt = Date()
-        note.timeline.insert(
-            APITimelineEvent(
-                id: UUID().uuidString,
-                type: "chat_updated",
-                createdAt: Date(),
-                summary: "AI conversation advanced"
-            ),
-            at: 0
-        )
-        note.prompts = [message] + note.prompts
-        return note
     }
 
     static let demoNotes: [APINote] = [
         seededPrototypeNote(
             id: "seed-reading-compression",
-            title: "Reading is compression. Writing is decompression. The ratio between them tells you how clearly you actually understand something.",
-            text: "reading is compression, writing is decompression",
+            title: "Writing reveals whether reading became understanding.",
+            text: "Writing reveals whether reading became understanding.",
             status: "enriched",
             updatedAt: seedDate(hour: 14, minute: 32),
             grownCount: 3,
+            lastViewedAt: seedDate(hour: 9, minute: 12),
             growthParagraphs: [
-                "When you read, you're absorbing many people's thinking, condensed. When you write, you're forced to unpack a single thread and make it survive daylight. The act of writing reveals where the compression was doing the thinking for you.",
-                "A useful test: if you can't decompress an idea into your own words without the scaffolding falling apart, you probably imported the conclusion but not the path.",
-                "That makes writing a diagnostic, not just an output format. It exposes whether the idea has actually become yours."
+                "Reading lets you borrow compressed thinking. Writing forces you to re-expand it and discover whether the structure still holds once the original scaffolding is gone.",
+                "If the thought collapses when you try to restate it plainly, you may have remembered the conclusion without really owning the path that leads to it."
             ],
             prompts: [
-                "Is the inverse true — does decompression (writing) actually compress future reading?",
-                "What's the equivalent for listening and conversation?",
-                "Could this reframe how we evaluate AI-generated summaries?"
+                "Does writing make future reading faster because the structure is now internal?",
+                "What is the equivalent of this test in conversation?",
+                "How would this idea change the way we judge summaries?"
             ],
             sources: [
                 APISource(
@@ -527,37 +604,35 @@ final class ContentViewModel: ObservableObject {
         ),
         seededPrototypeNote(
             id: "seed-tool-worldview",
-            title: "Every tool quietly teaches you its worldview. Figma teaches layers. Excel teaches tables. What does a feed teach?",
-            text: "every tool teaches you a worldview",
+            title: "Every tool teaches you how to think.",
+            text: "Every tool teaches you how to think.",
             status: "queued",
             updatedAt: seedDate(hour: 13, minute: 18),
             grownCount: 2,
-            growthParagraphs: [
-                "The UI of a tool is its epistemology: the categories it makes easy become the categories you think in.",
-                "A feed, for example, may teach recency and reaction before reflection. Over time the interface becomes a quiet tutor for attention itself."
-            ]
+            growthParagraphs: []
         ),
         seededPrototypeNote(
             id: "seed-taste-pattern-recognition",
-            title: "Taste is just pattern recognition across a huge dataset of things you paid full attention to.",
-            text: "taste = pattern recognition at scale",
+            title: "Taste is memory for structure.",
+            text: "Taste is memory for structure.",
             status: "enriched",
             updatedAt: seedDate(hour: 11, minute: 47),
             grownCount: 1,
+            lastViewedAt: seedDate(hour: 8, minute: 50),
             growthParagraphs: [
-                "Taste compounds when attention gets specific enough to remember structure, not just preference. What feels intuitive later is often the residue of many slow comparisons you once made on purpose."
+                "What later feels like instinct is often stored comparison. Attention becomes taste when it remembers why one form held together better than another."
             ]
         ),
         seededPrototypeNote(
             id: "seed-productivity-anxiety",
-            title: "Most \"productivity\" advice is actually about managing anxiety, not output.",
-            text: "productivity is anxiety management in disguise",
+            title: "Productivity systems often manage anxiety more than output.",
+            text: "Productivity systems often manage anxiety more than output.",
             status: "enriched",
             updatedAt: seedDate(hour: 10, minute: 3),
             grownCount: 2,
             growthParagraphs: [
-                "A lot of systems promise clarity, but what they really deliver is temporary emotional relief. The ritual matters because it reduces uncertainty, even when it does little to increase the amount of meaningful work that gets finished.",
-                "That is why productivity theater can feel effective even when nothing meaningful moved: the system successfully soothed the operator."
+                "Many systems feel effective because they reduce uncertainty, not because they increase meaningful output. The ritual creates relief first, progress second.",
+                "That is why a day can feel organized without actually moving the hard thing forward: the system calmed the operator, and the calm got mistaken for progress."
             ]
         )
     ]
@@ -574,6 +649,7 @@ private func seededPrototypeNote(
     status: String,
     updatedAt: Date,
     grownCount: Int,
+    lastViewedAt: Date? = nil,
     growthParagraphs: [String],
     prompts: [String] = [],
     sources: [APISource] = []
@@ -597,6 +673,9 @@ private func seededPrototypeNote(
         text: text,
         createdAt: createdAt,
         updatedAt: updatedAt,
+        lastViewedAt: lastViewedAt ?? updatedAt,
+        lastEnrichedAt: growthParagraphs.isEmpty ? nil : updatedAt,
+        sortIndex: 0,
         status: status,
         enrichments: growthParagraphs.isEmpty ? [] : [enrichment],
         links: [],
@@ -607,10 +686,12 @@ private func seededPrototypeNote(
                 id: "\(id)-timeline",
                 type: timelineType,
                 createdAt: updatedAt,
-                summary: "Growth \(grownCount)x"
+                summary: "Growth \(grownCount)x",
+                isNewSinceLastView: false
             )
         ],
-        latestChatReply: nil
+        latestChatReply: nil,
+        changesSinceLastViewedCount: 0
     )
 }
 

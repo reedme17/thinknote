@@ -6,12 +6,18 @@
 //
 
 import SwiftUI
+import SwiftData
 
 @main
 struct thinknoteApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            if isRunningInPreviews {
+                ContentView(viewModel: .previewModel(), shouldBootstrap: false)
+            } else {
+                ContentView()
+            }
         }
+        .modelContainer(ThinknotePersistence.sharedContainer)
     }
 }

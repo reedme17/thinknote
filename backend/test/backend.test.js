@@ -152,7 +152,8 @@ async function createApp() {
         env: {},
         jobPollIntervalMs: 1000000,
         jobMaxRetries: 2,
-        autoEnrichOnCreate: true
+        autoEnrichOnCreate: true,
+        seedDefaultNotes: false
     };
 
     const app = await createThinknoteServer({ config, fetchImpl: mockFetch });

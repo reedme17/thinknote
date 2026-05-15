@@ -4,7 +4,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 export async function createStore({ config, logger }) {
     await mkdir(config.dataDir, { recursive: true });
 
-    let state = await loadState(config.storePath, logger);
+    let state = await loadState(config.storePath, config, logger);
     let persistChain = Promise.resolve();
 
     const store = {
@@ -51,18 +51,23 @@ export async function createStore({ config, logger }) {
     return store;
 }
 
-async function loadState(storePath, logger) {
+async function loadState(storePath, config, logger) {
     try {
         const raw = await readFile(storePath, "utf8");
-        return migrate(JSON.parse(raw), logger);
+        const parsed = JSON.parse(raw);
+        const migrated = migrate(parsed, config, logger);
+        if (JSON.stringify(parsed) !== JSON.stringify(migrated)) {
+            await writeFile(storePath, JSON.stringify(migrated, null, 2));
+        }
+        return migrated;
     } catch {
-        const initial = migrate({}, logger);
+        const initial = migrate({}, config, logger);
         await writeFile(storePath, JSON.stringify(initial, null, 2));
         return initial;
     }
 }
 
-function migrate(input, logger) {
+function migrate(input, config, logger) {
     const source = input && typeof input === "object" ? input : {};
     const state = {
         version: 2,
@@ -106,6 +111,10 @@ function migrate(input, logger) {
             );
         }
         logger.info("store_migrated_chats", { count: source.chats.length });
+    }
+
+    if (state.notes.length === 0 && config.seedDefaultNotes !== false) {
+        state.notes = buildDefaultNotes();
     }
 
     return state;
@@ -221,4 +230,152 @@ function deriveTitle(text) {
         .slice(0, 6)
         .join(" ")
         .trim() || "Untitled";
+}
+
+function buildDefaultNotes() {
+    return [
+        buildDefaultNote({
+            id: "seed-reading-compression",
+            title: "Reading is compression. Writing is decompression. The ratio between them tells you how clearly you actually understand something.",
+            text: "reading is compression, writing is decompression",
+            status: "enriched",
+            updatedAt: seedTimestamp(14, 32),
+            grownCount: 3,
+            growthParagraphs: [
+                "When you read, you're absorbing many people's thinking, condensed. When you write, you're forced to unpack a single thread and make it survive daylight. The act of writing reveals where the compression was doing the thinking for you.",
+                "A useful test: if you can't decompress an idea into your own words without the scaffolding falling apart, you probably imported the conclusion but not the path.",
+                "That makes writing a diagnostic, not just an output format. It exposes whether the idea has actually become yours."
+            ],
+            prompts: [
+                "Is the inverse true — does decompression (writing) actually compress future reading?",
+                "What's the equivalent for listening and conversation?",
+                "Could this reframe how we evaluate AI-generated summaries?"
+            ],
+            sources: [
+                {
+                    title: "Writing and Speaking",
+                    url: "https://paulgraham.com/writing44.html",
+                    snippet: "Having good ideas is most of writing well. If you know what you're talking about, you can say it in the plainest words.",
+                    publisher: "paulgraham.com"
+                },
+                {
+                    title: "The Noncentral Fallacy",
+                    url: "https://www.lesswrong.com/posts/2J6iHq8x7P8N6L9XK/the-noncentral-fallacy-the-worst-argument-in-the-world",
+                    snippet: "Compression loses information; the question is which information you can afford to lose.",
+                    publisher: "lesswrong.com"
+                }
+            ]
+        }),
+        buildDefaultNote({
+            id: "seed-tool-worldview",
+            title: "Every tool quietly teaches you its worldview. Figma teaches layers. Excel teaches tables. What does a feed teach?",
+            text: "every tool teaches you a worldview",
+            status: "queued",
+            updatedAt: seedTimestamp(13, 18),
+            grownCount: 2,
+            growthParagraphs: [
+                "The UI of a tool is its epistemology: the categories it makes easy become the categories you think in.",
+                "A feed, for example, may teach recency and reaction before reflection. Over time the interface becomes a quiet tutor for attention itself."
+            ]
+        }),
+        buildDefaultNote({
+            id: "seed-taste-pattern-recognition",
+            title: "Taste is just pattern recognition across a huge dataset of things you paid full attention to.",
+            text: "taste = pattern recognition at scale",
+            status: "enriched",
+            updatedAt: seedTimestamp(11, 47),
+            grownCount: 1,
+            growthParagraphs: [
+                "Taste compounds when attention gets specific enough to remember structure, not just preference. What feels intuitive later is often the residue of many slow comparisons you once made on purpose."
+            ]
+        }),
+        buildDefaultNote({
+            id: "seed-productivity-anxiety",
+            title: "Most \"productivity\" advice is actually about managing anxiety, not output.",
+            text: "productivity is anxiety management in disguise",
+            status: "enriched",
+            updatedAt: seedTimestamp(10, 3),
+            grownCount: 2,
+            growthParagraphs: [
+                "A lot of systems promise clarity, but what they really deliver is temporary emotional relief. The ritual matters because it reduces uncertainty, even when it does little to increase the amount of meaningful work that gets finished.",
+                "That is why productivity theater can feel effective even when nothing meaningful moved: the system successfully soothed the operator."
+            ]
+        })
+    ];
+}
+
+function buildDefaultNote({ id, title, text, status, updatedAt, grownCount, growthParagraphs, prompts = [], sources = [] }) {
+    const createdAt = new Date(new Date(updatedAt).getTime() - 15 * 60 * 1000).toISOString();
+    const timelineSummary = `Growth ${grownCount}x`;
+
+    return {
+        id,
+        title,
+        text,
+        rawText: text,
+        status,
+        createdAt,
+        updatedAt,
+        lastEnrichedAt: status === "queued" ? null : updatedAt,
+        latestChatReply: null,
+        enrichments: growthParagraphs.length
+            ? [
+                  {
+                      id: `${id}-enrichment`,
+                      createdAt: updatedAt,
+                      provider: "prototype",
+                      expansion: growthParagraphs.join("\n\n"),
+                      relatedIdeas: [],
+                      prompts,
+                      links: [],
+                      sources: sources.map((source) => ({
+                          id: randomUUID(),
+                          title: source.title,
+                          url: source.url,
+                          snippet: source.snippet,
+                          publisher: source.publisher || "",
+                          query: "",
+                          score: 0,
+                          retrievedAt: updatedAt
+                      }))
+                  }
+              ]
+            : [],
+        prompts,
+        sources: sources.map((source) => ({
+            id: randomUUID(),
+            title: source.title,
+            url: source.url,
+            snippet: source.snippet,
+            publisher: source.publisher || "",
+            query: "",
+            score: 0,
+            retrievedAt: updatedAt
+        })),
+        links: [],
+        relatedNoteIds: [],
+        timeline: [
+            {
+                id: `${id}-timeline`,
+                type: status === "queued" ? "note_growing" : "note_enriched",
+                createdAt: updatedAt,
+                summary: timelineSummary
+            }
+        ],
+        revisions: [
+            {
+                id: `${id}-revision`,
+                createdAt,
+                type: "user_capture",
+                summary: "Initial note capture",
+                text
+            }
+        ]
+    };
+}
+
+function seedTimestamp(hour, minute) {
+    const now = new Date();
+    now.setHours(hour, minute, 0, 0);
+    return now.toISOString();
 }

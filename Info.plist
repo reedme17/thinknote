@@ -42,6 +42,10 @@
 		<string>AlegreyaSans-Medium.ttf</string>
 		<string>DavidLibre-Regular.ttf</string>
 		<string>DavidLibre-Medium.ttf</string>
+		<string>Fraunces72pt-Regular.ttf</string>
+		<string>Fraunces72pt-SemiBold.ttf</string>
+		<string>GeistMono-Regular.ttf</string>
+		<string>GeistMono-Medium.ttf</string>
 	</array>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>

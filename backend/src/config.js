@@ -18,7 +18,8 @@ export function loadConfig() {
         env,
         jobPollIntervalMs: Number(env.JOB_POLL_INTERVAL_MS || 500),
         jobMaxRetries: Number(env.JOB_MAX_RETRIES || 3),
-        autoEnrichOnCreate: env.AUTO_ENRICH_ON_CREATE !== "false"
+        autoEnrichOnCreate: env.AUTO_ENRICH_ON_CREATE !== "false",
+        seedDefaultNotes: env.SEED_DEFAULT_NOTES !== "false"
     };
 }
 

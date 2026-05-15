@@ -1,14 +1,2815 @@
 {
-  "notes": [],
-  "jobs": [],
-  "chats": [
+  "version": 2,
+  "notes": [
     {
-      "id": "8b4f8fc2-c2c4-42ed-a678-5104017805f7",
-      "noteId": null,
-      "message": "Ygjn",
-      "reply": "A useful way to start is to turn your thought into three parts: what you noticed, why it matters, and what question it raises. Starting from your message: Ygjn",
-      "provider": "mock",
-      "createdAt": "2026-04-10T01:54:35.009Z"
+      "id": "646d59a7-4285-46b7-96e7-4041d49b464b",
+      "title": "Bed and dream",
+      "text": "Bed and dream",
+      "rawText": "Bed and dream",
+      "status": "enriched",
+      "createdAt": "2026-04-22T03:46:55.090Z",
+      "updatedAt": "2026-04-22T03:47:13.284Z",
+      "lastEnrichedAt": "2026-04-22T03:47:13.284Z",
+      "latestChatReply": null,
+      "enrichments": [
+        {
+          "id": "0ee0b492-34d7-4f9d-a8d3-e8486ee56d8a",
+          "createdAt": "2026-04-22T03:47:13.284Z",
+          "provider": "mock",
+          "expansion": "This note points toward a stronger claim: Bed and dream A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
+          "relatedIdeas": [
+            "What changes if you push this note further through the lens of product thinking?",
+            "How does this note reinforce or challenge \"Bed\"?",
+            "If this became a project this week, what is the smallest visible action?"
+          ],
+          "prompts": [
+            "What do you believe now that you could not say clearly when you first captured this thought?",
+            "Which source, example, or observation would make the idea more grounded?",
+            "What unresolved question should stay attached to this note?"
+          ],
+          "links": [
+            {
+              "id": "aec34d77-fe9d-4125-84d0-689ba9526eef",
+              "noteId": "81dbda9f-b44e-4a1e-929c-64197bce0cb4",
+              "title": "Bed",
+              "relationship": "complementary",
+              "confidence": 0.33,
+              "summary": "Shared themes: bed"
+            }
+          ],
+          "sources": [
+            {
+              "id": "src-1-building-a-second-brain-for-unfinished-ideas",
+              "title": "Building a second brain for unfinished ideas",
+              "url": "https://example.org/second-brain-ideas",
+              "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+              "publisher": "Idea Systems Journal",
+              "query": "Bed and dream Bed and dream product thinking",
+              "score": 0.25,
+              "retrievedAt": "2026-04-22T03:47:13.284Z"
+            },
+            {
+              "id": "src-2-knowledge-gardens-and-personal-note-networks",
+              "title": "Knowledge gardens and personal note networks",
+              "url": "https://example.org/knowledge-gardens",
+              "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+              "publisher": "Personal Knowledge Review",
+              "query": "Bed and dream Bed and dream product thinking",
+              "score": 0.25,
+              "retrievedAt": "2026-04-22T03:47:13.284Z"
+            },
+            {
+              "id": "src-3-prompting-users-with-questions-instead-of-summaries",
+              "title": "Prompting users with questions instead of summaries",
+              "url": "https://example.org/reflection-prompts",
+              "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+              "publisher": "Designing for Thought",
+              "query": "Bed and dream Bed and dream product thinking",
+              "score": 0.25,
+              "retrievedAt": "2026-04-22T03:47:13.284Z"
+            }
+          ]
+        },
+        {
+          "id": "93ac1902-437b-4acb-9c10-290dd20a588b",
+          "createdAt": "2026-04-22T03:46:55.212Z",
+          "provider": "mock",
+          "expansion": "This note points toward a stronger claim: Bed and dream A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
+          "relatedIdeas": [
+            "What hidden assumption is carrying this thought?",
+            "How does this note reinforce or challenge \"Bed\"?",
+            "If this became a project this week, what is the smallest visible action?"
+          ],
+          "prompts": [
+            "What do you believe now that you could not say clearly when you first captured this thought?",
+            "Which source, example, or observation would make the idea more grounded?",
+            "What unresolved question should stay attached to this note?"
+          ],
+          "links": [
+            {
+              "id": "6f666a2c-ef44-4035-91af-ddaf963d733a",
+              "noteId": "81dbda9f-b44e-4a1e-929c-64197bce0cb4",
+              "title": "Bed",
+              "relationship": "complementary",
+              "confidence": 0.33,
+              "summary": "Shared themes: bed"
+            }
+          ],
+          "sources": [
+            {
+              "id": "src-1-building-a-second-brain-for-unfinished-ideas",
+              "title": "Building a second brain for unfinished ideas",
+              "url": "https://example.org/second-brain-ideas",
+              "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+              "publisher": "Idea Systems Journal",
+              "query": "Bed and dream Bed and dream",
+              "score": 0.3333333333333333,
+              "retrievedAt": "2026-04-22T03:46:55.211Z"
+            },
+            {
+              "id": "src-2-knowledge-gardens-and-personal-note-networks",
+              "title": "Knowledge gardens and personal note networks",
+              "url": "https://example.org/knowledge-gardens",
+              "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+              "publisher": "Personal Knowledge Review",
+              "query": "Bed and dream Bed and dream",
+              "score": 0.3333333333333333,
+              "retrievedAt": "2026-04-22T03:46:55.211Z"
+            },
+            {
+              "id": "src-3-prompting-users-with-questions-instead-of-summaries",
+              "title": "Prompting users with questions instead of summaries",
+              "url": "https://example.org/reflection-prompts",
+              "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+              "publisher": "Designing for Thought",
+              "query": "Bed and dream Bed and dream",
+              "score": 0.3333333333333333,
+              "retrievedAt": "2026-04-22T03:46:55.211Z"
+            }
+          ]
+        }
+      ],
+      "prompts": [
+        "What do you believe now that you could not say clearly when you first captured this thought?",
+        "Which source, example, or observation would make the idea more grounded?",
+        "What unresolved question should stay attached to this note?"
+      ],
+      "sources": [
+        {
+          "id": "src-1-building-a-second-brain-for-unfinished-ideas",
+          "title": "Building a second brain for unfinished ideas",
+          "url": "https://example.org/second-brain-ideas",
+          "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+          "publisher": "Idea Systems Journal",
+          "query": "Bed and dream Bed and dream product thinking",
+          "score": 0.25,
+          "retrievedAt": "2026-04-22T03:47:13.284Z"
+        },
+        {
+          "id": "src-2-knowledge-gardens-and-personal-note-networks",
+          "title": "Knowledge gardens and personal note networks",
+          "url": "https://example.org/knowledge-gardens",
+          "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+          "publisher": "Personal Knowledge Review",
+          "query": "Bed and dream Bed and dream product thinking",
+          "score": 0.25,
+          "retrievedAt": "2026-04-22T03:47:13.284Z"
+        },
+        {
+          "id": "src-3-prompting-users-with-questions-instead-of-summaries",
+          "title": "Prompting users with questions instead of summaries",
+          "url": "https://example.org/reflection-prompts",
+          "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+          "publisher": "Designing for Thought",
+          "query": "Bed and dream Bed and dream product thinking",
+          "score": 0.25,
+          "retrievedAt": "2026-04-22T03:47:13.284Z"
+        }
+      ],
+      "links": [
+        {
+          "id": "aec34d77-fe9d-4125-84d0-689ba9526eef",
+          "noteId": "81dbda9f-b44e-4a1e-929c-64197bce0cb4",
+          "title": "Bed",
+          "relationship": "complementary",
+          "confidence": 0.33,
+          "summary": "Shared themes: bed"
+        }
+      ],
+      "relatedNoteIds": [
+        "81dbda9f-b44e-4a1e-929c-64197bce0cb4"
+      ],
+      "timeline": [
+        {
+          "id": "30af387b-3854-448e-8cff-14abb9d87c3f",
+          "type": "related_notes_updated",
+          "createdAt": "2026-04-22T03:47:13.284Z",
+          "summary": "1 related notes refreshed"
+        },
+        {
+          "id": "51a19398-6a64-4728-911a-a776dfc503b0",
+          "type": "note_enriched",
+          "createdAt": "2026-04-22T03:47:13.284Z",
+          "summary": "Note enriched by mock"
+        },
+        {
+          "id": "af5ad480-19d0-44eb-a434-d441741ec5e6",
+          "type": "job_started",
+          "createdAt": "2026-04-22T03:47:13.280Z",
+          "summary": "Background enrichment started"
+        },
+        {
+          "id": "58e65f9d-0c6a-4001-80fa-a53631e5135c",
+          "type": "job_queued",
+          "createdAt": "2026-04-22T03:47:13.277Z",
+          "summary": "Enrichment queued from manual"
+        },
+        {
+          "id": "4df3d92b-b08f-4e41-aa9e-5f3805601c25",
+          "type": "related_notes_updated",
+          "createdAt": "2026-04-22T03:46:55.212Z",
+          "summary": "1 related notes refreshed"
+        },
+        {
+          "id": "f74baf48-2344-45e6-999e-ed320b627f2e",
+          "type": "note_enriched",
+          "createdAt": "2026-04-22T03:46:55.212Z",
+          "summary": "Note enriched by mock"
+        },
+        {
+          "id": "761f3b04-84ef-481c-a021-80e85e56ac37",
+          "type": "job_started",
+          "createdAt": "2026-04-22T03:46:55.204Z",
+          "summary": "Background enrichment started"
+        },
+        {
+          "id": "9adf1fcb-8ff0-43cf-8251-b3dd5ea3cd66",
+          "type": "job_queued",
+          "createdAt": "2026-04-22T03:46:55.095Z",
+          "summary": "Enrichment queued from auto_capture"
+        },
+        {
+          "id": "b0306d59-e1a5-4efa-ab98-9630562ba7c1",
+          "type": "note_created",
+          "createdAt": "2026-04-22T03:46:55.090Z",
+          "summary": "Note created"
+        }
+      ],
+      "revisions": [
+        {
+          "id": "d1e3c07d-f9fc-4da9-8e18-bb71ea7a832c",
+          "createdAt": "2026-04-22T03:47:13.284Z",
+          "type": "ai_enrichment",
+          "summary": "Enrichment from mock",
+          "text": "This note points toward a stronger claim: Bed and dream A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
+          "sourceJobId": "3a109217-3a8d-4172-b8cf-fb8b590eb8e4"
+        },
+        {
+          "id": "31fb5988-24a2-462c-823f-19c592d25f52",
+          "createdAt": "2026-04-22T03:46:55.212Z",
+          "type": "ai_enrichment",
+          "summary": "Enrichment from mock",
+          "text": "This note points toward a stronger claim: Bed and dream A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
+          "sourceJobId": "5d0d61ff-c02e-47d5-982e-1ce415a8de08"
+        },
+        {
+          "id": "459ae07b-984c-4e1c-ae3a-94f1c955c997",
+          "createdAt": "2026-04-22T03:46:55.090Z",
+          "type": "user_capture",
+          "summary": "Initial note capture",
+          "text": "Bed and dream"
+        }
+      ]
+    },
+    {
+      "id": "81dbda9f-b44e-4a1e-929c-64197bce0cb4",
+      "title": "Bed",
+      "text": "Bed",
+      "rawText": "Bed",
+      "status": "enriched",
+      "createdAt": "2026-04-22T03:46:22.551Z",
+      "updatedAt": "2026-04-22T03:46:22.625Z",
+      "lastEnrichedAt": "2026-04-22T03:46:22.625Z",
+      "latestChatReply": null,
+      "enrichments": [
+        {
+          "id": "7ffd658a-1c3f-43d2-a3cd-9a776643e66a",
+          "createdAt": "2026-04-22T03:46:22.625Z",
+          "provider": "mock",
+          "expansion": "This note points toward a stronger claim: Bed A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
+          "relatedIdeas": [
+            "What hidden assumption is carrying this thought?",
+            "What earlier note might disagree with this idea in a productive way?",
+            "If this became a project this week, what is the smallest visible action?"
+          ],
+          "prompts": [
+            "What do you believe now that you could not say clearly when you first captured this thought?",
+            "Which source, example, or observation would make the idea more grounded?",
+            "What unresolved question should stay attached to this note?"
+          ],
+          "links": [],
+          "sources": [
+            {
+              "id": "src-1-building-a-second-brain-for-unfinished-ideas",
+              "title": "Building a second brain for unfinished ideas",
+              "url": "https://example.org/second-brain-ideas",
+              "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+              "publisher": "Idea Systems Journal",
+              "query": "Bed Bed",
+              "score": 1,
+              "retrievedAt": "2026-04-22T03:46:22.625Z"
+            },
+            {
+              "id": "src-2-knowledge-gardens-and-personal-note-networks",
+              "title": "Knowledge gardens and personal note networks",
+              "url": "https://example.org/knowledge-gardens",
+              "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+              "publisher": "Personal Knowledge Review",
+              "query": "Bed Bed",
+              "score": 0.9,
+              "retrievedAt": "2026-04-22T03:46:22.625Z"
+            },
+            {
+              "id": "src-3-prompting-users-with-questions-instead-of-summaries",
+              "title": "Prompting users with questions instead of summaries",
+              "url": "https://example.org/reflection-prompts",
+              "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+              "publisher": "Designing for Thought",
+              "query": "Bed Bed",
+              "score": 0.8,
+              "retrievedAt": "2026-04-22T03:46:22.625Z"
+            }
+          ]
+        }
+      ],
+      "prompts": [
+        "What do you believe now that you could not say clearly when you first captured this thought?",
+        "Which source, example, or observation would make the idea more grounded?",
+        "What unresolved question should stay attached to this note?"
+      ],
+      "sources": [
+        {
+          "id": "src-1-building-a-second-brain-for-unfinished-ideas",
+          "title": "Building a second brain for unfinished ideas",
+          "url": "https://example.org/second-brain-ideas",
+          "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+          "publisher": "Idea Systems Journal",
+          "query": "Bed Bed",
+          "score": 1,
+          "retrievedAt": "2026-04-22T03:46:22.625Z"
+        },
+        {
+          "id": "src-2-knowledge-gardens-and-personal-note-networks",
+          "title": "Knowledge gardens and personal note networks",
+          "url": "https://example.org/knowledge-gardens",
+          "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+          "publisher": "Personal Knowledge Review",
+          "query": "Bed Bed",
+          "score": 0.9,
+          "retrievedAt": "2026-04-22T03:46:22.625Z"
+        },
+        {
+          "id": "src-3-prompting-users-with-questions-instead-of-summaries",
+          "title": "Prompting users with questions instead of summaries",
+          "url": "https://example.org/reflection-prompts",
+          "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+          "publisher": "Designing for Thought",
+          "query": "Bed Bed",
+          "score": 0.8,
+          "retrievedAt": "2026-04-22T03:46:22.625Z"
+        }
+      ],
+      "links": [],
+      "relatedNoteIds": [],
+      "timeline": [
+        {
+          "id": "389a5776-aefa-4d5c-ad77-fbe061fb6fb7",
+          "type": "note_enriched",
+          "createdAt": "2026-04-22T03:46:22.625Z",
+          "summary": "Note enriched by mock"
+        },
+        {
+          "id": "317b9516-7bec-46c7-a30b-d77c0cb9e810",
+          "type": "job_started",
+          "createdAt": "2026-04-22T03:46:22.607Z",
+          "summary": "Background enrichment started"
+        },
+        {
+          "id": "a4804f31-6f38-4f8f-b399-96e9c4fcc81e",
+          "type": "job_queued",
+          "createdAt": "2026-04-22T03:46:22.569Z",
+          "summary": "Enrichment queued from auto_capture"
+        },
+        {
+          "id": "13f3daf3-4ddf-41a6-babb-dab448d59ce6",
+          "type": "note_created",
+          "createdAt": "2026-04-22T03:46:22.551Z",
+          "summary": "Note created"
+        }
+      ],
+      "revisions": [
+        {
+          "id": "2f8960ea-8c54-4b81-80fc-772b6f18c835",
+          "createdAt": "2026-04-22T03:46:22.625Z",
+          "type": "ai_enrichment",
+          "summary": "Enrichment from mock",
+          "text": "This note points toward a stronger claim: Bed A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
+          "sourceJobId": "6beb5646-09b0-4121-a4dc-4a570844a209"
+        },
+        {
+          "id": "5dacdcc2-ae0a-401a-b334-1ff5a2f98a5f",
+          "createdAt": "2026-04-22T03:46:22.551Z",
+          "type": "user_capture",
+          "summary": "Initial note capture",
+          "text": "Bed"
+        }
+      ]
+    },
+    {
+      "id": "b729595d-c29b-4aee-bb7b-c268d8aa0125",
+      "title": "Nana’s",
+      "text": "Nana’s",
+      "rawText": "Nana’s",
+      "status": "enriched",
+      "createdAt": "2026-04-22T03:43:56.566Z",
+      "updatedAt": "2026-04-23T02:03:43.264Z",
+      "lastEnrichedAt": "2026-04-23T02:03:43.264Z",
+      "latestChatReply": null,
+      "enrichments": [
+        {
+          "id": "e6ddf5ee-14cc-431e-bedc-590474e3dd0e",
+          "createdAt": "2026-04-23T02:03:43.264Z",
+          "provider": "mock",
+          "expansion": "This note points toward a stronger claim: Nana’s A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
+          "relatedIdeas": [
+            "What changes if you push this note further through the lens of product thinking?",
+            "What earlier note might disagree with this idea in a productive way?",
+            "If this became a project this week, what is the smallest visible action?"
+          ],
+          "prompts": [
+            "What do you believe now that you could not say clearly when you first captured this thought?",
+            "Which source, example, or observation would make the idea more grounded?",
+            "What unresolved question should stay attached to this note?"
+          ],
+          "links": [],
+          "sources": [
+            {
+              "id": "src-1-building-a-second-brain-for-unfinished-ideas",
+              "title": "Building a second brain for unfinished ideas",
+              "url": "https://example.org/second-brain-ideas",
+              "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+              "publisher": "Idea Systems Journal",
+              "query": "Nana’s Nana’s product thinking",
+              "score": 1,
+              "retrievedAt": "2026-04-23T02:03:43.264Z"
+            },
+            {
+              "id": "src-2-knowledge-gardens-and-personal-note-networks",
+              "title": "Knowledge gardens and personal note networks",
+              "url": "https://example.org/knowledge-gardens",
+              "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+              "publisher": "Personal Knowledge Review",
+              "query": "Nana’s Nana’s product thinking",
+              "score": 0.9,
+              "retrievedAt": "2026-04-23T02:03:43.264Z"
+            },
+            {
+              "id": "src-3-prompting-users-with-questions-instead-of-summaries",
+              "title": "Prompting users with questions instead of summaries",
+              "url": "https://example.org/reflection-prompts",
+              "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+              "publisher": "Designing for Thought",
+              "query": "Nana’s Nana’s product thinking",
+              "score": 0.8,
+              "retrievedAt": "2026-04-23T02:03:43.264Z"
+            }
+          ]
+        },
+        {
+          "id": "64040247-e4c8-4e68-9230-246a92417c80",
+          "createdAt": "2026-04-22T03:43:56.709Z",
+          "provider": "mock",
+          "expansion": "This note points toward a stronger claim: Nana’s A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
+          "relatedIdeas": [
+            "What hidden assumption is carrying this thought?",
+            "What earlier note might disagree with this idea in a productive way?",
+            "If this became a project this week, what is the smallest visible action?"
+          ],
+          "prompts": [
+            "What do you believe now that you could not say clearly when you first captured this thought?",
+            "Which source, example, or observation would make the idea more grounded?",
+            "What unresolved question should stay attached to this note?"
+          ],
+          "links": [],
+          "sources": [
+            {
+              "id": "src-1-building-a-second-brain-for-unfinished-ideas",
+              "title": "Building a second brain for unfinished ideas",
+              "url": "https://example.org/second-brain-ideas",
+              "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+              "publisher": "Idea Systems Journal",
+              "query": "Nana’s Nana’s",
+              "score": 1,
+              "retrievedAt": "2026-04-22T03:43:56.709Z"
+            },
+            {
+              "id": "src-2-knowledge-gardens-and-personal-note-networks",
+              "title": "Knowledge gardens and personal note networks",
+              "url": "https://example.org/knowledge-gardens",
+              "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+              "publisher": "Personal Knowledge Review",
+              "query": "Nana’s Nana’s",
+              "score": 0.9,
+              "retrievedAt": "2026-04-22T03:43:56.709Z"
+            },
+            {
+              "id": "src-3-prompting-users-with-questions-instead-of-summaries",
+              "title": "Prompting users with questions instead of summaries",
+              "url": "https://example.org/reflection-prompts",
+              "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+              "publisher": "Designing for Thought",
+              "query": "Nana’s Nana’s",
+              "score": 0.8,
+              "retrievedAt": "2026-04-22T03:43:56.709Z"
+            }
+          ]
+        }
+      ],
+      "prompts": [
+        "What do you believe now that you could not say clearly when you first captured this thought?",
+        "Which source, example, or observation would make the idea more grounded?",
+        "What unresolved question should stay attached to this note?"
+      ],
+      "sources": [
+        {
+          "id": "src-1-building-a-second-brain-for-unfinished-ideas",
+          "title": "Building a second brain for unfinished ideas",
+          "url": "https://example.org/second-brain-ideas",
+          "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+          "publisher": "Idea Systems Journal",
+          "query": "Nana’s Nana’s product thinking",
+          "score": 1,
+          "retrievedAt": "2026-04-23T02:03:43.264Z"
+        },
+        {
+          "id": "src-2-knowledge-gardens-and-personal-note-networks",
+          "title": "Knowledge gardens and personal note networks",
+          "url": "https://example.org/knowledge-gardens",
+          "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+          "publisher": "Personal Knowledge Review",
+          "query": "Nana’s Nana’s product thinking",
+          "score": 0.9,
+          "retrievedAt": "2026-04-23T02:03:43.264Z"
+        },
+        {
+          "id": "src-3-prompting-users-with-questions-instead-of-summaries",
+          "title": "Prompting users with questions instead of summaries",
+          "url": "https://example.org/reflection-prompts",
+          "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+          "publisher": "Designing for Thought",
+          "query": "Nana’s Nana’s product thinking",
+          "score": 0.8,
+          "retrievedAt": "2026-04-23T02:03:43.264Z"
+        }
+      ],
+      "links": [],
+      "relatedNoteIds": [],
+      "timeline": [
+        {
+          "id": "cc4142e5-a3b5-41b2-bf95-49ae404d1eac",
+          "type": "note_enriched",
+          "createdAt": "2026-04-23T02:03:43.265Z",
+          "summary": "Note enriched by mock"
+        },
+        {
+          "id": "6b1f587a-be27-4c78-a1a4-4c0d1173bf90",
+          "type": "job_started",
+          "createdAt": "2026-04-23T02:03:43.255Z",
+          "summary": "Background enrichment started"
+        },
+        {
+          "id": "0f8addb3-ca61-45bd-980c-f4ee7548f16b",
+          "type": "job_queued",
+          "createdAt": "2026-04-23T02:03:43.245Z",
+          "summary": "Enrichment queued from manual"
+        },
+        {
+          "id": "aed9d308-0f33-4f45-915d-0439067a0c11",
+          "type": "note_enriched",
+          "createdAt": "2026-04-22T03:43:56.714Z",
+          "summary": "Note enriched by mock"
+        },
+        {
+          "id": "36a71c3f-3125-41d5-a3c7-77e80f231808",
+          "type": "job_started",
+          "createdAt": "2026-04-22T03:43:56.694Z",
+          "summary": "Background enrichment started"
+        },
+        {
+          "id": "ebeb2ad2-491c-45ea-9832-9e9df0e20780",
+          "type": "job_queued",
+          "createdAt": "2026-04-22T03:43:56.575Z",
+          "summary": "Enrichment queued from auto_capture"
+        },
+        {
+          "id": "1b09d5b2-d39c-4d8b-86a7-59389a70610c",
+          "type": "note_created",
+          "createdAt": "2026-04-22T03:43:56.566Z",
+          "summary": "Note created"
+        }
+      ],
+      "revisions": [
+        {
+          "id": "8f04789f-1552-4989-84f9-341cf1cc0899",
+          "createdAt": "2026-04-23T02:03:43.264Z",
+          "type": "ai_enrichment",
+          "summary": "Enrichment from mock",
+          "text": "This note points toward a stronger claim: Nana’s A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
+          "sourceJobId": "9da7b997-daa6-410c-8eeb-3e2000723c83"
+        },
+        {
+          "id": "1cda2f39-fed3-465f-b9d9-03346b2e07ee",
+          "createdAt": "2026-04-22T03:43:56.709Z",
+          "type": "ai_enrichment",
+          "summary": "Enrichment from mock",
+          "text": "This note points toward a stronger claim: Nana’s A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
+          "sourceJobId": "6f272d31-a015-42eb-abe0-5f33e98ab4b1"
+        },
+        {
+          "id": "2989f9ce-f226-4696-bbda-e977fa54a6bc",
+          "createdAt": "2026-04-22T03:43:56.566Z",
+          "type": "user_capture",
+          "summary": "Initial note capture",
+          "text": "Nana’s"
+        }
+      ]
+    },
+    {
+      "id": "5b2a71f9-91ad-4593-9c97-2875e7934b8f",
+      "title": "Ffff",
+      "text": "Ffff",
+      "rawText": "Ffff",
+      "status": "enriched",
+      "createdAt": "2026-04-22T03:43:00.626Z",
+      "updatedAt": "2026-04-22T03:43:01.059Z",
+      "lastEnrichedAt": "2026-04-22T03:43:01.059Z",
+      "latestChatReply": null,
+      "enrichments": [
+        {
+          "id": "ff94709e-85a6-46ff-820b-aba1e41e9d17",
+          "createdAt": "2026-04-22T03:43:01.059Z",
+          "provider": "mock",
+          "expansion": "This note points toward a stronger claim: Ffff A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
+          "relatedIdeas": [
+            "What hidden assumption is carrying this thought?",
+            "What earlier note might disagree with this idea in a productive way?",
+            "If this became a project this week, what is the smallest visible action?"
+          ],
+          "prompts": [
+            "What do you believe now that you could not say clearly when you first captured this thought?",
+            "Which source, example, or observation would make the idea more grounded?",
+            "What unresolved question should stay attached to this note?"
+          ],
+          "links": [],
+          "sources": [
+            {
+              "id": "src-1-building-a-second-brain-for-unfinished-ideas",
+              "title": "Building a second brain for unfinished ideas",
+              "url": "https://example.org/second-brain-ideas",
+              "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+              "publisher": "Idea Systems Journal",
+              "query": "Ffff Ffff",
+              "score": 1,
+              "retrievedAt": "2026-04-22T03:43:01.059Z"
+            },
+            {
+              "id": "src-2-knowledge-gardens-and-personal-note-networks",
+              "title": "Knowledge gardens and personal note networks",
+              "url": "https://example.org/knowledge-gardens",
+              "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+              "publisher": "Personal Knowledge Review",
+              "query": "Ffff Ffff",
+              "score": 0.9,
+              "retrievedAt": "2026-04-22T03:43:01.059Z"
+            },
+            {
+              "id": "src-3-prompting-users-with-questions-instead-of-summaries",
+              "title": "Prompting users with questions instead of summaries",
+              "url": "https://example.org/reflection-prompts",
+              "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+              "publisher": "Designing for Thought",
+              "query": "Ffff Ffff",
+              "score": 0.8,
+              "retrievedAt": "2026-04-22T03:43:01.059Z"
+            }
+          ]
+        }
+      ],
+      "prompts": [
+        "What do you believe now that you could not say clearly when you first captured this thought?",
+        "Which source, example, or observation would make the idea more grounded?",
+        "What unresolved question should stay attached to this note?"
+      ],
+      "sources": [
+        {
+          "id": "src-1-building-a-second-brain-for-unfinished-ideas",
+          "title": "Building a second brain for unfinished ideas",
+          "url": "https://example.org/second-brain-ideas",
+          "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+          "publisher": "Idea Systems Journal",
+          "query": "Ffff Ffff",
+          "score": 1,
+          "retrievedAt": "2026-04-22T03:43:01.059Z"
+        },
+        {
+          "id": "src-2-knowledge-gardens-and-personal-note-networks",
+          "title": "Knowledge gardens and personal note networks",
+          "url": "https://example.org/knowledge-gardens",
+          "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+          "publisher": "Personal Knowledge Review",
+          "query": "Ffff Ffff",
+          "score": 0.9,
+          "retrievedAt": "2026-04-22T03:43:01.059Z"
+        },
+        {
+          "id": "src-3-prompting-users-with-questions-instead-of-summaries",
+          "title": "Prompting users with questions instead of summaries",
+          "url": "https://example.org/reflection-prompts",
+          "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+          "publisher": "Designing for Thought",
+          "query": "Ffff Ffff",
+          "score": 0.8,
+          "retrievedAt": "2026-04-22T03:43:01.059Z"
+        }
+      ],
+      "links": [],
+      "relatedNoteIds": [],
+      "timeline": [
+        {
+          "id": "ca502cf2-c9c0-4db2-a1a0-bfb4feccad4a",
+          "type": "note_enriched",
+          "createdAt": "2026-04-22T03:43:01.060Z",
+          "summary": "Note enriched by mock"
+        },
+        {
+          "id": "dd2c45a3-1a59-4c96-9a0a-7ed78830823a",
+          "type": "job_started",
+          "createdAt": "2026-04-22T03:43:01.053Z",
+          "summary": "Background enrichment started"
+        },
+        {
+          "id": "9619960a-e9f5-4079-972f-c06a4772e018",
+          "type": "job_queued",
+          "createdAt": "2026-04-22T03:43:00.640Z",
+          "summary": "Enrichment queued from auto_capture"
+        },
+        {
+          "id": "476f6a71-ceb6-4170-a053-1ca4b660202a",
+          "type": "note_created",
+          "createdAt": "2026-04-22T03:43:00.626Z",
+          "summary": "Note created"
+        }
+      ],
+      "revisions": [
+        {
+          "id": "371c26d1-44ff-479c-90e7-86ded1840e24",
+          "createdAt": "2026-04-22T03:43:01.059Z",
+          "type": "ai_enrichment",
+          "summary": "Enrichment from mock",
+          "text": "This note points toward a stronger claim: Ffff A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
+          "sourceJobId": "99e9c447-7ad3-4017-8d5c-fef3c03ea10c"
+        },
+        {
+          "id": "7230d154-6dfc-4cc7-806c-8f59e5af4d6a",
+          "createdAt": "2026-04-22T03:43:00.626Z",
+          "type": "user_capture",
+          "summary": "Initial note capture",
+          "text": "Ffff"
+        }
+      ]
+    },
+    {
+      "id": "72ec1fd6-a033-407f-a8f8-7d357344a1eb",
+      "title": "Ba",
+      "text": "Ba",
+      "rawText": "Ba",
+      "status": "enriched",
+      "createdAt": "2026-04-22T03:42:07.586Z",
+      "updatedAt": "2026-04-22T03:42:07.907Z",
+      "lastEnrichedAt": "2026-04-22T03:42:07.907Z",
+      "latestChatReply": null,
+      "enrichments": [
+        {
+          "id": "d75b8f30-f595-457d-9963-520a7fb85873",
+          "createdAt": "2026-04-22T03:42:07.907Z",
+          "provider": "mock",
+          "expansion": "This note points toward a stronger claim: Ba A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
+          "relatedIdeas": [
+            "What hidden assumption is carrying this thought?",
+            "What earlier note might disagree with this idea in a productive way?",
+            "If this became a project this week, what is the smallest visible action?"
+          ],
+          "prompts": [
+            "What do you believe now that you could not say clearly when you first captured this thought?",
+            "Which source, example, or observation would make the idea more grounded?",
+            "What unresolved question should stay attached to this note?"
+          ],
+          "links": [],
+          "sources": [
+            {
+              "id": "src-1-building-a-second-brain-for-unfinished-ideas",
+              "title": "Building a second brain for unfinished ideas",
+              "url": "https://example.org/second-brain-ideas",
+              "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+              "publisher": "Idea Systems Journal",
+              "query": "Ba Ba",
+              "score": 1,
+              "retrievedAt": "2026-04-22T03:42:07.907Z"
+            },
+            {
+              "id": "src-2-knowledge-gardens-and-personal-note-networks",
+              "title": "Knowledge gardens and personal note networks",
+              "url": "https://example.org/knowledge-gardens",
+              "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+              "publisher": "Personal Knowledge Review",
+              "query": "Ba Ba",
+              "score": 0.9,
+              "retrievedAt": "2026-04-22T03:42:07.907Z"
+            },
+            {
+              "id": "src-3-prompting-users-with-questions-instead-of-summaries",
+              "title": "Prompting users with questions instead of summaries",
+              "url": "https://example.org/reflection-prompts",
+              "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+              "publisher": "Designing for Thought",
+              "query": "Ba Ba",
+              "score": 0.8,
+              "retrievedAt": "2026-04-22T03:42:07.907Z"
+            }
+          ]
+        }
+      ],
+      "prompts": [
+        "What do you believe now that you could not say clearly when you first captured this thought?",
+        "Which source, example, or observation would make the idea more grounded?",
+        "What unresolved question should stay attached to this note?"
+      ],
+      "sources": [
+        {
+          "id": "src-1-building-a-second-brain-for-unfinished-ideas",
+          "title": "Building a second brain for unfinished ideas",
+          "url": "https://example.org/second-brain-ideas",
+          "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+          "publisher": "Idea Systems Journal",
+          "query": "Ba Ba",
+          "score": 1,
+          "retrievedAt": "2026-04-22T03:42:07.907Z"
+        },
+        {
+          "id": "src-2-knowledge-gardens-and-personal-note-networks",
+          "title": "Knowledge gardens and personal note networks",
+          "url": "https://example.org/knowledge-gardens",
+          "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+          "publisher": "Personal Knowledge Review",
+          "query": "Ba Ba",
+          "score": 0.9,
+          "retrievedAt": "2026-04-22T03:42:07.907Z"
+        },
+        {
+          "id": "src-3-prompting-users-with-questions-instead-of-summaries",
+          "title": "Prompting users with questions instead of summaries",
+          "url": "https://example.org/reflection-prompts",
+          "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+          "publisher": "Designing for Thought",
+          "query": "Ba Ba",
+          "score": 0.8,
+          "retrievedAt": "2026-04-22T03:42:07.907Z"
+        }
+      ],
+      "links": [],
+      "relatedNoteIds": [],
+      "timeline": [
+        {
+          "id": "ced915e1-9e6e-4cea-8bc7-452313e4da9f",
+          "type": "note_enriched",
+          "createdAt": "2026-04-22T03:42:07.907Z",
+          "summary": "Note enriched by mock"
+        },
+        {
+          "id": "f3e2ee9e-635f-4920-a76b-e513531d4015",
+          "type": "job_started",
+          "createdAt": "2026-04-22T03:42:07.894Z",
+          "summary": "Background enrichment started"
+        },
+        {
+          "id": "e3b972a5-a230-40f9-bc2c-40c9bbb4d93a",
+          "type": "job_queued",
+          "createdAt": "2026-04-22T03:42:07.591Z",
+          "summary": "Enrichment queued from auto_capture"
+        },
+        {
+          "id": "cbe1ad32-fb98-4ce2-80ed-b22694cbd0ea",
+          "type": "note_created",
+          "createdAt": "2026-04-22T03:42:07.586Z",
+          "summary": "Note created"
+        }
+      ],
+      "revisions": [
+        {
+          "id": "6cbf9e14-865a-47c4-8b9d-6c26d48a4b67",
+          "createdAt": "2026-04-22T03:42:07.907Z",
+          "type": "ai_enrichment",
+          "summary": "Enrichment from mock",
+          "text": "This note points toward a stronger claim: Ba A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
+          "sourceJobId": "5940793c-7913-4382-a790-22268977bcad"
+        },
+        {
+          "id": "91db43c2-dd3d-435e-97de-69a454e75345",
+          "createdAt": "2026-04-22T03:42:07.586Z",
+          "type": "user_capture",
+          "summary": "Initial note capture",
+          "text": "Ba"
+        }
+      ]
+    },
+    {
+      "id": "1a727b7c-cd81-468a-ad5b-879baff87a7e",
+      "title": "Do",
+      "text": "Do",
+      "rawText": "Do",
+      "status": "enriched",
+      "createdAt": "2026-04-22T03:39:29.149Z",
+      "updatedAt": "2026-04-22T03:39:29.368Z",
+      "lastEnrichedAt": "2026-04-22T03:39:29.368Z",
+      "latestChatReply": null,
+      "enrichments": [
+        {
+          "id": "66da5967-6b71-4f39-a6eb-01f1a0455d6c",
+          "createdAt": "2026-04-22T03:39:29.368Z",
+          "provider": "mock",
+          "expansion": "This note points toward a stronger claim: Do A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
+          "relatedIdeas": [
+            "What hidden assumption is carrying this thought?",
+            "What earlier note might disagree with this idea in a productive way?",
+            "If this became a project this week, what is the smallest visible action?"
+          ],
+          "prompts": [
+            "What do you believe now that you could not say clearly when you first captured this thought?",
+            "Which source, example, or observation would make the idea more grounded?",
+            "What unresolved question should stay attached to this note?"
+          ],
+          "links": [],
+          "sources": [
+            {
+              "id": "src-1-building-a-second-brain-for-unfinished-ideas",
+              "title": "Building a second brain for unfinished ideas",
+              "url": "https://example.org/second-brain-ideas",
+              "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+              "publisher": "Idea Systems Journal",
+              "query": "Do Do",
+              "score": 1,
+              "retrievedAt": "2026-04-22T03:39:29.368Z"
+            },
+            {
+              "id": "src-2-knowledge-gardens-and-personal-note-networks",
+              "title": "Knowledge gardens and personal note networks",
+              "url": "https://example.org/knowledge-gardens",
+              "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+              "publisher": "Personal Knowledge Review",
+              "query": "Do Do",
+              "score": 0.9,
+              "retrievedAt": "2026-04-22T03:39:29.368Z"
+            },
+            {
+              "id": "src-3-prompting-users-with-questions-instead-of-summaries",
+              "title": "Prompting users with questions instead of summaries",
+              "url": "https://example.org/reflection-prompts",
+              "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+              "publisher": "Designing for Thought",
+              "query": "Do Do",
+              "score": 0.8,
+              "retrievedAt": "2026-04-22T03:39:29.368Z"
+            }
+          ]
+        }
+      ],
+      "prompts": [
+        "What do you believe now that you could not say clearly when you first captured this thought?",
+        "Which source, example, or observation would make the idea more grounded?",
+        "What unresolved question should stay attached to this note?"
+      ],
+      "sources": [
+        {
+          "id": "src-1-building-a-second-brain-for-unfinished-ideas",
+          "title": "Building a second brain for unfinished ideas",
+          "url": "https://example.org/second-brain-ideas",
+          "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+          "publisher": "Idea Systems Journal",
+          "query": "Do Do",
+          "score": 1,
+          "retrievedAt": "2026-04-22T03:39:29.368Z"
+        },
+        {
+          "id": "src-2-knowledge-gardens-and-personal-note-networks",
+          "title": "Knowledge gardens and personal note networks",
+          "url": "https://example.org/knowledge-gardens",
+          "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+          "publisher": "Personal Knowledge Review",
+          "query": "Do Do",
+          "score": 0.9,
+          "retrievedAt": "2026-04-22T03:39:29.368Z"
+        },
+        {
+          "id": "src-3-prompting-users-with-questions-instead-of-summaries",
+          "title": "Prompting users with questions instead of summaries",
+          "url": "https://example.org/reflection-prompts",
+          "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+          "publisher": "Designing for Thought",
+          "query": "Do Do",
+          "score": 0.8,
+          "retrievedAt": "2026-04-22T03:39:29.368Z"
+        }
+      ],
+      "links": [],
+      "relatedNoteIds": [],
+      "timeline": [
+        {
+          "id": "e07f49b1-1e61-490d-b6bd-07636d477332",
+          "type": "note_enriched",
+          "createdAt": "2026-04-22T03:39:29.368Z",
+          "summary": "Note enriched by mock"
+        },
+        {
+          "id": "47e6d037-abf6-48ea-a140-51178ea6c0c9",
+          "type": "job_started",
+          "createdAt": "2026-04-22T03:39:29.362Z",
+          "summary": "Background enrichment started"
+        },
+        {
+          "id": "bd7c4c4f-691d-4e63-a85c-5fcd9fa85a10",
+          "type": "job_queued",
+          "createdAt": "2026-04-22T03:39:29.153Z",
+          "summary": "Enrichment queued from auto_capture"
+        },
+        {
+          "id": "a557b4e7-e684-4ca0-bb9b-bb23eefdf684",
+          "type": "note_created",
+          "createdAt": "2026-04-22T03:39:29.149Z",
+          "summary": "Note created"
+        }
+      ],
+      "revisions": [
+        {
+          "id": "f177dbcc-d666-4d64-9567-ecb3c41d771f",
+          "createdAt": "2026-04-22T03:39:29.368Z",
+          "type": "ai_enrichment",
+          "summary": "Enrichment from mock",
+          "text": "This note points toward a stronger claim: Do A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
+          "sourceJobId": "91750440-e4af-42a4-976d-f5ddab0aef7f"
+        },
+        {
+          "id": "84f35565-6ba1-42d2-b1f4-dfd8e5ab066c",
+          "createdAt": "2026-04-22T03:39:29.149Z",
+          "type": "user_capture",
+          "summary": "Initial note capture",
+          "text": "Do"
+        }
+      ]
+    },
+    {
+      "id": "1040300f-f887-4083-a2da-c1a157240696",
+      "title": "E",
+      "text": "E",
+      "rawText": "E",
+      "status": "enriched",
+      "createdAt": "2026-04-22T03:39:20.838Z",
+      "updatedAt": "2026-04-22T03:39:21.341Z",
+      "lastEnrichedAt": "2026-04-22T03:39:21.341Z",
+      "latestChatReply": null,
+      "enrichments": [
+        {
+          "id": "ae649316-0f55-4ce1-ac2b-016afd6a9e04",
+          "createdAt": "2026-04-22T03:39:21.341Z",
+          "provider": "mock",
+          "expansion": "This note points toward a stronger claim: E A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
+          "relatedIdeas": [
+            "What hidden assumption is carrying this thought?",
+            "What earlier note might disagree with this idea in a productive way?",
+            "If this became a project this week, what is the smallest visible action?"
+          ],
+          "prompts": [
+            "What do you believe now that you could not say clearly when you first captured this thought?",
+            "Which source, example, or observation would make the idea more grounded?",
+            "What unresolved question should stay attached to this note?"
+          ],
+          "links": [],
+          "sources": [
+            {
+              "id": "src-1-building-a-second-brain-for-unfinished-ideas",
+              "title": "Building a second brain for unfinished ideas",
+              "url": "https://example.org/second-brain-ideas",
+              "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+              "publisher": "Idea Systems Journal",
+              "query": "E E",
+              "score": 1,
+              "retrievedAt": "2026-04-22T03:39:21.341Z"
+            },
+            {
+              "id": "src-2-knowledge-gardens-and-personal-note-networks",
+              "title": "Knowledge gardens and personal note networks",
+              "url": "https://example.org/knowledge-gardens",
+              "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+              "publisher": "Personal Knowledge Review",
+              "query": "E E",
+              "score": 0.9,
+              "retrievedAt": "2026-04-22T03:39:21.341Z"
+            },
+            {
+              "id": "src-3-prompting-users-with-questions-instead-of-summaries",
+              "title": "Prompting users with questions instead of summaries",
+              "url": "https://example.org/reflection-prompts",
+              "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+              "publisher": "Designing for Thought",
+              "query": "E E",
+              "score": 0.8,
+              "retrievedAt": "2026-04-22T03:39:21.341Z"
+            }
+          ]
+        }
+      ],
+      "prompts": [
+        "What do you believe now that you could not say clearly when you first captured this thought?",
+        "Which source, example, or observation would make the idea more grounded?",
+        "What unresolved question should stay attached to this note?"
+      ],
+      "sources": [
+        {
+          "id": "src-1-building-a-second-brain-for-unfinished-ideas",
+          "title": "Building a second brain for unfinished ideas",
+          "url": "https://example.org/second-brain-ideas",
+          "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+          "publisher": "Idea Systems Journal",
+          "query": "E E",
+          "score": 1,
+          "retrievedAt": "2026-04-22T03:39:21.341Z"
+        },
+        {
+          "id": "src-2-knowledge-gardens-and-personal-note-networks",
+          "title": "Knowledge gardens and personal note networks",
+          "url": "https://example.org/knowledge-gardens",
+          "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+          "publisher": "Personal Knowledge Review",
+          "query": "E E",
+          "score": 0.9,
+          "retrievedAt": "2026-04-22T03:39:21.341Z"
+        },
+        {
+          "id": "src-3-prompting-users-with-questions-instead-of-summaries",
+          "title": "Prompting users with questions instead of summaries",
+          "url": "https://example.org/reflection-prompts",
+          "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+          "publisher": "Designing for Thought",
+          "query": "E E",
+          "score": 0.8,
+          "retrievedAt": "2026-04-22T03:39:21.341Z"
+        }
+      ],
+      "links": [],
+      "relatedNoteIds": [],
+      "timeline": [
+        {
+          "id": "30a87c2e-b70f-4653-8f87-2294d56867ff",
+          "type": "note_enriched",
+          "createdAt": "2026-04-22T03:39:21.341Z",
+          "summary": "Note enriched by mock"
+        },
+        {
+          "id": "f8ad8f59-88ce-460c-901c-b34a21d19523",
+          "type": "job_started",
+          "createdAt": "2026-04-22T03:39:21.335Z",
+          "summary": "Background enrichment started"
+        },
+        {
+          "id": "6923c2cd-2e4e-4ed0-82a3-737ac8c2b7de",
+          "type": "job_queued",
+          "createdAt": "2026-04-22T03:39:20.841Z",
+          "summary": "Enrichment queued from auto_capture"
+        },
+        {
+          "id": "e96b0abd-899f-4591-bf05-9c8eba3172da",
+          "type": "note_created",
+          "createdAt": "2026-04-22T03:39:20.838Z",
+          "summary": "Note created"
+        }
+      ],
+      "revisions": [
+        {
+          "id": "be726501-6715-4f64-8965-e102059b71c4",
+          "createdAt": "2026-04-22T03:39:21.341Z",
+          "type": "ai_enrichment",
+          "summary": "Enrichment from mock",
+          "text": "This note points toward a stronger claim: E A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
+          "sourceJobId": "65b0c9a5-49ca-40bf-b497-388bf0c4cfb7"
+        },
+        {
+          "id": "6ac8e93a-37dc-4267-bff1-543ba61bece4",
+          "createdAt": "2026-04-22T03:39:20.838Z",
+          "type": "user_capture",
+          "summary": "Initial note capture",
+          "text": "E"
+        }
+      ]
+    },
+    {
+      "id": "5c65ed54-452c-43d0-bd84-7485be3ada7a",
+      "title": "F",
+      "text": "F",
+      "rawText": "F",
+      "status": "enriched",
+      "createdAt": "2026-04-22T03:38:09.294Z",
+      "updatedAt": "2026-04-22T03:38:09.623Z",
+      "lastEnrichedAt": "2026-04-22T03:38:09.623Z",
+      "latestChatReply": null,
+      "enrichments": [
+        {
+          "id": "55d1643f-060a-4858-9a4f-346fe47a263d",
+          "createdAt": "2026-04-22T03:38:09.623Z",
+          "provider": "mock",
+          "expansion": "This note points toward a stronger claim: F A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
+          "relatedIdeas": [
+            "What hidden assumption is carrying this thought?",
+            "What earlier note might disagree with this idea in a productive way?",
+            "If this became a project this week, what is the smallest visible action?"
+          ],
+          "prompts": [
+            "What do you believe now that you could not say clearly when you first captured this thought?",
+            "Which source, example, or observation would make the idea more grounded?",
+            "What unresolved question should stay attached to this note?"
+          ],
+          "links": [],
+          "sources": [
+            {
+              "id": "src-1-building-a-second-brain-for-unfinished-ideas",
+              "title": "Building a second brain for unfinished ideas",
+              "url": "https://example.org/second-brain-ideas",
+              "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+              "publisher": "Idea Systems Journal",
+              "query": "F F",
+              "score": 1,
+              "retrievedAt": "2026-04-22T03:38:09.622Z"
+            },
+            {
+              "id": "src-2-knowledge-gardens-and-personal-note-networks",
+              "title": "Knowledge gardens and personal note networks",
+              "url": "https://example.org/knowledge-gardens",
+              "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+              "publisher": "Personal Knowledge Review",
+              "query": "F F",
+              "score": 0.9,
+              "retrievedAt": "2026-04-22T03:38:09.622Z"
+            },
+            {
+              "id": "src-3-prompting-users-with-questions-instead-of-summaries",
+              "title": "Prompting users with questions instead of summaries",
+              "url": "https://example.org/reflection-prompts",
+              "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+              "publisher": "Designing for Thought",
+              "query": "F F",
+              "score": 0.8,
+              "retrievedAt": "2026-04-22T03:38:09.622Z"
+            }
+          ]
+        }
+      ],
+      "prompts": [
+        "What do you believe now that you could not say clearly when you first captured this thought?",
+        "Which source, example, or observation would make the idea more grounded?",
+        "What unresolved question should stay attached to this note?"
+      ],
+      "sources": [
+        {
+          "id": "src-1-building-a-second-brain-for-unfinished-ideas",
+          "title": "Building a second brain for unfinished ideas",
+          "url": "https://example.org/second-brain-ideas",
+          "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+          "publisher": "Idea Systems Journal",
+          "query": "F F",
+          "score": 1,
+          "retrievedAt": "2026-04-22T03:38:09.622Z"
+        },
+        {
+          "id": "src-2-knowledge-gardens-and-personal-note-networks",
+          "title": "Knowledge gardens and personal note networks",
+          "url": "https://example.org/knowledge-gardens",
+          "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+          "publisher": "Personal Knowledge Review",
+          "query": "F F",
+          "score": 0.9,
+          "retrievedAt": "2026-04-22T03:38:09.622Z"
+        },
+        {
+          "id": "src-3-prompting-users-with-questions-instead-of-summaries",
+          "title": "Prompting users with questions instead of summaries",
+          "url": "https://example.org/reflection-prompts",
+          "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+          "publisher": "Designing for Thought",
+          "query": "F F",
+          "score": 0.8,
+          "retrievedAt": "2026-04-22T03:38:09.622Z"
+        }
+      ],
+      "links": [],
+      "relatedNoteIds": [],
+      "timeline": [
+        {
+          "id": "b46107b7-b137-4796-87f4-45a8d5b857dc",
+          "type": "note_enriched",
+          "createdAt": "2026-04-22T03:38:09.623Z",
+          "summary": "Note enriched by mock"
+        },
+        {
+          "id": "840df34a-1648-46ba-b1f5-390c637bd202",
+          "type": "job_started",
+          "createdAt": "2026-04-22T03:38:09.614Z",
+          "summary": "Background enrichment started"
+        },
+        {
+          "id": "8730ab50-0b6d-4c35-872b-c4d38503b46a",
+          "type": "job_queued",
+          "createdAt": "2026-04-22T03:38:09.305Z",
+          "summary": "Enrichment queued from auto_capture"
+        },
+        {
+          "id": "febb2ff4-1ec2-420d-b4a3-fb6a84a14af7",
+          "type": "note_created",
+          "createdAt": "2026-04-22T03:38:09.294Z",
+          "summary": "Note created"
+        }
+      ],
+      "revisions": [
+        {
+          "id": "da9331b6-4c9f-4c34-a4b3-d52ff9a28ff2",
+          "createdAt": "2026-04-22T03:38:09.623Z",
+          "type": "ai_enrichment",
+          "summary": "Enrichment from mock",
+          "text": "This note points toward a stronger claim: F A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
+          "sourceJobId": "bfaf137f-f4cd-45bf-8539-9cbbbe8a8f4b"
+        },
+        {
+          "id": "57339877-7f64-4032-9d82-91f08bf4bfbf",
+          "createdAt": "2026-04-22T03:38:09.294Z",
+          "type": "user_capture",
+          "summary": "Initial note capture",
+          "text": "F"
+        }
+      ]
+    },
+    {
+      "id": "bb9d7b11-1693-48ec-915e-ac0da1fe49cd",
+      "title": "D",
+      "text": "D",
+      "rawText": "D",
+      "status": "enriched",
+      "createdAt": "2026-04-22T03:35:19.705Z",
+      "updatedAt": "2026-04-22T03:35:19.890Z",
+      "lastEnrichedAt": "2026-04-22T03:35:19.890Z",
+      "latestChatReply": null,
+      "enrichments": [
+        {
+          "id": "fa1e5585-2c28-4169-b9e5-2f5c72a21135",
+          "createdAt": "2026-04-22T03:35:19.890Z",
+          "provider": "mock",
+          "expansion": "This note points toward a stronger claim: D A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
+          "relatedIdeas": [
+            "What hidden assumption is carrying this thought?",
+            "What earlier note might disagree with this idea in a productive way?",
+            "If this became a project this week, what is the smallest visible action?"
+          ],
+          "prompts": [
+            "What do you believe now that you could not say clearly when you first captured this thought?",
+            "Which source, example, or observation would make the idea more grounded?",
+            "What unresolved question should stay attached to this note?"
+          ],
+          "links": [],
+          "sources": [
+            {
+              "id": "src-1-building-a-second-brain-for-unfinished-ideas",
+              "title": "Building a second brain for unfinished ideas",
+              "url": "https://example.org/second-brain-ideas",
+              "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+              "publisher": "Idea Systems Journal",
+              "query": "D D",
+              "score": 1,
+              "retrievedAt": "2026-04-22T03:35:19.889Z"
+            },
+            {
+              "id": "src-2-knowledge-gardens-and-personal-note-networks",
+              "title": "Knowledge gardens and personal note networks",
+              "url": "https://example.org/knowledge-gardens",
+              "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+              "publisher": "Personal Knowledge Review",
+              "query": "D D",
+              "score": 0.9,
+              "retrievedAt": "2026-04-22T03:35:19.889Z"
+            },
+            {
+              "id": "src-3-prompting-users-with-questions-instead-of-summaries",
+              "title": "Prompting users with questions instead of summaries",
+              "url": "https://example.org/reflection-prompts",
+              "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+              "publisher": "Designing for Thought",
+              "query": "D D",
+              "score": 0.8,
+              "retrievedAt": "2026-04-22T03:35:19.889Z"
+            }
+          ]
+        }
+      ],
+      "prompts": [
+        "What do you believe now that you could not say clearly when you first captured this thought?",
+        "Which source, example, or observation would make the idea more grounded?",
+        "What unresolved question should stay attached to this note?"
+      ],
+      "sources": [
+        {
+          "id": "src-1-building-a-second-brain-for-unfinished-ideas",
+          "title": "Building a second brain for unfinished ideas",
+          "url": "https://example.org/second-brain-ideas",
+          "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+          "publisher": "Idea Systems Journal",
+          "query": "D D",
+          "score": 1,
+          "retrievedAt": "2026-04-22T03:35:19.889Z"
+        },
+        {
+          "id": "src-2-knowledge-gardens-and-personal-note-networks",
+          "title": "Knowledge gardens and personal note networks",
+          "url": "https://example.org/knowledge-gardens",
+          "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+          "publisher": "Personal Knowledge Review",
+          "query": "D D",
+          "score": 0.9,
+          "retrievedAt": "2026-04-22T03:35:19.889Z"
+        },
+        {
+          "id": "src-3-prompting-users-with-questions-instead-of-summaries",
+          "title": "Prompting users with questions instead of summaries",
+          "url": "https://example.org/reflection-prompts",
+          "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+          "publisher": "Designing for Thought",
+          "query": "D D",
+          "score": 0.8,
+          "retrievedAt": "2026-04-22T03:35:19.889Z"
+        }
+      ],
+      "links": [],
+      "relatedNoteIds": [],
+      "timeline": [
+        {
+          "id": "782dbb60-1b19-43ea-a7e0-12914ee335cf",
+          "type": "note_enriched",
+          "createdAt": "2026-04-22T03:35:19.890Z",
+          "summary": "Note enriched by mock"
+        },
+        {
+          "id": "faf30a49-1514-431d-941e-3a8e57a13aad",
+          "type": "job_started",
+          "createdAt": "2026-04-22T03:35:19.881Z",
+          "summary": "Background enrichment started"
+        },
+        {
+          "id": "a723b960-b099-44ab-ba40-e6717aba66aa",
+          "type": "job_queued",
+          "createdAt": "2026-04-22T03:35:19.721Z",
+          "summary": "Enrichment queued from auto_capture"
+        },
+        {
+          "id": "d3905dc2-dbe8-44b8-8146-7aafbcb330a3",
+          "type": "note_created",
+          "createdAt": "2026-04-22T03:35:19.705Z",
+          "summary": "Note created"
+        }
+      ],
+      "revisions": [
+        {
+          "id": "97401134-0e0c-43e2-9e47-24eac58c073e",
+          "createdAt": "2026-04-22T03:35:19.890Z",
+          "type": "ai_enrichment",
+          "summary": "Enrichment from mock",
+          "text": "This note points toward a stronger claim: D A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
+          "sourceJobId": "031b9e04-1bf2-45e3-9a03-55d30fd38e26"
+        },
+        {
+          "id": "846a88fd-3dfc-4f68-8f1c-c48c6aee4034",
+          "createdAt": "2026-04-22T03:35:19.705Z",
+          "type": "user_capture",
+          "summary": "Initial note capture",
+          "text": "D"
+        }
+      ]
+    },
+    {
+      "id": "a2ad35f1-7252-4caa-b727-6b55ecd1613b",
+      "title": "D",
+      "text": "D",
+      "rawText": "D",
+      "status": "enriched",
+      "createdAt": "2026-04-22T03:33:55.722Z",
+      "updatedAt": "2026-04-22T03:33:56.178Z",
+      "lastEnrichedAt": "2026-04-22T03:33:56.178Z",
+      "latestChatReply": null,
+      "enrichments": [
+        {
+          "id": "b0d0a7b1-0fc1-485f-87f4-9e46d2c04029",
+          "createdAt": "2026-04-22T03:33:56.178Z",
+          "provider": "mock",
+          "expansion": "This note points toward a stronger claim: D A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
+          "relatedIdeas": [
+            "What hidden assumption is carrying this thought?",
+            "What earlier note might disagree with this idea in a productive way?",
+            "If this became a project this week, what is the smallest visible action?"
+          ],
+          "prompts": [
+            "What do you believe now that you could not say clearly when you first captured this thought?",
+            "Which source, example, or observation would make the idea more grounded?",
+            "What unresolved question should stay attached to this note?"
+          ],
+          "links": [],
+          "sources": [
+            {
+              "id": "src-1-building-a-second-brain-for-unfinished-ideas",
+              "title": "Building a second brain for unfinished ideas",
+              "url": "https://example.org/second-brain-ideas",
+              "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+              "publisher": "Idea Systems Journal",
+              "query": "D D",
+              "score": 1,
+              "retrievedAt": "2026-04-22T03:33:56.177Z"
+            },
+            {
+              "id": "src-2-knowledge-gardens-and-personal-note-networks",
+              "title": "Knowledge gardens and personal note networks",
+              "url": "https://example.org/knowledge-gardens",
+              "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+              "publisher": "Personal Knowledge Review",
+              "query": "D D",
+              "score": 0.9,
+              "retrievedAt": "2026-04-22T03:33:56.177Z"
+            },
+            {
+              "id": "src-3-prompting-users-with-questions-instead-of-summaries",
+              "title": "Prompting users with questions instead of summaries",
+              "url": "https://example.org/reflection-prompts",
+              "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+              "publisher": "Designing for Thought",
+              "query": "D D",
+              "score": 0.8,
+              "retrievedAt": "2026-04-22T03:33:56.177Z"
+            }
+          ]
+        }
+      ],
+      "prompts": [
+        "What do you believe now that you could not say clearly when you first captured this thought?",
+        "Which source, example, or observation would make the idea more grounded?",
+        "What unresolved question should stay attached to this note?"
+      ],
+      "sources": [
+        {
+          "id": "src-1-building-a-second-brain-for-unfinished-ideas",
+          "title": "Building a second brain for unfinished ideas",
+          "url": "https://example.org/second-brain-ideas",
+          "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+          "publisher": "Idea Systems Journal",
+          "query": "D D",
+          "score": 1,
+          "retrievedAt": "2026-04-22T03:33:56.177Z"
+        },
+        {
+          "id": "src-2-knowledge-gardens-and-personal-note-networks",
+          "title": "Knowledge gardens and personal note networks",
+          "url": "https://example.org/knowledge-gardens",
+          "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+          "publisher": "Personal Knowledge Review",
+          "query": "D D",
+          "score": 0.9,
+          "retrievedAt": "2026-04-22T03:33:56.177Z"
+        },
+        {
+          "id": "src-3-prompting-users-with-questions-instead-of-summaries",
+          "title": "Prompting users with questions instead of summaries",
+          "url": "https://example.org/reflection-prompts",
+          "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+          "publisher": "Designing for Thought",
+          "query": "D D",
+          "score": 0.8,
+          "retrievedAt": "2026-04-22T03:33:56.177Z"
+        }
+      ],
+      "links": [],
+      "relatedNoteIds": [],
+      "timeline": [
+        {
+          "id": "f9b3a335-3119-4180-9b10-0a613d0571e1",
+          "type": "note_enriched",
+          "createdAt": "2026-04-22T03:33:56.178Z",
+          "summary": "Note enriched by mock"
+        },
+        {
+          "id": "531595aa-e4f7-4abc-9a4f-d5aa45629297",
+          "type": "job_started",
+          "createdAt": "2026-04-22T03:33:56.168Z",
+          "summary": "Background enrichment started"
+        },
+        {
+          "id": "642b7124-c0c8-458a-b4bc-9b52b0c9828d",
+          "type": "job_queued",
+          "createdAt": "2026-04-22T03:33:55.735Z",
+          "summary": "Enrichment queued from auto_capture"
+        },
+        {
+          "id": "7030f8dc-8db0-46a6-b2a9-7fc8169c1577",
+          "type": "note_created",
+          "createdAt": "2026-04-22T03:33:55.722Z",
+          "summary": "Note created"
+        }
+      ],
+      "revisions": [
+        {
+          "id": "4c04b9de-b392-4563-ac76-c2a163e6617e",
+          "createdAt": "2026-04-22T03:33:56.178Z",
+          "type": "ai_enrichment",
+          "summary": "Enrichment from mock",
+          "text": "This note points toward a stronger claim: D A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
+          "sourceJobId": "e454baf8-bacb-4233-adc1-3a4cd0afea9b"
+        },
+        {
+          "id": "58ee8f44-51e7-46ac-8c5c-55a80eac77a2",
+          "createdAt": "2026-04-22T03:33:55.722Z",
+          "type": "user_capture",
+          "summary": "Initial note capture",
+          "text": "D"
+        }
+      ]
+    },
+    {
+      "id": "4fcf096b-a66d-4afe-8291-fc7dda066ff0",
+      "title": "Fads",
+      "text": "Fads",
+      "rawText": "Fads",
+      "status": "enriched",
+      "createdAt": "2026-04-22T03:30:53.474Z",
+      "updatedAt": "2026-04-22T03:30:53.876Z",
+      "lastEnrichedAt": "2026-04-22T03:30:53.876Z",
+      "latestChatReply": null,
+      "enrichments": [
+        {
+          "id": "27d68bf9-721e-404d-8e67-670e2ec466c2",
+          "createdAt": "2026-04-22T03:30:53.876Z",
+          "provider": "mock",
+          "expansion": "This note points toward a stronger claim: Fads A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
+          "relatedIdeas": [
+            "What hidden assumption is carrying this thought?",
+            "What earlier note might disagree with this idea in a productive way?",
+            "If this became a project this week, what is the smallest visible action?"
+          ],
+          "prompts": [
+            "What do you believe now that you could not say clearly when you first captured this thought?",
+            "Which source, example, or observation would make the idea more grounded?",
+            "What unresolved question should stay attached to this note?"
+          ],
+          "links": [],
+          "sources": [
+            {
+              "id": "src-1-building-a-second-brain-for-unfinished-ideas",
+              "title": "Building a second brain for unfinished ideas",
+              "url": "https://example.org/second-brain-ideas",
+              "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+              "publisher": "Idea Systems Journal",
+              "query": "Fads Fads",
+              "score": 1,
+              "retrievedAt": "2026-04-22T03:30:53.875Z"
+            },
+            {
+              "id": "src-2-knowledge-gardens-and-personal-note-networks",
+              "title": "Knowledge gardens and personal note networks",
+              "url": "https://example.org/knowledge-gardens",
+              "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+              "publisher": "Personal Knowledge Review",
+              "query": "Fads Fads",
+              "score": 0.9,
+              "retrievedAt": "2026-04-22T03:30:53.875Z"
+            },
+            {
+              "id": "src-3-prompting-users-with-questions-instead-of-summaries",
+              "title": "Prompting users with questions instead of summaries",
+              "url": "https://example.org/reflection-prompts",
+              "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+              "publisher": "Designing for Thought",
+              "query": "Fads Fads",
+              "score": 0.8,
+              "retrievedAt": "2026-04-22T03:30:53.875Z"
+            }
+          ]
+        }
+      ],
+      "prompts": [
+        "What do you believe now that you could not say clearly when you first captured this thought?",
+        "Which source, example, or observation would make the idea more grounded?",
+        "What unresolved question should stay attached to this note?"
+      ],
+      "sources": [
+        {
+          "id": "src-1-building-a-second-brain-for-unfinished-ideas",
+          "title": "Building a second brain for unfinished ideas",
+          "url": "https://example.org/second-brain-ideas",
+          "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+          "publisher": "Idea Systems Journal",
+          "query": "Fads Fads",
+          "score": 1,
+          "retrievedAt": "2026-04-22T03:30:53.875Z"
+        },
+        {
+          "id": "src-2-knowledge-gardens-and-personal-note-networks",
+          "title": "Knowledge gardens and personal note networks",
+          "url": "https://example.org/knowledge-gardens",
+          "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+          "publisher": "Personal Knowledge Review",
+          "query": "Fads Fads",
+          "score": 0.9,
+          "retrievedAt": "2026-04-22T03:30:53.875Z"
+        },
+        {
+          "id": "src-3-prompting-users-with-questions-instead-of-summaries",
+          "title": "Prompting users with questions instead of summaries",
+          "url": "https://example.org/reflection-prompts",
+          "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+          "publisher": "Designing for Thought",
+          "query": "Fads Fads",
+          "score": 0.8,
+          "retrievedAt": "2026-04-22T03:30:53.875Z"
+        }
+      ],
+      "links": [],
+      "relatedNoteIds": [],
+      "timeline": [
+        {
+          "id": "bd2c3cf4-91cf-4be4-9acd-ee06f10a7f31",
+          "type": "note_enriched",
+          "createdAt": "2026-04-22T03:30:53.876Z",
+          "summary": "Note enriched by mock"
+        },
+        {
+          "id": "d6803da8-9acd-4154-befc-c317f04fbf3c",
+          "type": "job_started",
+          "createdAt": "2026-04-22T03:30:53.873Z",
+          "summary": "Background enrichment started"
+        },
+        {
+          "id": "e96b19f3-1ead-48e4-8b2a-65e01a96cbce",
+          "type": "job_queued",
+          "createdAt": "2026-04-22T03:30:53.476Z",
+          "summary": "Enrichment queued from auto_capture"
+        },
+        {
+          "id": "d45612ed-b5e6-4284-90dd-4e26d9085479",
+          "type": "note_created",
+          "createdAt": "2026-04-22T03:30:53.474Z",
+          "summary": "Note created"
+        }
+      ],
+      "revisions": [
+        {
+          "id": "2ad63e5e-7fa0-4f1a-b244-dccf543d2a96",
+          "createdAt": "2026-04-22T03:30:53.876Z",
+          "type": "ai_enrichment",
+          "summary": "Enrichment from mock",
+          "text": "This note points toward a stronger claim: Fads A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
+          "sourceJobId": "cabe8029-520f-48a9-8b28-c4eae506064b"
+        },
+        {
+          "id": "e2b612b9-17e0-4156-a365-402433c57ddd",
+          "createdAt": "2026-04-22T03:30:53.474Z",
+          "type": "user_capture",
+          "summary": "Initial note capture",
+          "text": "Fads"
+        }
+      ]
+    },
+    {
+      "id": "b183b2bb-51db-4be8-93ac-14a173fce649",
+      "title": "D",
+      "text": "D",
+      "rawText": "D",
+      "status": "enriched",
+      "createdAt": "2026-04-22T03:30:31.761Z",
+      "updatedAt": "2026-04-22T03:30:31.820Z",
+      "lastEnrichedAt": "2026-04-22T03:30:31.820Z",
+      "latestChatReply": null,
+      "enrichments": [
+        {
+          "id": "dd8e42ac-5e18-4db5-8d21-2ed56bb4a49d",
+          "createdAt": "2026-04-22T03:30:31.820Z",
+          "provider": "mock",
+          "expansion": "This note points toward a stronger claim: D A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
+          "relatedIdeas": [
+            "What hidden assumption is carrying this thought?",
+            "What earlier note might disagree with this idea in a productive way?",
+            "If this became a project this week, what is the smallest visible action?"
+          ],
+          "prompts": [
+            "What do you believe now that you could not say clearly when you first captured this thought?",
+            "Which source, example, or observation would make the idea more grounded?",
+            "What unresolved question should stay attached to this note?"
+          ],
+          "links": [],
+          "sources": [
+            {
+              "id": "src-1-building-a-second-brain-for-unfinished-ideas",
+              "title": "Building a second brain for unfinished ideas",
+              "url": "https://example.org/second-brain-ideas",
+              "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+              "publisher": "Idea Systems Journal",
+              "query": "D D",
+              "score": 1,
+              "retrievedAt": "2026-04-22T03:30:31.820Z"
+            },
+            {
+              "id": "src-2-knowledge-gardens-and-personal-note-networks",
+              "title": "Knowledge gardens and personal note networks",
+              "url": "https://example.org/knowledge-gardens",
+              "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+              "publisher": "Personal Knowledge Review",
+              "query": "D D",
+              "score": 0.9,
+              "retrievedAt": "2026-04-22T03:30:31.820Z"
+            },
+            {
+              "id": "src-3-prompting-users-with-questions-instead-of-summaries",
+              "title": "Prompting users with questions instead of summaries",
+              "url": "https://example.org/reflection-prompts",
+              "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+              "publisher": "Designing for Thought",
+              "query": "D D",
+              "score": 0.8,
+              "retrievedAt": "2026-04-22T03:30:31.820Z"
+            }
+          ]
+        }
+      ],
+      "prompts": [
+        "What do you believe now that you could not say clearly when you first captured this thought?",
+        "Which source, example, or observation would make the idea more grounded?",
+        "What unresolved question should stay attached to this note?"
+      ],
+      "sources": [
+        {
+          "id": "src-1-building-a-second-brain-for-unfinished-ideas",
+          "title": "Building a second brain for unfinished ideas",
+          "url": "https://example.org/second-brain-ideas",
+          "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+          "publisher": "Idea Systems Journal",
+          "query": "D D",
+          "score": 1,
+          "retrievedAt": "2026-04-22T03:30:31.820Z"
+        },
+        {
+          "id": "src-2-knowledge-gardens-and-personal-note-networks",
+          "title": "Knowledge gardens and personal note networks",
+          "url": "https://example.org/knowledge-gardens",
+          "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+          "publisher": "Personal Knowledge Review",
+          "query": "D D",
+          "score": 0.9,
+          "retrievedAt": "2026-04-22T03:30:31.820Z"
+        },
+        {
+          "id": "src-3-prompting-users-with-questions-instead-of-summaries",
+          "title": "Prompting users with questions instead of summaries",
+          "url": "https://example.org/reflection-prompts",
+          "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+          "publisher": "Designing for Thought",
+          "query": "D D",
+          "score": 0.8,
+          "retrievedAt": "2026-04-22T03:30:31.820Z"
+        }
+      ],
+      "links": [],
+      "relatedNoteIds": [],
+      "timeline": [
+        {
+          "id": "76566046-a6b1-4308-879b-4e0ac89bac61",
+          "type": "note_enriched",
+          "createdAt": "2026-04-22T03:30:31.820Z",
+          "summary": "Note enriched by mock"
+        },
+        {
+          "id": "bee234f7-8143-4c51-b441-c4e7f24a1bdd",
+          "type": "job_started",
+          "createdAt": "2026-04-22T03:30:31.814Z",
+          "summary": "Background enrichment started"
+        },
+        {
+          "id": "1283af90-e2b3-44e9-bdc5-405491455280",
+          "type": "job_queued",
+          "createdAt": "2026-04-22T03:30:31.765Z",
+          "summary": "Enrichment queued from auto_capture"
+        },
+        {
+          "id": "a346e63f-2bed-43fe-b9e6-f9c404e71184",
+          "type": "note_created",
+          "createdAt": "2026-04-22T03:30:31.761Z",
+          "summary": "Note created"
+        }
+      ],
+      "revisions": [
+        {
+          "id": "11786077-403d-4852-b149-415ae2423f3d",
+          "createdAt": "2026-04-22T03:30:31.820Z",
+          "type": "ai_enrichment",
+          "summary": "Enrichment from mock",
+          "text": "This note points toward a stronger claim: D A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
+          "sourceJobId": "90006401-29de-4032-a587-812019210c2b"
+        },
+        {
+          "id": "a8151cec-2abe-412b-88fa-644bb5ef20d4",
+          "createdAt": "2026-04-22T03:30:31.761Z",
+          "type": "user_capture",
+          "summary": "Initial note capture",
+          "text": "D"
+        }
+      ]
+    },
+    {
+      "id": "88cf7ef4-d7a6-4675-ba27-21334aa9af9f",
+      "title": "Ddd",
+      "text": "Ddd",
+      "rawText": "Ddd",
+      "status": "enriched",
+      "createdAt": "2026-04-22T03:22:48.454Z",
+      "updatedAt": "2026-04-22T03:22:48.645Z",
+      "lastEnrichedAt": "2026-04-22T03:22:48.645Z",
+      "latestChatReply": null,
+      "enrichments": [
+        {
+          "id": "8072c3b3-fa3c-45a0-94f8-143e7332b583",
+          "createdAt": "2026-04-22T03:22:48.645Z",
+          "provider": "mock",
+          "expansion": "This note points toward a stronger claim: Ddd A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
+          "relatedIdeas": [
+            "What hidden assumption is carrying this thought?",
+            "What earlier note might disagree with this idea in a productive way?",
+            "If this became a project this week, what is the smallest visible action?"
+          ],
+          "prompts": [
+            "What do you believe now that you could not say clearly when you first captured this thought?",
+            "Which source, example, or observation would make the idea more grounded?",
+            "What unresolved question should stay attached to this note?"
+          ],
+          "links": [],
+          "sources": [
+            {
+              "id": "src-1-building-a-second-brain-for-unfinished-ideas",
+              "title": "Building a second brain for unfinished ideas",
+              "url": "https://example.org/second-brain-ideas",
+              "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+              "publisher": "Idea Systems Journal",
+              "query": "Ddd Ddd",
+              "score": 1,
+              "retrievedAt": "2026-04-22T03:22:48.645Z"
+            },
+            {
+              "id": "src-2-knowledge-gardens-and-personal-note-networks",
+              "title": "Knowledge gardens and personal note networks",
+              "url": "https://example.org/knowledge-gardens",
+              "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+              "publisher": "Personal Knowledge Review",
+              "query": "Ddd Ddd",
+              "score": 0.9,
+              "retrievedAt": "2026-04-22T03:22:48.645Z"
+            },
+            {
+              "id": "src-3-prompting-users-with-questions-instead-of-summaries",
+              "title": "Prompting users with questions instead of summaries",
+              "url": "https://example.org/reflection-prompts",
+              "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+              "publisher": "Designing for Thought",
+              "query": "Ddd Ddd",
+              "score": 0.8,
+              "retrievedAt": "2026-04-22T03:22:48.645Z"
+            }
+          ]
+        }
+      ],
+      "prompts": [
+        "What do you believe now that you could not say clearly when you first captured this thought?",
+        "Which source, example, or observation would make the idea more grounded?",
+        "What unresolved question should stay attached to this note?"
+      ],
+      "sources": [
+        {
+          "id": "src-1-building-a-second-brain-for-unfinished-ideas",
+          "title": "Building a second brain for unfinished ideas",
+          "url": "https://example.org/second-brain-ideas",
+          "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+          "publisher": "Idea Systems Journal",
+          "query": "Ddd Ddd",
+          "score": 1,
+          "retrievedAt": "2026-04-22T03:22:48.645Z"
+        },
+        {
+          "id": "src-2-knowledge-gardens-and-personal-note-networks",
+          "title": "Knowledge gardens and personal note networks",
+          "url": "https://example.org/knowledge-gardens",
+          "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+          "publisher": "Personal Knowledge Review",
+          "query": "Ddd Ddd",
+          "score": 0.9,
+          "retrievedAt": "2026-04-22T03:22:48.645Z"
+        },
+        {
+          "id": "src-3-prompting-users-with-questions-instead-of-summaries",
+          "title": "Prompting users with questions instead of summaries",
+          "url": "https://example.org/reflection-prompts",
+          "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+          "publisher": "Designing for Thought",
+          "query": "Ddd Ddd",
+          "score": 0.8,
+          "retrievedAt": "2026-04-22T03:22:48.645Z"
+        }
+      ],
+      "links": [],
+      "relatedNoteIds": [],
+      "timeline": [
+        {
+          "id": "fdadea61-c343-4bca-9d37-86fce0dde830",
+          "type": "note_enriched",
+          "createdAt": "2026-04-22T03:22:48.645Z",
+          "summary": "Note enriched by mock"
+        },
+        {
+          "id": "eeaf971e-b3cd-4a6d-be63-f2853081d97c",
+          "type": "job_started",
+          "createdAt": "2026-04-22T03:22:48.640Z",
+          "summary": "Background enrichment started"
+        },
+        {
+          "id": "d3ea5bcd-dd60-4396-afb0-c4dea2584869",
+          "type": "job_queued",
+          "createdAt": "2026-04-22T03:22:48.457Z",
+          "summary": "Enrichment queued from auto_capture"
+        },
+        {
+          "id": "a2e65378-8d59-4f92-bc01-d7b4ca00fecc",
+          "type": "note_created",
+          "createdAt": "2026-04-22T03:22:48.454Z",
+          "summary": "Note created"
+        }
+      ],
+      "revisions": [
+        {
+          "id": "cdc9d061-ea14-4246-8342-831e5e4f1648",
+          "createdAt": "2026-04-22T03:22:48.645Z",
+          "type": "ai_enrichment",
+          "summary": "Enrichment from mock",
+          "text": "This note points toward a stronger claim: Ddd A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
+          "sourceJobId": "91dbbed9-1cc5-4379-8016-f07d7fc78e36"
+        },
+        {
+          "id": "6f37b791-bfa5-4241-8f5d-17f5a514b91b",
+          "createdAt": "2026-04-22T03:22:48.454Z",
+          "type": "user_capture",
+          "summary": "Initial note capture",
+          "text": "Ddd"
+        }
+      ]
+    },
+    {
+      "id": "8a5d5077-34ec-4aa8-9da4-67d124480993",
+      "title": "Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof",
+      "text": "Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof",
+      "rawText": "Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof",
+      "status": "enriched",
+      "createdAt": "2026-04-22T03:22:41.255Z",
+      "updatedAt": "2026-04-22T03:22:41.639Z",
+      "lastEnrichedAt": "2026-04-22T03:22:41.639Z",
+      "latestChatReply": null,
+      "enrichments": [
+        {
+          "id": "8f1484ee-fa42-449d-b191-44dfd1145afa",
+          "createdAt": "2026-04-22T03:22:41.639Z",
+          "provider": "mock",
+          "expansion": "This note points toward a stronger claim: Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdf... A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
+          "relatedIdeas": [
+            "What hidden assumption is carrying this thought?",
+            "What earlier note might disagree with this idea in a productive way?",
+            "If this became a project this week, what is the smallest visible action?"
+          ],
+          "prompts": [
+            "What do you believe now that you could not say clearly when you first captured this thought?",
+            "Which source, example, or observation would make the idea more grounded?",
+            "What unresolved question should stay attached to this note?"
+          ],
+          "links": [],
+          "sources": [
+            {
+              "id": "src-1-building-a-second-brain-for-unfinished-ideas",
+              "title": "Building a second brain for unfinished ideas",
+              "url": "https://example.org/second-brain-ideas",
+              "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+              "publisher": "Idea Systems Journal",
+              "query": "Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof",
+              "score": 1,
+              "retrievedAt": "2026-04-22T03:22:41.636Z"
+            },
+            {
+              "id": "src-2-knowledge-gardens-and-personal-note-networks",
+              "title": "Knowledge gardens and personal note networks",
+              "url": "https://example.org/knowledge-gardens",
+              "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+              "publisher": "Personal Knowledge Review",
+              "query": "Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof",
+              "score": 0.9,
+              "retrievedAt": "2026-04-22T03:22:41.636Z"
+            },
+            {
+              "id": "src-3-prompting-users-with-questions-instead-of-summaries",
+              "title": "Prompting users with questions instead of summaries",
+              "url": "https://example.org/reflection-prompts",
+              "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+              "publisher": "Designing for Thought",
+              "query": "Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof",
+              "score": 0.8,
+              "retrievedAt": "2026-04-22T03:22:41.636Z"
+            }
+          ]
+        }
+      ],
+      "prompts": [
+        "What do you believe now that you could not say clearly when you first captured this thought?",
+        "Which source, example, or observation would make the idea more grounded?",
+        "What unresolved question should stay attached to this note?"
+      ],
+      "sources": [
+        {
+          "id": "src-1-building-a-second-brain-for-unfinished-ideas",
+          "title": "Building a second brain for unfinished ideas",
+          "url": "https://example.org/second-brain-ideas",
+          "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+          "publisher": "Idea Systems Journal",
+          "query": "Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof",
+          "score": 1,
+          "retrievedAt": "2026-04-22T03:22:41.636Z"
+        },
+        {
+          "id": "src-2-knowledge-gardens-and-personal-note-networks",
+          "title": "Knowledge gardens and personal note networks",
+          "url": "https://example.org/knowledge-gardens",
+          "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+          "publisher": "Personal Knowledge Review",
+          "query": "Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof",
+          "score": 0.9,
+          "retrievedAt": "2026-04-22T03:22:41.636Z"
+        },
+        {
+          "id": "src-3-prompting-users-with-questions-instead-of-summaries",
+          "title": "Prompting users with questions instead of summaries",
+          "url": "https://example.org/reflection-prompts",
+          "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+          "publisher": "Designing for Thought",
+          "query": "Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof",
+          "score": 0.8,
+          "retrievedAt": "2026-04-22T03:22:41.636Z"
+        }
+      ],
+      "links": [],
+      "relatedNoteIds": [],
+      "timeline": [
+        {
+          "id": "8bb08e50-73c8-4057-9020-a67b86b1be82",
+          "type": "note_enriched",
+          "createdAt": "2026-04-22T03:22:41.639Z",
+          "summary": "Note enriched by mock"
+        },
+        {
+          "id": "b5042341-2b09-4090-838e-375fe623a83e",
+          "type": "job_started",
+          "createdAt": "2026-04-22T03:22:41.628Z",
+          "summary": "Background enrichment started"
+        },
+        {
+          "id": "50dde6e9-5d76-4ebe-a115-2b8cc6997379",
+          "type": "job_queued",
+          "createdAt": "2026-04-22T03:22:41.268Z",
+          "summary": "Enrichment queued from auto_capture"
+        },
+        {
+          "id": "f67574dd-d94c-4009-bb38-58104cebb5fb",
+          "type": "note_created",
+          "createdAt": "2026-04-22T03:22:41.255Z",
+          "summary": "Note created"
+        }
+      ],
+      "revisions": [
+        {
+          "id": "94663e32-ce8a-478a-9329-b3fd8a596fc9",
+          "createdAt": "2026-04-22T03:22:41.639Z",
+          "type": "ai_enrichment",
+          "summary": "Enrichment from mock",
+          "text": "This note points toward a stronger claim: Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdf... A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
+          "sourceJobId": "8152de5c-6b62-48fd-9de5-fcc5a83f9aad"
+        },
+        {
+          "id": "b8fdf7d8-1c34-4227-b600-182b6509d2db",
+          "createdAt": "2026-04-22T03:22:41.255Z",
+          "type": "user_capture",
+          "summary": "Initial note capture",
+          "text": "Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof"
+        }
+      ]
+    },
+    {
+      "id": "seed-reading-compression",
+      "title": "Reading is compression. Writing is decompression. The ratio between them tells you how clearly you actually understand something.",
+      "text": "reading is compression, writing is decompression",
+      "rawText": "reading is compression, writing is decompression",
+      "status": "enriched",
+      "createdAt": "2026-04-20T18:17:00.000Z",
+      "updatedAt": "2026-04-20T18:32:00.000Z",
+      "lastEnrichedAt": "2026-04-20T18:32:00.000Z",
+      "latestChatReply": null,
+      "enrichments": [
+        {
+          "id": "seed-reading-compression-enrichment",
+          "createdAt": "2026-04-20T18:32:00.000Z",
+          "provider": "prototype",
+          "expansion": "When you read, you're absorbing many people's thinking, condensed. When you write, you're forced to unpack a single thread and make it survive daylight. The act of writing reveals where the compression was doing the thinking for you.\n\nA useful test: if you can't decompress an idea into your own words without the scaffolding falling apart, you probably imported the conclusion but not the path.\n\nThat makes writing a diagnostic, not just an output format. It exposes whether the idea has actually become yours.",
+          "relatedIdeas": [],
+          "prompts": [
+            "Is the inverse true — does decompression (writing) actually compress future reading?",
+            "What's the equivalent for listening and conversation?",
+            "Could this reframe how we evaluate AI-generated summaries?"
+          ],
+          "links": [],
+          "sources": [
+            {
+              "id": "051a6449-505a-4893-8c3c-da9e38154ce4",
+              "title": "Writing and Speaking",
+              "url": "https://paulgraham.com/writing44.html",
+              "snippet": "Having good ideas is most of writing well. If you know what you're talking about, you can say it in the plainest words.",
+              "publisher": "paulgraham.com",
+              "query": "",
+              "score": 0,
+              "retrievedAt": "2026-04-20T18:32:00.000Z"
+            },
+            {
+              "id": "25b91570-b93a-48ce-b22b-dfd66591766d",
+              "title": "The Noncentral Fallacy",
+              "url": "https://www.lesswrong.com/posts/2J6iHq8x7P8N6L9XK/the-noncentral-fallacy-the-worst-argument-in-the-world",
+              "snippet": "Compression loses information; the question is which information you can afford to lose.",
+              "publisher": "lesswrong.com",
+              "query": "",
+              "score": 0,
+              "retrievedAt": "2026-04-20T18:32:00.000Z"
+            }
+          ]
+        }
+      ],
+      "prompts": [
+        "Is the inverse true — does decompression (writing) actually compress future reading?",
+        "What's the equivalent for listening and conversation?",
+        "Could this reframe how we evaluate AI-generated summaries?"
+      ],
+      "sources": [
+        {
+          "id": "6f5b62e7-44c8-41d7-a2c1-8bf657d2031b",
+          "title": "Writing and Speaking",
+          "url": "https://paulgraham.com/writing44.html",
+          "snippet": "Having good ideas is most of writing well. If you know what you're talking about, you can say it in the plainest words.",
+          "publisher": "paulgraham.com",
+          "query": "",
+          "score": 0,
+          "retrievedAt": "2026-04-20T18:32:00.000Z"
+        },
+        {
+          "id": "2e732a0c-7410-4e39-9028-e032c24c59be",
+          "title": "The Noncentral Fallacy",
+          "url": "https://www.lesswrong.com/posts/2J6iHq8x7P8N6L9XK/the-noncentral-fallacy-the-worst-argument-in-the-world",
+          "snippet": "Compression loses information; the question is which information you can afford to lose.",
+          "publisher": "lesswrong.com",
+          "query": "",
+          "score": 0,
+          "retrievedAt": "2026-04-20T18:32:00.000Z"
+        }
+      ],
+      "links": [],
+      "relatedNoteIds": [],
+      "timeline": [
+        {
+          "id": "seed-reading-compression-timeline",
+          "type": "note_enriched",
+          "createdAt": "2026-04-20T18:32:00.000Z",
+          "summary": "Growth 3x"
+        }
+      ],
+      "revisions": [
+        {
+          "id": "seed-reading-compression-revision",
+          "createdAt": "2026-04-20T18:17:00.000Z",
+          "type": "user_capture",
+          "summary": "Initial note capture",
+          "text": "reading is compression, writing is decompression"
+        }
+      ]
+    },
+    {
+      "id": "seed-tool-worldview",
+      "title": "Every tool quietly teaches you its worldview. Figma teaches layers. Excel teaches tables. What does a feed teach?",
+      "text": "every tool teaches you a worldview",
+      "rawText": "every tool teaches you a worldview",
+      "status": "queued",
+      "createdAt": "2026-04-20T17:03:00.000Z",
+      "updatedAt": "2026-04-20T17:18:00.000Z",
+      "lastEnrichedAt": null,
+      "latestChatReply": null,
+      "enrichments": [
+        {
+          "id": "seed-tool-worldview-enrichment",
+          "createdAt": "2026-04-20T17:18:00.000Z",
+          "provider": "prototype",
+          "expansion": "The UI of a tool is its epistemology: the categories it makes easy become the categories you think in.\n\nA feed, for example, may teach recency and reaction before reflection. Over time the interface becomes a quiet tutor for attention itself.",
+          "relatedIdeas": [],
+          "prompts": [],
+          "links": [],
+          "sources": []
+        }
+      ],
+      "prompts": [],
+      "sources": [],
+      "links": [],
+      "relatedNoteIds": [],
+      "timeline": [
+        {
+          "id": "seed-tool-worldview-timeline",
+          "type": "note_growing",
+          "createdAt": "2026-04-20T17:18:00.000Z",
+          "summary": "Growth 2x"
+        }
+      ],
+      "revisions": [
+        {
+          "id": "seed-tool-worldview-revision",
+          "createdAt": "2026-04-20T17:03:00.000Z",
+          "type": "user_capture",
+          "summary": "Initial note capture",
+          "text": "every tool teaches you a worldview"
+        }
+      ]
+    },
+    {
+      "id": "seed-taste-pattern-recognition",
+      "title": "Taste is just pattern recognition across a huge dataset of things you paid full attention to.",
+      "text": "taste = pattern recognition at scale",
+      "rawText": "taste = pattern recognition at scale",
+      "status": "enriched",
+      "createdAt": "2026-04-20T15:32:00.000Z",
+      "updatedAt": "2026-04-20T15:47:00.000Z",
+      "lastEnrichedAt": "2026-04-20T15:47:00.000Z",
+      "latestChatReply": null,
+      "enrichments": [
+        {
+          "id": "seed-taste-pattern-recognition-enrichment",
+          "createdAt": "2026-04-20T15:47:00.000Z",
+          "provider": "prototype",
+          "expansion": "Taste compounds when attention gets specific enough to remember structure, not just preference. What feels intuitive later is often the residue of many slow comparisons you once made on purpose.",
+          "relatedIdeas": [],
+          "prompts": [],
+          "links": [],
+          "sources": []
+        }
+      ],
+      "prompts": [],
+      "sources": [],
+      "links": [],
+      "relatedNoteIds": [],
+      "timeline": [
+        {
+          "id": "seed-taste-pattern-recognition-timeline",
+          "type": "note_enriched",
+          "createdAt": "2026-04-20T15:47:00.000Z",
+          "summary": "Growth 1x"
+        }
+      ],
+      "revisions": [
+        {
+          "id": "seed-taste-pattern-recognition-revision",
+          "createdAt": "2026-04-20T15:32:00.000Z",
+          "type": "user_capture",
+          "summary": "Initial note capture",
+          "text": "taste = pattern recognition at scale"
+        }
+      ]
+    },
+    {
+      "id": "seed-productivity-anxiety",
+      "title": "Most \"productivity\" advice is actually about managing anxiety, not output.",
+      "text": "productivity is anxiety management in disguise",
+      "rawText": "productivity is anxiety management in disguise",
+      "status": "enriched",
+      "createdAt": "2026-04-20T13:48:00.000Z",
+      "updatedAt": "2026-04-20T14:03:00.000Z",
+      "lastEnrichedAt": "2026-04-20T14:03:00.000Z",
+      "latestChatReply": null,
+      "enrichments": [
+        {
+          "id": "seed-productivity-anxiety-enrichment",
+          "createdAt": "2026-04-20T14:03:00.000Z",
+          "provider": "prototype",
+          "expansion": "A lot of systems promise clarity, but what they really deliver is temporary emotional relief. The ritual matters because it reduces uncertainty, even when it does little to increase the amount of meaningful work that gets finished.\n\nThat is why productivity theater can feel effective even when nothing meaningful moved: the system successfully soothed the operator.",
+          "relatedIdeas": [],
+          "prompts": [],
+          "links": [],
+          "sources": []
+        }
+      ],
+      "prompts": [],
+      "sources": [],
+      "links": [],
+      "relatedNoteIds": [],
+      "timeline": [
+        {
+          "id": "seed-productivity-anxiety-timeline",
+          "type": "note_enriched",
+          "createdAt": "2026-04-20T14:03:00.000Z",
+          "summary": "Growth 2x"
+        }
+      ],
+      "revisions": [
+        {
+          "id": "seed-productivity-anxiety-revision",
+          "createdAt": "2026-04-20T13:48:00.000Z",
+          "type": "user_capture",
+          "summary": "Initial note capture",
+          "text": "productivity is anxiety management in disguise"
+        }
+      ]
     }
-  ]
+  ],
+  "jobs": [
+    {
+      "id": "9da7b997-daa6-410c-8eeb-3e2000723c83",
+      "noteId": "b729595d-c29b-4aee-bb7b-c268d8aa0125",
+      "type": "enrich_note",
+      "status": "completed",
+      "triggerSource": "manual",
+      "payload": {
+        "focus": "product thinking",
+        "includeWeb": true
+      },
+      "retryCount": 0,
+      "maxRetries": 3,
+      "lastError": null,
+      "output": {
+        "enrichmentId": "e6ddf5ee-14cc-431e-bedc-590474e3dd0e",
+        "sourceCount": 3,
+        "relatedCount": 0
+      },
+      "createdAt": "2026-04-23T02:03:43.244Z",
+      "updatedAt": "2026-04-23T02:03:43.264Z",
+      "startedAt": "2026-04-23T02:03:43.255Z",
+      "completedAt": "2026-04-23T02:03:43.264Z",
+      "nextRunAt": "2026-04-23T02:03:43.244Z"
+    },
+    {
+      "id": "3a109217-3a8d-4172-b8cf-fb8b590eb8e4",
+      "noteId": "646d59a7-4285-46b7-96e7-4041d49b464b",
+      "type": "enrich_note",
+      "status": "completed",
+      "triggerSource": "manual",
+      "payload": {
+        "focus": "product thinking",
+        "includeWeb": true
+      },
+      "retryCount": 0,
+      "maxRetries": 3,
+      "lastError": null,
+      "output": {
+        "enrichmentId": "0ee0b492-34d7-4f9d-a8d3-e8486ee56d8a",
+        "sourceCount": 3,
+        "relatedCount": 1
+      },
+      "createdAt": "2026-04-22T03:47:13.277Z",
+      "updatedAt": "2026-04-22T03:47:13.284Z",
+      "startedAt": "2026-04-22T03:47:13.280Z",
+      "completedAt": "2026-04-22T03:47:13.284Z",
+      "nextRunAt": "2026-04-22T03:47:13.277Z"
+    },
+    {
+      "id": "5d0d61ff-c02e-47d5-982e-1ce415a8de08",
+      "noteId": "646d59a7-4285-46b7-96e7-4041d49b464b",
+      "type": "enrich_note",
+      "status": "completed",
+      "triggerSource": "auto_capture",
+      "payload": {
+        "includeWeb": true
+      },
+      "retryCount": 0,
+      "maxRetries": 3,
+      "lastError": null,
+      "output": {
+        "enrichmentId": "93ac1902-437b-4acb-9c10-290dd20a588b",
+        "sourceCount": 3,
+        "relatedCount": 1
+      },
+      "createdAt": "2026-04-22T03:46:55.095Z",
+      "updatedAt": "2026-04-22T03:46:55.212Z",
+      "startedAt": "2026-04-22T03:46:55.204Z",
+      "completedAt": "2026-04-22T03:46:55.212Z",
+      "nextRunAt": "2026-04-22T03:46:55.095Z"
+    },
+    {
+      "id": "6beb5646-09b0-4121-a4dc-4a570844a209",
+      "noteId": "81dbda9f-b44e-4a1e-929c-64197bce0cb4",
+      "type": "enrich_note",
+      "status": "completed",
+      "triggerSource": "auto_capture",
+      "payload": {
+        "includeWeb": true
+      },
+      "retryCount": 0,
+      "maxRetries": 3,
+      "lastError": null,
+      "output": {
+        "enrichmentId": "7ffd658a-1c3f-43d2-a3cd-9a776643e66a",
+        "sourceCount": 3,
+        "relatedCount": 0
+      },
+      "createdAt": "2026-04-22T03:46:22.569Z",
+      "updatedAt": "2026-04-22T03:46:22.625Z",
+      "startedAt": "2026-04-22T03:46:22.607Z",
+      "completedAt": "2026-04-22T03:46:22.625Z",
+      "nextRunAt": "2026-04-22T03:46:22.569Z"
+    },
+    {
+      "id": "6f272d31-a015-42eb-abe0-5f33e98ab4b1",
+      "noteId": "b729595d-c29b-4aee-bb7b-c268d8aa0125",
+      "type": "enrich_note",
+      "status": "completed",
+      "triggerSource": "auto_capture",
+      "payload": {
+        "includeWeb": true
+      },
+      "retryCount": 0,
+      "maxRetries": 3,
+      "lastError": null,
+      "output": {
+        "enrichmentId": "64040247-e4c8-4e68-9230-246a92417c80",
+        "sourceCount": 3,
+        "relatedCount": 0
+      },
+      "createdAt": "2026-04-22T03:43:56.575Z",
+      "updatedAt": "2026-04-22T03:43:56.709Z",
+      "startedAt": "2026-04-22T03:43:56.694Z",
+      "completedAt": "2026-04-22T03:43:56.709Z",
+      "nextRunAt": "2026-04-22T03:43:56.575Z"
+    },
+    {
+      "id": "99e9c447-7ad3-4017-8d5c-fef3c03ea10c",
+      "noteId": "5b2a71f9-91ad-4593-9c97-2875e7934b8f",
+      "type": "enrich_note",
+      "status": "completed",
+      "triggerSource": "auto_capture",
+      "payload": {
+        "includeWeb": true
+      },
+      "retryCount": 0,
+      "maxRetries": 3,
+      "lastError": null,
+      "output": {
+        "enrichmentId": "ff94709e-85a6-46ff-820b-aba1e41e9d17",
+        "sourceCount": 3,
+        "relatedCount": 0
+      },
+      "createdAt": "2026-04-22T03:43:00.639Z",
+      "updatedAt": "2026-04-22T03:43:01.059Z",
+      "startedAt": "2026-04-22T03:43:01.053Z",
+      "completedAt": "2026-04-22T03:43:01.059Z",
+      "nextRunAt": "2026-04-22T03:43:00.640Z"
+    },
+    {
+      "id": "5940793c-7913-4382-a790-22268977bcad",
+      "noteId": "72ec1fd6-a033-407f-a8f8-7d357344a1eb",
+      "type": "enrich_note",
+      "status": "completed",
+      "triggerSource": "auto_capture",
+      "payload": {
+        "includeWeb": true
+      },
+      "retryCount": 0,
+      "maxRetries": 3,
+      "lastError": null,
+      "output": {
+        "enrichmentId": "d75b8f30-f595-457d-9963-520a7fb85873",
+        "sourceCount": 3,
+        "relatedCount": 0
+      },
+      "createdAt": "2026-04-22T03:42:07.591Z",
+      "updatedAt": "2026-04-22T03:42:07.907Z",
+      "startedAt": "2026-04-22T03:42:07.893Z",
+      "completedAt": "2026-04-22T03:42:07.907Z",
+      "nextRunAt": "2026-04-22T03:42:07.591Z"
+    },
+    {
+      "id": "91750440-e4af-42a4-976d-f5ddab0aef7f",
+      "noteId": "1a727b7c-cd81-468a-ad5b-879baff87a7e",
+      "type": "enrich_note",
+      "status": "completed",
+      "triggerSource": "auto_capture",
+      "payload": {
+        "includeWeb": true
+      },
+      "retryCount": 0,
+      "maxRetries": 3,
+      "lastError": null,
+      "output": {
+        "enrichmentId": "66da5967-6b71-4f39-a6eb-01f1a0455d6c",
+        "sourceCount": 3,
+        "relatedCount": 0
+      },
+      "createdAt": "2026-04-22T03:39:29.152Z",
+      "updatedAt": "2026-04-22T03:39:29.368Z",
+      "startedAt": "2026-04-22T03:39:29.362Z",
+      "completedAt": "2026-04-22T03:39:29.368Z",
+      "nextRunAt": "2026-04-22T03:39:29.152Z"
+    },
+    {
+      "id": "65b0c9a5-49ca-40bf-b497-388bf0c4cfb7",
+      "noteId": "1040300f-f887-4083-a2da-c1a157240696",
+      "type": "enrich_note",
+      "status": "completed",
+      "triggerSource": "auto_capture",
+      "payload": {
+        "includeWeb": true
+      },
+      "retryCount": 0,
+      "maxRetries": 3,
+      "lastError": null,
+      "output": {
+        "enrichmentId": "ae649316-0f55-4ce1-ac2b-016afd6a9e04",
+        "sourceCount": 3,
+        "relatedCount": 0
+      },
+      "createdAt": "2026-04-22T03:39:20.841Z",
+      "updatedAt": "2026-04-22T03:39:21.341Z",
+      "startedAt": "2026-04-22T03:39:21.335Z",
+      "completedAt": "2026-04-22T03:39:21.341Z",
+      "nextRunAt": "2026-04-22T03:39:20.841Z"
+    },
+    {
+      "id": "bfaf137f-f4cd-45bf-8539-9cbbbe8a8f4b",
+      "noteId": "5c65ed54-452c-43d0-bd84-7485be3ada7a",
+      "type": "enrich_note",
+      "status": "completed",
+      "triggerSource": "auto_capture",
+      "payload": {
+        "includeWeb": true
+      },
+      "retryCount": 0,
+      "maxRetries": 3,
+      "lastError": null,
+      "output": {
+        "enrichmentId": "55d1643f-060a-4858-9a4f-346fe47a263d",
+        "sourceCount": 3,
+        "relatedCount": 0
+      },
+      "createdAt": "2026-04-22T03:38:09.304Z",
+      "updatedAt": "2026-04-22T03:38:09.623Z",
+      "startedAt": "2026-04-22T03:38:09.613Z",
+      "completedAt": "2026-04-22T03:38:09.623Z",
+      "nextRunAt": "2026-04-22T03:38:09.304Z"
+    },
+    {
+      "id": "031b9e04-1bf2-45e3-9a03-55d30fd38e26",
+      "noteId": "bb9d7b11-1693-48ec-915e-ac0da1fe49cd",
+      "type": "enrich_note",
+      "status": "completed",
+      "triggerSource": "auto_capture",
+      "payload": {
+        "includeWeb": true
+      },
+      "retryCount": 0,
+      "maxRetries": 3,
+      "lastError": null,
+      "output": {
+        "enrichmentId": "fa1e5585-2c28-4169-b9e5-2f5c72a21135",
+        "sourceCount": 3,
+        "relatedCount": 0
+      },
+      "createdAt": "2026-04-22T03:35:19.721Z",
+      "updatedAt": "2026-04-22T03:35:19.890Z",
+      "startedAt": "2026-04-22T03:35:19.881Z",
+      "completedAt": "2026-04-22T03:35:19.890Z",
+      "nextRunAt": "2026-04-22T03:35:19.721Z"
+    },
+    {
+      "id": "e454baf8-bacb-4233-adc1-3a4cd0afea9b",
+      "noteId": "a2ad35f1-7252-4caa-b727-6b55ecd1613b",
+      "type": "enrich_note",
+      "status": "completed",
+      "triggerSource": "auto_capture",
+      "payload": {
+        "includeWeb": true
+      },
+      "retryCount": 0,
+      "maxRetries": 3,
+      "lastError": null,
+      "output": {
+        "enrichmentId": "b0d0a7b1-0fc1-485f-87f4-9e46d2c04029",
+        "sourceCount": 3,
+        "relatedCount": 0
+      },
+      "createdAt": "2026-04-22T03:33:55.735Z",
+      "updatedAt": "2026-04-22T03:33:56.178Z",
+      "startedAt": "2026-04-22T03:33:56.168Z",
+      "completedAt": "2026-04-22T03:33:56.178Z",
+      "nextRunAt": "2026-04-22T03:33:55.735Z"
+    },
+    {
+      "id": "cabe8029-520f-48a9-8b28-c4eae506064b",
+      "noteId": "4fcf096b-a66d-4afe-8291-fc7dda066ff0",
+      "type": "enrich_note",
+      "status": "completed",
+      "triggerSource": "auto_capture",
+      "payload": {
+        "includeWeb": true
+      },
+      "retryCount": 0,
+      "maxRetries": 3,
+      "lastError": null,
+      "output": {
+        "enrichmentId": "27d68bf9-721e-404d-8e67-670e2ec466c2",
+        "sourceCount": 3,
+        "relatedCount": 0
+      },
+      "createdAt": "2026-04-22T03:30:53.476Z",
+      "updatedAt": "2026-04-22T03:30:53.876Z",
+      "startedAt": "2026-04-22T03:30:53.873Z",
+      "completedAt": "2026-04-22T03:30:53.876Z",
+      "nextRunAt": "2026-04-22T03:30:53.476Z"
+    },
+    {
+      "id": "90006401-29de-4032-a587-812019210c2b",
+      "noteId": "b183b2bb-51db-4be8-93ac-14a173fce649",
+      "type": "enrich_note",
+      "status": "completed",
+      "triggerSource": "auto_capture",
+      "payload": {
+        "includeWeb": true
+      },
+      "retryCount": 0,
+      "maxRetries": 3,
+      "lastError": null,
+      "output": {
+        "enrichmentId": "dd8e42ac-5e18-4db5-8d21-2ed56bb4a49d",
+        "sourceCount": 3,
+        "relatedCount": 0
+      },
+      "createdAt": "2026-04-22T03:30:31.765Z",
+      "updatedAt": "2026-04-22T03:30:31.820Z",
+      "startedAt": "2026-04-22T03:30:31.814Z",
+      "completedAt": "2026-04-22T03:30:31.820Z",
+      "nextRunAt": "2026-04-22T03:30:31.765Z"
+    },
+    {
+      "id": "91dbbed9-1cc5-4379-8016-f07d7fc78e36",
+      "noteId": "88cf7ef4-d7a6-4675-ba27-21334aa9af9f",
+      "type": "enrich_note",
+      "status": "completed",
+      "triggerSource": "auto_capture",
+      "payload": {
+        "includeWeb": true
+      },
+      "retryCount": 0,
+      "maxRetries": 3,
+      "lastError": null,
+      "output": {
+        "enrichmentId": "8072c3b3-fa3c-45a0-94f8-143e7332b583",
+        "sourceCount": 3,
+        "relatedCount": 0
+      },
+      "createdAt": "2026-04-22T03:22:48.457Z",
+      "updatedAt": "2026-04-22T03:22:48.645Z",
+      "startedAt": "2026-04-22T03:22:48.640Z",
+      "completedAt": "2026-04-22T03:22:48.645Z",
+      "nextRunAt": "2026-04-22T03:22:48.457Z"
+    },
+    {
+      "id": "8152de5c-6b62-48fd-9de5-fcc5a83f9aad",
+      "noteId": "8a5d5077-34ec-4aa8-9da4-67d124480993",
+      "type": "enrich_note",
+      "status": "completed",
+      "triggerSource": "auto_capture",
+      "payload": {
+        "includeWeb": true
+      },
+      "retryCount": 0,
+      "maxRetries": 3,
+      "lastError": null,
+      "output": {
+        "enrichmentId": "8f1484ee-fa42-449d-b191-44dfd1145afa",
+        "sourceCount": 3,
+        "relatedCount": 0
+      },
+      "createdAt": "2026-04-22T03:22:41.267Z",
+      "updatedAt": "2026-04-22T03:22:41.639Z",
+      "startedAt": "2026-04-22T03:22:41.628Z",
+      "completedAt": "2026-04-22T03:22:41.639Z",
+      "nextRunAt": "2026-04-22T03:22:41.267Z"
+    }
+  ],
+  "threads": [],
+  "messages": [],
+  "analytics": {
+    "captureCount": 14
+  }
 }

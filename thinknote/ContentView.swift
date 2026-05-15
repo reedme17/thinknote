@@ -9,10 +9,15 @@ import SwiftUI
 
 private let noteTransitionAnimation = Animation.timingCurve(0.2, 0.9, 0.1, 1.0, duration: 0.55)
 private let noteMorphDuration: Double = 0.55
+private let detailDismissTopThreshold: CGFloat = 0.5
+private let detailDismissCornerRadiusStart: CGFloat = 42
+private let detailDismissCornerRadiusTravel: CGFloat = 96
+private let detailPrimaryScrollAnchorID = "thought-label"
+private let detailBottomBarVisualClearance: CGFloat = 50
 private let noteAccentColor = Color(red: 0.53, green: 0.66, blue: 0.61)
 private let noteBorderColor = Color(red: 0.88, green: 0.88, blue: 0.86)
 private let noteShadowColor = Color.black.opacity(0.08)
-private let debugDisableNoteSurfaceTransition = true
+private let debugDisableNoteSurfaceTransition = false
 private let debugLogNoteTapFlow = false
 let isRunningInPreviews = ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
 
@@ -39,6 +44,7 @@ private enum AppFont {
 
 @MainActor
 struct ContentView: View {
+    @Environment(\.scenePhase) private var scenePhase
     @StateObject private var viewModel: ContentViewModel
     private let shouldBootstrap: Bool
     @Namespace private var noteTransitionNamespace
@@ -59,17 +65,21 @@ struct ContentView: View {
             Color(red: 0.95, green: 0.95, blue: 0.95)
                 .ignoresSafeArea()
 
-            if activeDetailNote == nil {
-                HomeScreen(
-                    viewModel: viewModel,
-                    transitionNamespace: noteTransitionNamespace,
-                    expandedNoteID: activeDetailNote?.id,
-                    newThoughtNamespace: newThoughtNamespace
-                )
-                .opacity(viewModel.screen == .newNote ? 0.35 : 1)
-                .allowsHitTesting(viewModel.screen != .newNote)
-                .zIndex(0)
+            HomeScreen(
+                viewModel: viewModel,
+                transitionNamespace: noteTransitionNamespace,
+                expandedNoteID: activeDetailNote?.id,
+                newThoughtNamespace: newThoughtNamespace
+            )
+            .blur(radius: viewModel.screen == .newNote ? 12 : 0)
+            .overlay {
+                if viewModel.screen == .newNote {
+                    Color.white.opacity(0.025)
+                        .ignoresSafeArea()
+                }
             }
+            .allowsHitTesting(viewModel.screen == .home)
+            .zIndex(0)
 
             if viewModel.screen == .newNote {
                 NewNoteScreen(viewModel: viewModel, transitionNamespace: newThoughtNamespace)
@@ -82,7 +92,6 @@ struct ContentView: View {
                     note: note,
                     transitionNamespace: noteTransitionNamespace
                 )
-                .transition(.opacity.combined(with: .scale(scale: 0.985, anchor: .center)))
                 .zIndex(2)
             }
 
@@ -109,6 +118,12 @@ struct ContentView: View {
         .task {
             guard shouldBootstrap else { return }
             await viewModel.bootstrap()
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            guard shouldBootstrap, newPhase == .active else { return }
+            Task {
+                await viewModel.refreshForForeground()
+            }
         }
     }
 
@@ -188,7 +203,7 @@ private struct HomeScreen: View {
                 .padding(.bottom, isReorderMode ? 148 : 26)
 
                 if isReorderMode {
-                    reorderInstruction
+                    reorderInstruction(bottomInset: geometry.safeAreaInsets.bottom)
                 }
             }
         }
@@ -209,16 +224,19 @@ private struct HomeScreen: View {
 
             Spacer(minLength: 0)
 
-            HStack(spacing: 6) {
-                Circle()
-                    .fill(noteAccentColor)
-                    .frame(width: 7, height: 7)
+            if viewModel.screen != .newNote {
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(noteAccentColor)
+                        .frame(width: 7, height: 7)
 
-                Text("\(growingSeedCount) growing")
-                    .font(AppFont.meta(11))
-                    .tracking(1.8)
-                    .textCase(.uppercase)
-                    .foregroundStyle(noteAccentColor)
+                    Text("\(growingSeedCount) growing")
+                        .font(AppFont.meta(11))
+                        .tracking(1.8)
+                        .textCase(.uppercase)
+                        .foregroundStyle(noteAccentColor)
+                }
+                .transition(.identity)
             }
         }
     }
@@ -259,7 +277,7 @@ private struct HomeScreen: View {
     }
 
     private var displayNotes: [APINote] {
-        Array(viewModel.notes.prefix(4))
+        viewModel.notes
     }
 
     private var growingSeedCount: Int {
@@ -299,7 +317,8 @@ private struct HomeScreen: View {
             if !isReorderMode {
                 EmptyNoteCard(
                     transitionNamespace: newThoughtNamespace,
-                    isExpanded: viewModel.screen == .newNote
+                    isExpanded: viewModel.screen == .newNote,
+                    isAddMorphActive: viewModel.addMorphTargetNoteID != nil
                 ) {
                     withAnimation(noteTransitionAnimation) {
                         viewModel.openNewNote()
@@ -310,7 +329,9 @@ private struct HomeScreen: View {
     }
 
     private func noteCard(_ note: APINote, index: Int) -> some View {
-        NoteCard(
+        let isAddMorphTarget = viewModel.addMorphTargetNoteID == note.id
+
+        return NoteCard(
             note: note,
             rotation: rotation(for: index),
             isReordering: activeDragNoteID == note.id,
@@ -321,6 +342,12 @@ private struct HomeScreen: View {
             isExpanded: expandedNoteID == note.id,
             isTransitionSource: expandedNoteID == note.id
         )
+        .opacity(isAddMorphTarget ? 0.001 : 1)
+        .overlay {
+            if isAddMorphTarget {
+                MorphingAddedNoteTarget(note: note, rotation: rotation(for: index), transitionNamespace: newThoughtNamespace)
+            }
+        }
         .frame(maxWidth: .infinity)
         .contentShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
         .offset(activeDragNoteID == note.id ? dragTranslation : .zero)
@@ -462,6 +489,9 @@ private struct HomeScreen: View {
             reorder(noteID: noteID, finalFrame: finalFrame)
         }
 
+        Task {
+            await viewModel.persistManualOrder(orderedNoteIDs)
+        }
         cancelDragging()
     }
 
@@ -526,7 +556,7 @@ private struct HomeScreen: View {
     }
 
     private func enterReorderGesture(noteID: String) -> some Gesture {
-        LongPressGesture(minimumDuration: 1.5)
+        LongPressGesture(minimumDuration: 0.65)
             .onEnded { _ in
                 if !isReorderMode {
                     isReorderMode = true
@@ -559,20 +589,13 @@ private struct HomeScreen: View {
         return Double(scalarSum % 13) / 13.0
     }
 
-    private var reorderInstruction: some View {
+    private func reorderInstruction(bottomInset: CGFloat) -> some View {
         VStack(spacing: 10) {
-            Text("Drag to reorder. Overlap another card to create an affinity group.")
-                .font(AppFont.meta(13))
-                .foregroundStyle(.black.opacity(0.72))
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 18)
-                .padding(.vertical, 14)
+            ReorderMarqueeView(
+                message: "drag to reorder · overlap another card to create an affinity group · swipe up to exit ·"
+            )
+                .frame(height: 46)
                 .frame(maxWidth: .infinity)
-                .background(Color.white.opacity(0.9), in: Capsule())
-                .overlay {
-                    Capsule()
-                        .stroke(Color.black.opacity(0.08), lineWidth: 1)
-                }
 
             Capsule()
                 .fill(Color.black.opacity(0.22))
@@ -587,9 +610,60 @@ private struct HomeScreen: View {
                 )
         }
         .padding(.horizontal, 18)
-        .padding(.bottom, 18)
+        .padding(.bottom, max(bottomInset, 10))
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
         .transition(.move(edge: .bottom).combined(with: .opacity))
+    }
+}
+
+private struct ReorderMarqueeView: View {
+    let message: String
+    @State private var segmentWidth: CGFloat = 1
+
+    var body: some View {
+        GeometryReader { geometry in
+            TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
+                let distance = CGFloat(timeline.date.timeIntervalSinceReferenceDate) * 42
+                let wrapWidth = max(segmentWidth + 24, 1)
+                let xOffset = -(distance.truncatingRemainder(dividingBy: wrapWidth))
+
+                HStack(spacing: 24) {
+                    marqueeSegment
+                        .background(
+                            GeometryReader { proxy in
+                                Color.clear.preference(key: MarqueeWidthPreferenceKey.self, value: proxy.size.width)
+                            }
+                        )
+                    marqueeSegment
+                    marqueeSegment
+                }
+                .offset(x: xOffset)
+                .frame(width: geometry.size.width, alignment: .leading)
+            }
+            .clipped()
+            .onPreferenceChange(MarqueeWidthPreferenceKey.self) { width in
+                if width > 0 {
+                    segmentWidth = width
+                }
+            }
+        }
+    }
+
+    private var marqueeSegment: some View {
+        Text(message)
+            .font(AppFont.meta(12))
+            .tracking(1.4)
+            .textCase(.uppercase)
+            .foregroundStyle(.black.opacity(0.72))
+            .fixedSize()
+    }
+}
+
+private struct MarqueeWidthPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
     }
 }
 
@@ -624,7 +698,8 @@ private struct NewNoteScreen: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                Color.black.opacity(0.04)
+                Rectangle()
+                    .fill(Color.white.opacity(0.001))
                     .ignoresSafeArea()
                     .onTapGesture {
                         isEditorFocused = false
@@ -642,6 +717,13 @@ private struct NewNoteScreen: View {
 
                         RoundedRectangle(cornerRadius: 30, style: .continuous)
                             .stroke(noteBorderColor, lineWidth: 1)
+                            .matchedGeometryEffect(id: "new-thought-stroke", in: transitionNamespace)
+
+                        RoundedRectangle(cornerRadius: 30, style: .continuous)
+                            .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4, 6]))
+                            .foregroundStyle(noteBorderColor.opacity(0.95))
+                            .matchedGeometryEffect(id: "new-thought-dashed", in: transitionNamespace)
+                            .opacity(showContent ? 0 : 1)
 
                         VStack(alignment: .leading, spacing: 0) {
                             if showContent {
@@ -697,8 +779,16 @@ private struct NewNoteScreen: View {
                     isEditorFocused = false
                     Task {
                         await viewModel.autosaveDraftIfNeeded()
+                        let newID = viewModel.draftNoteID
                         withAnimation(noteTransitionAnimation) {
+                            viewModel.addMorphTargetNoteID = newID
                             viewModel.screen = .home
+                        }
+                        try? await Task.sleep(nanoseconds: UInt64(noteMorphDuration * 1_000_000_000))
+                        var transaction = Transaction()
+                        transaction.disablesAnimations = true
+                        withTransaction(transaction) {
+                            viewModel.addMorphTargetNoteID = nil
                         }
                     }
                 } label: {
@@ -731,6 +821,13 @@ private struct NoteFullPageScreen: View {
     @State private var showGrowthContent = false
     @State private var showFootnoteContent = false
     @State private var isClosing = false
+    @State private var dragOffset: CGFloat = 0
+    @State private var detailContentOffsetY: CGFloat = 0
+    @State private var detailTopContentOffsetY: CGFloat = 0
+    @State private var detailAnchorPositions: [String: CGFloat] = [:]
+    @State private var detailAnchorBaselines: [String: CGFloat] = [:]
+    @State private var detailBottomBarHeight: CGFloat = 128
+    @State private var detailBottomBarInputTop: CGFloat = 14
 
     var body: some View {
         GeometryReader { geometry in
@@ -738,7 +835,10 @@ private struct NoteFullPageScreen: View {
             let bottomInset = max(geometry.safeAreaInsets.bottom, 18)
 
             ZStack(alignment: .topTrailing) {
-                detailSurface(topInset: topInset, bottomInset: bottomInset)
+                detailSurface(
+                    topInset: topInset,
+                    bottomInset: bottomInset
+                )
 
                 Button {
                     closeDetail()
@@ -754,77 +854,178 @@ private struct NoteFullPageScreen: View {
                                 .stroke(Color.black.opacity(0.08), lineWidth: 1)
                         }
                 }
-                .padding(.top, topInset + 12)
+                .padding(.top, 8)
                 .padding(.trailing, 18)
                 .opacity(showChrome ? 1 : 0)
             }
-            .ignoresSafeArea()
+            .frame(width: geometry.size.width, height: geometry.size.height, alignment: .topLeading)
+            .coordinateSpace(name: "detail-surface")
+            .offset(y: dragOffset)
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        guard !isClosing else { return }
+                        let dy = value.translation.height
+                        let dx = value.translation.width
+                        guard dy > 18, dy > abs(dx), isDetailAtTop || dragOffset > 0 else { return }
+                        dragOffset = dy * 0.55
+                    }
+                    .onEnded { value in
+                        guard !isClosing else { return }
+                        let dy = value.translation.height
+                        let dx = value.translation.width
+                        let predicted = value.predictedEndTranslation.height
+                        let wasEligible = isDetailAtTop || dragOffset > 0
+                        guard dy > 18, dy > abs(dx), wasEligible else {
+                            if dragOffset > 0 {
+                                withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
+                                    dragOffset = 0
+                                }
+                            }
+                            return
+                        }
+                        if dy > 120 || predicted > 220 {
+                            closeDetail()
+                        } else {
+                            withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
+                                dragOffset = 0
+                            }
+                        }
+                    }
+            )
             .onAppear {
+                detailContentOffsetY = 0
+                detailTopContentOffsetY = 0
+                detailAnchorPositions = [:]
+                detailAnchorBaselines = [:]
                 startOpenSequence()
             }
         }
     }
 
-    private func detailSurface(topInset: CGFloat, bottomInset: CGFloat) -> some View {
-        VStack(spacing: 0) {
-            ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 0) {
-                    metaStrip
-                        .padding(.top, topInset + 14)
+    private var isDetailAtTop: Bool {
+        detailContentOffsetY <= detailTopContentOffsetY + detailDismissTopThreshold
+    }
 
-                    sectionLabel("thought")
-                        .padding(.top, 18)
-
-                    Text(note.text)
-                        .font(AppFont.heading(26))
-                        .lineSpacing(4)
-                        .foregroundStyle(.black)
-                        .padding(.top, 12)
-
-                    divider
-                        .padding(.top, 30)
-
-                    aiGrowthSection
-                        .padding(.top, 26)
-
-                    if !note.sources.isEmpty {
-                        footnotesSection
-                            .padding(.top, 28)
-                    }
-
-                    if !note.prompts.isEmpty {
-                        openAnglesSection
-                            .padding(.top, 28)
-                    }
-
-                    if viewModel.showTimeline {
-                        timelineSection
-                            .padding(.top, 28)
-                    }
-
-                    if let latestReply = note.latestChatReply, !latestReply.isEmpty {
-                        latestReplySection(latestReply)
-                            .padding(.top, 28)
-                    }
-
-                    Color.clear
-                        .frame(height: 36)
-                }
-                .padding(.horizontal, 28)
-                .padding(.bottom, 28)
-            }
-
-            bottomBar(bottomInset: bottomInset)
+    private var surfaceCornerRadius: CGFloat {
+        if dragOffset > 0 {
+            let progress = min(max((dragOffset - detailDismissCornerRadiusStart) / detailDismissCornerRadiusTravel, 0), 1)
+            return 47 * progress
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(noteDetailBackground)
-        .clipShape(RoundedRectangle(cornerRadius: showPrimaryContent ? 0 : 30, style: .continuous))
-        .applyNoteSurfaceTransition(
-            id: "note-surface-\(note.id)",
-            namespace: transitionNamespace,
-            isEnabled: true,
-            isSource: false
-        )
+        return showPrimaryContent ? 0 : 30
+    }
+
+    private var detailScrollBottomPadding: CGFloat {
+        max(detailBottomBarHeight - detailBottomBarInputTop + detailBottomBarVisualClearance, 36)
+    }
+
+    private func detailSurface(
+        topInset: CGFloat,
+        bottomInset: CGFloat
+    ) -> some View {
+        ZStack(alignment: .topLeading) {
+            RoundedRectangle(cornerRadius: surfaceCornerRadius, style: .continuous)
+                .fill(Color.white)
+                .matchedGeometryEffect(id: "note-surface-\(note.id)", in: transitionNamespace)
+                .shadow(color: noteShadowColor, radius: 24, x: 0, y: 12)
+                .ignoresSafeArea()
+
+            RoundedRectangle(cornerRadius: surfaceCornerRadius, style: .continuous)
+                .stroke(noteBorderColor.opacity(0.72), lineWidth: 1)
+                .matchedGeometryEffect(id: "note-stroke-\(note.id)", in: transitionNamespace)
+                .ignoresSafeArea()
+
+            if showPrimaryContent {
+                ZStack(alignment: .bottom) {
+                    ScrollView(showsIndicators: false) {
+                        VStack(alignment: .leading, spacing: 0) {
+                            metaStrip
+                                .detailDebugAnchor(id: "meta-strip")
+                                .padding(.top, 22)
+
+                            Text(note.displayHeadline)
+                                .font(AppFont.heading(26))
+                                .lineSpacing(4)
+                                .foregroundStyle(.black)
+                                .detailDebugAnchor(id: "thought-body")
+                                .detailDebugAnchor(id: detailPrimaryScrollAnchorID)
+                                .padding(.top, 22)
+
+                            divider
+                                .padding(.top, 30)
+
+                            if hasAIGrowthParagraphs {
+                                aiGrowthSection
+                                    .padding(.top, 26)
+
+                                if shouldShowInlineContinueThoughtCTA {
+                                    inlineContinueThoughtCTA
+                                        .padding(.top, 28)
+                                }
+                            }
+
+                            if !note.sources.isEmpty {
+                                footnotesSection
+                                    .padding(.top, 28)
+                            }
+
+                            if !note.prompts.isEmpty {
+                                openAnglesSection
+                                    .padding(.top, 28)
+                            }
+
+                            if viewModel.showTimeline {
+                                timelineSection
+                                    .padding(.top, 28)
+                            }
+
+                            if let latestReply = note.latestChatReply, !latestReply.isEmpty {
+                                latestReplySection(latestReply)
+                                    .padding(.top, 28)
+                            }
+
+                            if let pendingFollowUp = pendingFollowUpText {
+                                pendingFollowUpSection(pendingFollowUp)
+                                    .padding(.top, 28)
+                            }
+                        }
+                        .padding(.horizontal, 28)
+                        .padding(.bottom, detailScrollBottomPadding)
+                    }
+                    .scrollDisabled(dragOffset > 0)
+                    .onPreferenceChange(DetailAnchorPreferenceKey.self) { anchors in
+                        detailAnchorPositions = anchors
+                        for (id, value) in anchors where detailAnchorBaselines[id] == nil {
+                            detailAnchorBaselines[id] = value
+                        }
+                        detailTopContentOffsetY = 0
+                        if let current = anchors[detailPrimaryScrollAnchorID],
+                           let baseline = detailAnchorBaselines[detailPrimaryScrollAnchorID] {
+                            detailContentOffsetY = max(baseline - current, 0)
+                        }
+                    }
+
+                    bottomBar(bottomInset: bottomInset)
+                        .background {
+                            GeometryReader { proxy in
+                                Color.clear
+                                    .preference(key: DetailBottomBarHeightPreferenceKey.self, value: proxy.size.height)
+                            }
+                        }
+                }
+                .onPreferenceChange(DetailBottomBarHeightPreferenceKey.self) { height in
+                    guard height > 0 else { return }
+                    detailBottomBarHeight = height
+                }
+                .onPreferenceChange(DetailBottomBarInputTopPreferenceKey.self) { top in
+                    guard top >= 0 else { return }
+                    detailBottomBarInputTop = top
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .transition(.opacity)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     private var metaStrip: some View {
@@ -842,6 +1043,7 @@ private struct NoteFullPageScreen: View {
                     .textCase(.uppercase)
                     .foregroundStyle(noteAccentColor)
             }
+
         }
         .opacity(showPrimaryContent ? 1 : 0)
     }
@@ -860,6 +1062,32 @@ private struct NoteFullPageScreen: View {
                     }
                 }
             }
+        }
+        .opacity(showGrowthContent ? 1 : 0)
+        .offset(y: showGrowthContent ? 0 : 12)
+    }
+
+    private var inlineContinueThoughtCTA: some View {
+        HStack {
+            Spacer()
+
+            Button {
+                Task { await viewModel.requestResponse(for: note.id) }
+            } label: {
+                Text("Continue this thought")
+                    .font(AppFont.body(18))
+                    .foregroundStyle(.black)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 12)
+                    .background(Color.white.opacity(0.92), in: Capsule())
+                    .overlay {
+                        Capsule()
+                            .stroke(noteBorderColor, lineWidth: 1)
+                    }
+            }
+            .disabled(viewModel.isEnriching)
+
+            Spacer()
         }
         .opacity(showGrowthContent ? 1 : 0)
         .offset(y: showGrowthContent ? 0 : 12)
@@ -890,41 +1118,50 @@ private struct NoteFullPageScreen: View {
     private var footnotesSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             sectionLabel("footnotes")
+                .padding(.horizontal, 28)
 
-            ForEach(note.sources) { source in
-                Link(destination: URL(string: source.url) ?? URL(string: "https://example.com")!) {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text(sourceHost(source.url))
-                            .font(AppFont.meta(11))
-                            .tracking(1.2)
-                            .textCase(.uppercase)
-                            .foregroundStyle(.black.opacity(0.46))
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(alignment: .top, spacing: 14) {
+                    ForEach(note.sources) { source in
+                        Link(destination: URL(string: source.url) ?? URL(string: "https://example.com")!) {
+                            VStack(alignment: .leading, spacing: 10) {
+                                Text(sourceHost(source.url))
+                                    .font(AppFont.meta(11))
+                                    .tracking(1.2)
+                                    .textCase(.uppercase)
+                                    .foregroundStyle(.black.opacity(0.46))
 
-                        Text(source.title)
-                            .font(AppFont.heading(18, weight: .semibold))
-                            .foregroundStyle(.black)
+                                Text(source.title)
+                                    .font(AppFont.heading(18, weight: .semibold))
+                                    .foregroundStyle(.black)
 
-                        Text(source.snippet)
-                            .font(AppFont.body(15))
-                            .lineSpacing(2)
-                            .foregroundStyle(.black.opacity(0.72))
+                                Text(source.snippet)
+                                    .font(AppFont.body(15))
+                                    .lineSpacing(2)
+                                    .foregroundStyle(.black.opacity(0.72))
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 18)
+                            .padding(.vertical, 16)
+                            .background(
+                                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                    .fill(Color.white.opacity(0.94))
+                            )
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                    .stroke(noteBorderColor, lineWidth: 1)
+                            }
+                            .shadow(color: .black.opacity(0.035), radius: 10, x: 0, y: 6)
+                        }
+                        .buttonStyle(.plain)
+                        .containerRelativeFrame(.horizontal, count: 3, span: 2, spacing: 14)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 16)
-                    .background(
-                        RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .fill(Color.white.opacity(0.94))
-                    )
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .stroke(noteBorderColor, lineWidth: 1)
-                    }
-                    .shadow(color: .black.opacity(0.035), radius: 10, x: 0, y: 6)
                 }
-                .buttonStyle(.plain)
+                .padding(.horizontal, 28)
+                .scrollTargetLayout()
             }
         }
+        .padding(.horizontal, -28)
         .opacity(showFootnoteContent ? 1 : 0)
         .offset(y: showFootnoteContent ? 0 : 12)
     }
@@ -963,62 +1200,99 @@ private struct NoteFullPageScreen: View {
         .offset(y: showGrowthContent ? 0 : 12)
     }
 
+    private func pendingFollowUpSection(_ followUp: String) -> some View {
+        VStack(alignment: .leading, spacing: 20) {
+            divider
+
+            Text(followUp)
+                .font(AppFont.body(19))
+                .lineSpacing(4)
+                .foregroundStyle(noteAccentColor.opacity(0.78))
+        }
+        .opacity(showGrowthContent ? 1 : 0)
+        .offset(y: showGrowthContent ? 0 : 12)
+    }
+
     private func bottomBar(bottomInset: CGFloat) -> some View {
         VStack(spacing: 12) {
-            TextField("Continue the thread...", text: $viewModel.followUpDraft, axis: .vertical)
-                .textFieldStyle(.plain)
-                .font(AppFont.body(17))
-                .foregroundStyle(.black)
-                .lineLimit(1...4)
-                .padding(.horizontal, 18)
-                .padding(.vertical, 16)
-                .background(
-                    RoundedRectangle(cornerRadius: 26, style: .continuous)
-                        .fill(Color(red: 0.985, green: 0.985, blue: 0.98))
-                )
-                .overlay {
-                    RoundedRectangle(cornerRadius: 26, style: .continuous)
-                        .stroke(noteBorderColor.opacity(0.92), lineWidth: 1)
-                }
-                .shadow(color: .black.opacity(0.035), radius: 10, x: 0, y: 6)
-
-            HStack {
-                Menu {
-                    Button(primaryDetailActionTitle) {
-                        Task {
-                            await performPrimaryDetailAction()
-                        }
-                    }
-                    .disabled(viewModel.isEnriching || viewModel.isSendingFollowUp)
-
-                    Button(viewModel.showTimeline ? "Hide evolution" : "Show evolution") {
-                        viewModel.toggleTimeline()
-                    }
-
-                    Button("Refresh note") {
-                        Task {
-                            await viewModel.refreshCurrentNote()
-                        }
-                    }
+            if shouldShowRequestResponseOnlyCTA {
+                Button {
+                    Task { await viewModel.requestResponse(for: note.id) }
                 } label: {
-                    Text("...")
-                        .font(AppFont.heading(18))
+                    Text("Request response")
+                        .font(AppFont.body(18))
                         .foregroundStyle(.black)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 10)
-                        .background(Color.white.opacity(0.82), in: Capsule())
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 12)
+                        .background(Color.white.opacity(0.92), in: Capsule())
                         .overlay {
                             Capsule()
-                                .stroke(Color.black.opacity(0.08), lineWidth: 1)
+                                .stroke(noteBorderColor, lineWidth: 1)
                         }
                 }
+                .disabled(viewModel.isEnriching)
+                .frame(maxWidth: .infinity)
+                .background {
+                    GeometryReader { proxy in
+                        Color.clear
+                            .preference(
+                                key: DetailBottomBarInputTopPreferenceKey.self,
+                                value: proxy.frame(in: .named("detail-bottom-bar")).minY
+                            )
+                    }
+                }
+            } else {
+                TextField("Ask about this", text: $viewModel.followUpDraft, axis: .vertical)
+                    .textFieldStyle(.plain)
+                    .font(AppFont.body(17))
+                    .foregroundStyle(.black)
+                    .lineLimit(1...4)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 16)
+                    .background(
+                        RoundedRectangle(cornerRadius: 26, style: .continuous)
+                            .fill(Color(red: 0.985, green: 0.985, blue: 0.98))
+                    )
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 26, style: .continuous)
+                            .stroke(noteBorderColor.opacity(0.92), lineWidth: 1)
+                    }
+                    .shadow(color: .black.opacity(0.035), radius: 10, x: 0, y: 6)
+                    .background {
+                        GeometryReader { proxy in
+                            Color.clear
+                                .preference(
+                                    key: DetailBottomBarInputTopPreferenceKey.self,
+                                    value: proxy.frame(in: .named("detail-bottom-bar")).minY
+                                )
+                        }
+                    }
 
-                Spacer()
+                if !viewModel.followUpDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    HStack {
+                        Spacer()
+
+                        Button("Send follow-up") {
+                            Task { await viewModel.sendFollowUp() }
+                        }
+                        .font(AppFont.body(18))
+                        .foregroundStyle(.black)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 12)
+                        .background(Color.white.opacity(0.92), in: Capsule())
+                        .overlay {
+                            Capsule()
+                                .stroke(noteBorderColor, lineWidth: 1)
+                        }
+                        .disabled(viewModel.isEnriching || viewModel.isSendingFollowUp)
+                    }
+                }
             }
         }
         .padding(.horizontal, 18)
         .padding(.top, 14)
         .padding(.bottom, bottomInset)
+        .coordinateSpace(name: "detail-bottom-bar")
         .background(
             LinearGradient(
                 colors: [
@@ -1038,12 +1312,32 @@ private struct NoteFullPageScreen: View {
         viewModel.followUpDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Request response" : "Send follow-up"
     }
 
-    private func performPrimaryDetailAction() async {
-        if viewModel.followUpDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            await viewModel.requestResponse(for: note.id)
-        } else {
-            await viewModel.sendFollowUp()
+    private var shouldShowDeferredGrowthCTA: Bool {
+        note.enrichments.isEmpty &&
+        note.latestChatReply == nil &&
+        ["queued", "retrying", "running"].contains(note.status)
+    }
+
+    private var isAwaitingAssistantReply: Bool {
+        guard let currentThread = viewModel.currentThread else { return false }
+        return currentThread.messages.last?.role == MessageRole.user.rawValue
+    }
+
+    private var shouldShowRequestResponseOnlyCTA: Bool {
+        shouldShowDeferredGrowthCTA || isAwaitingAssistantReply
+    }
+
+    private var pendingFollowUpText: String? {
+        guard let currentThread = viewModel.currentThread,
+              let lastMessage = currentThread.messages.last,
+              lastMessage.role == MessageRole.user.rawValue else {
+            return nil
         }
+        return lastMessage.text
+    }
+
+    private var shouldShowInlineContinueThoughtCTA: Bool {
+        hasAIGrowthParagraphs && !isAwaitingAssistantReply
     }
 
     private var growthParagraphs: [String] {
@@ -1052,12 +1346,11 @@ private struct NoteFullPageScreen: View {
             .components(separatedBy: "\n\n")
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
+        return paragraphs
+    }
 
-        if !paragraphs.isEmpty {
-            return paragraphs
-        }
-
-        return ["Request response to grow this thought."]
+    private var hasAIGrowthParagraphs: Bool {
+        !growthParagraphs.isEmpty
     }
 
     private var detailStatusLabel: String? {
@@ -1094,16 +1387,6 @@ private struct NoteFullPageScreen: View {
         .opacity(showPrimaryContent ? 1 : 0)
     }
 
-    private var noteDetailBackground: some View {
-        RoundedRectangle(cornerRadius: showPrimaryContent ? 0 : 30, style: .continuous)
-            .fill(Color.white)
-            .overlay {
-                RoundedRectangle(cornerRadius: showPrimaryContent ? 0 : 30, style: .continuous)
-                    .stroke(noteBorderColor.opacity(0.72), lineWidth: 1)
-            }
-            .shadow(color: noteShadowColor, radius: 24, x: 0, y: 12)
-    }
-
     private func startOpenSequence() {
         isClosing = false
         showChrome = false
@@ -1111,20 +1394,26 @@ private struct NoteFullPageScreen: View {
         showGrowthContent = false
         showFootnoteContent = false
 
-        withAnimation(.easeOut(duration: 0.18).delay(0.24)) {
-            showChrome = true
-        }
+        Task {
+            try? await Task.sleep(nanoseconds: UInt64(noteMorphDuration * 1_000_000_000))
+            guard !isClosing else { return }
 
-        withAnimation(.easeOut(duration: 0.18).delay(0.24)) {
-            showPrimaryContent = true
-        }
+            withAnimation(.easeOut(duration: 0.18)) {
+                showChrome = true
+                showPrimaryContent = true
+            }
 
-        withAnimation(.easeOut(duration: 0.6).delay(0.56)) {
-            showGrowthContent = true
-        }
+            try? await Task.sleep(nanoseconds: 320_000_000)
+            guard !isClosing else { return }
+            withAnimation(.easeOut(duration: 0.5)) {
+                showGrowthContent = true
+            }
 
-        withAnimation(.easeOut(duration: 0.6).delay(1.0)) {
-            showFootnoteContent = true
+            try? await Task.sleep(nanoseconds: 360_000_000)
+            guard !isClosing else { return }
+            withAnimation(.easeOut(duration: 0.5)) {
+                showFootnoteContent = true
+            }
         }
     }
 
@@ -1132,14 +1421,30 @@ private struct NoteFullPageScreen: View {
         guard !isClosing else { return }
         isClosing = true
 
+        let fromDrag = dragOffset > 10
+
         withAnimation(.easeOut(duration: 0.16)) {
             showChrome = false
         }
 
-        withAnimation(.easeOut(duration: 0.2)) {
+        if fromDrag {
             showPrimaryContent = false
             showGrowthContent = false
             showFootnoteContent = false
+            withAnimation(noteTransitionAnimation) {
+                dragOffset = 0
+                viewModel.returnHome()
+            }
+            return
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) {
+            guard isClosing else { return }
+            withAnimation(.easeOut(duration: 0.12)) {
+                showPrimaryContent = false
+                showGrowthContent = false
+                showFootnoteContent = false
+            }
         }
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.42) {
@@ -1222,10 +1527,12 @@ private struct NoteCard: View {
     let transitionNamespace: Namespace.ID
     let isExpanded: Bool
     let isTransitionSource: Bool
+    @State private var showCardContent = true
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 24.0)) { timeline in
             let jiggle = jiggleState(at: timeline.date)
+            let pulse = growingDotPulse(at: timeline.date)
 
             VStack(alignment: .leading, spacing: 14) {
                 summaryText
@@ -1239,32 +1546,47 @@ private struct NoteCard: View {
 
                     Spacer()
 
-                    Text(cardStatus)
-                        .font(AppFont.meta(11))
-                        .tracking(1.2)
-                        .textCase(.uppercase)
-                        .foregroundStyle(hasAIResponse ? noteAccentColor : .black.opacity(0.62))
+                    if let statusText = statusText {
+                        Text(statusText)
+                            .font(AppFont.meta(11))
+                            .tracking(1.2)
+                            .textCase(.uppercase)
+                            .foregroundStyle(hasAIResponse ? noteAccentColor : .black.opacity(0.62))
+                    }
                 }
             }
+            .opacity(showCardContent ? 1 : 0)
             .padding(.horizontal, 18)
             .padding(.vertical, 18)
             .frame(maxWidth: .infinity, alignment: .topLeading)
-            .background(
-                RoundedRectangle(cornerRadius: 30, style: .continuous)
-                    .fill(Color.white.opacity(0.96))
-                    .overlay {
+            .background {
+                ZStack {
+                    if !isExpanded {
+                        RoundedRectangle(cornerRadius: 30, style: .continuous)
+                            .fill(Color.white.opacity(0.96))
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .matchedGeometryEffect(id: "note-surface-\(note.id)", in: transitionNamespace)
+                            .shadow(
+                                color: noteShadowColor.opacity(isReordering ? 1 : 0.72),
+                                radius: isReordering ? 18 : 14,
+                                x: 0,
+                                y: isReordering ? 12 : 8
+                            )
+
                         RoundedRectangle(cornerRadius: 30, style: .continuous)
                             .stroke(
                                 isReordering || hasAIResponse ? noteAccentColor.opacity(isReordering ? 0.55 : 0.34) : noteBorderColor,
                                 lineWidth: isReordering ? 1.3 : 1
                             )
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .matchedGeometryEffect(id: "note-stroke-\(note.id)", in: transitionNamespace)
+                    } else {
+                        RoundedRectangle(cornerRadius: 30, style: .continuous)
+                            .fill(Color.white.opacity(0.001))
                     }
-            )
-            .applyNoteSurfaceTransition(
-                id: "note-surface-\(note.id)",
-                namespace: transitionNamespace,
-                isEnabled: isTransitionSource
-            )
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
             .overlay {
                 RoundedRectangle(cornerRadius: 30, style: .continuous)
                     .fill(
@@ -1279,32 +1601,73 @@ private struct NoteCard: View {
                         )
                     )
             }
+            .overlay(alignment: .bottomTrailing) {
+                if let statusDot = statusDot {
+                    Circle()
+                        .fill(noteAccentColor)
+                        .frame(
+                            width: statusDotDiameter(for: statusDot),
+                            height: statusDotDiameter(for: statusDot)
+                        )
+                        .opacity(statusDot == .growing ? pulse.opacity : 1)
+                        .scaleEffect(statusDot == .growing ? pulse.scale : 1)
+                        .padding(.trailing, 18)
+                        .padding(.bottom, 18)
+                }
+            }
             .contentShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
             .rotationEffect(.degrees(rotation + jiggle.rotation))
             .offset(x: jiggle.offset.width, y: jiggle.offset.height)
             .scaleEffect(isReordering ? 1.02 : 1.0)
             .opacity(isExpanded ? 0.001 : 1)
-            .shadow(
-                color: noteShadowColor.opacity(isReordering ? 1 : 0.72),
-                radius: isReordering ? 18 : 14,
-                x: 0,
-                y: isReordering ? 12 : 8
-            )
             .animation(.easeInOut(duration: 0.18), value: isReordering)
+            .onChange(of: isExpanded) { wasExpanded, nowExpanded in
+                if nowExpanded {
+                    showCardContent = false
+                } else if wasExpanded {
+                    Task {
+                        try? await Task.sleep(nanoseconds: UInt64(noteMorphDuration * 0.55 * 1_000_000_000))
+                        withAnimation(.easeOut(duration: 0.22)) {
+                            showCardContent = true
+                        }
+                    }
+                }
+            }
         }
     }
 
-    private var cardStatus: String {
+    private var statusText: String? {
+        guard statusDot == nil else { return nil }
+
         if isActivelyGrowing {
-            return "growing"
+            return nil
+        }
+        if hasUnreadAIResponse {
+            return nil
+        }
+        if note.hasChangesSinceLastVisit {
+            return note.changesSinceLastViewedCount == 1 ? "updated" : "\(note.changesSinceLastViewedCount) new"
         }
         if note.status == "enriched" {
-            return "grown"
+            return nil
         }
         if note.status == "captured" {
             return "noted"
         }
         return note.status
+    }
+
+    private var statusDot: StatusDot? {
+        if isActivelyGrowing {
+            return .growing
+        }
+        if hasUnreadAIResponse {
+            return .unread
+        }
+        if note.status == "enriched" && !note.hasChangesSinceLastVisit {
+            return .grown
+        }
+        return nil
     }
 
     private var summaryText: some View {
@@ -1326,14 +1689,7 @@ private struct NoteCard: View {
     }
 
     private var cardBodyText: String {
-        let title = note.title.trimmingCharacters(in: .whitespacesAndNewlines)
-        let text = note.text.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        if !title.isEmpty, title.count > text.count {
-            return title
-        }
-
-        return text
+        note.displayHeadline
     }
 
     private var noteTimestamp: String {
@@ -1364,49 +1720,55 @@ private struct NoteCard: View {
         let offsetY = 0.6 * swing * amount
         return (rotation, CGSize(width: offsetX, height: offsetY))
     }
+
+    private func growingDotPulse(at date: Date) -> (opacity: Double, scale: CGFloat) {
+        let progress = (sin((date.timeIntervalSinceReferenceDate / 3.0) * 2 * .pi) + 1) / 2
+        let opacity = 0.28 + (0.62 * progress)
+        let scale = 0.86 + (0.22 * progress)
+        return (opacity, scale)
+    }
+
+    private var hasUnreadAIResponse: Bool {
+        note.timeline.contains { event in
+            guard event.isNewSinceLastView else { return false }
+            return event.type == TimelineEventKind.noteEnriched.rawValue || event.type == TimelineEventKind.chatUpdated.rawValue
+        }
+    }
+
+    private func statusDotDiameter(for statusDot: StatusDot) -> CGFloat {
+        switch statusDot {
+        case .grown, .unread:
+            return 8
+        case .growing:
+            return 16.0 / 3.0
+        }
+    }
+
+    private enum StatusDot {
+        case grown
+        case growing
+        case unread
+    }
 }
 
 private struct EmptyNoteCard: View {
     let transitionNamespace: Namespace.ID
     let isExpanded: Bool
+    let isAddMorphActive: Bool
     let onTap: () -> Void
     @State private var showContent: Bool = true
+    @State private var showStaticFadeCard = false
+    @State private var staticFadeOpacity = 0.0
 
     var body: some View {
         Button(action: onTap) {
             ZStack {
                 if !isExpanded {
-                    RoundedRectangle(cornerRadius: 30, style: .continuous)
-                        .fill(Color.white.opacity(0.96))
-                        .matchedGeometryEffect(id: "new-thought-surface", in: transitionNamespace)
-                        .shadow(color: noteShadowColor.opacity(0.58), radius: 12, x: 0, y: 8)
-
-                    RoundedRectangle(cornerRadius: 30, style: .continuous)
-                        .stroke(noteBorderColor.opacity(0.35), lineWidth: 1)
-
-                    RoundedRectangle(cornerRadius: 30, style: .continuous)
-                        .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4, 6]))
-                        .foregroundStyle(noteBorderColor.opacity(0.95))
-
-                    if showContent {
-                        VStack(alignment: .leading, spacing: 14) {
-                            HStack {
-                                Image(systemName: "plus")
-                                    .font(.system(size: 14, weight: .medium))
-                                    .foregroundStyle(.black.opacity(0.52))
-
-                                Spacer()
-                            }
-
-                            Spacer(minLength: 0)
-
-                            Text("Start a thought...")
-                                .font(AppFont.body(20))
-                                .foregroundStyle(.black.opacity(0.88))
-                        }
-                        .padding(.horizontal, 18)
-                        .padding(.vertical, 18)
-                        .transition(.opacity)
+                    if showStaticFadeCard {
+                        emptyCardChrome(isMatched: false)
+                            .opacity(staticFadeOpacity)
+                    } else if !isAddMorphActive {
+                        emptyCardChrome(isMatched: true)
                     }
                 }
             }
@@ -1414,6 +1776,7 @@ private struct EmptyNoteCard: View {
             .contentShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
         }
         .buttonStyle(.plain)
+        .disabled(isAddMorphActive || showStaticFadeCard)
         .onChange(of: isExpanded) { _, nowExpanded in
             if nowExpanded {
                 showContent = false
@@ -1426,6 +1789,111 @@ private struct EmptyNoteCard: View {
                 }
             }
         }
+        .onChange(of: isAddMorphActive) { wasActive, isActive in
+            if isActive {
+                showStaticFadeCard = false
+                staticFadeOpacity = 0
+            } else if wasActive {
+                showStaticFadeCard = true
+                staticFadeOpacity = 0
+
+                withAnimation(.easeOut(duration: 0.28)) {
+                    staticFadeOpacity = 1
+                }
+
+                Task {
+                    try? await Task.sleep(nanoseconds: 320_000_000)
+                    var transaction = Transaction()
+                    transaction.disablesAnimations = true
+                    withTransaction(transaction) {
+                        showStaticFadeCard = false
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func emptyCardChrome(isMatched: Bool) -> some View {
+        ZStack {
+            if isMatched {
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .fill(Color.white.opacity(0.96))
+                    .matchedGeometryEffect(id: "new-thought-surface", in: transitionNamespace)
+                    .shadow(color: noteShadowColor.opacity(0.58), radius: 12, x: 0, y: 8)
+            } else {
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .fill(Color.white.opacity(0.96))
+                    .shadow(color: noteShadowColor.opacity(0.58), radius: 12, x: 0, y: 8)
+            }
+
+            if isMatched {
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .stroke(noteBorderColor.opacity(0.35), lineWidth: 1)
+                    .matchedGeometryEffect(id: "new-thought-stroke", in: transitionNamespace)
+            } else {
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .stroke(noteBorderColor.opacity(0.35), lineWidth: 1)
+            }
+
+            if isMatched {
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4, 6]))
+                    .foregroundStyle(noteBorderColor.opacity(0.95))
+                    .matchedGeometryEffect(id: "new-thought-dashed", in: transitionNamespace)
+            } else {
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4, 6]))
+                    .foregroundStyle(noteBorderColor.opacity(0.95))
+            }
+
+            if showContent {
+                VStack(alignment: .leading, spacing: 14) {
+                    HStack {
+                        Image(systemName: "plus")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundStyle(.black.opacity(0.52))
+
+                        Spacer()
+                    }
+
+                    Spacer(minLength: 0)
+
+                    Text("Start a thought...")
+                        .font(AppFont.body(20))
+                        .foregroundStyle(Color(red: 0.17, green: 0.17, blue: 0.17))
+                }
+                .padding(.horizontal, 18)
+                .padding(.vertical, 18)
+            }
+        }
+    }
+}
+
+private struct MorphingAddedNoteTarget: View {
+    let note: APINote
+    let rotation: Double
+    let transitionNamespace: Namespace.ID
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 30, style: .continuous)
+            .fill(Color.white.opacity(0.96))
+            .matchedGeometryEffect(id: "new-thought-surface", in: transitionNamespace)
+            .overlay {
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .stroke(noteBorderColor, lineWidth: 1)
+                    .matchedGeometryEffect(id: "new-thought-stroke", in: transitionNamespace)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4, 6]))
+                    .foregroundStyle(noteBorderColor.opacity(0.95))
+                    .matchedGeometryEffect(id: "new-thought-dashed", in: transitionNamespace)
+                    .opacity(0.001)
+            }
+            .rotationEffect(.degrees(rotation))
+            .shadow(color: noteShadowColor.opacity(0.72), radius: 14, x: 0, y: 8)
+            .allowsHitTesting(false)
     }
 }
 
@@ -1607,6 +2075,30 @@ private struct NoteFramePreferenceKey: PreferenceKey {
     }
 }
 
+private struct DetailAnchorPreferenceKey: PreferenceKey {
+    static var defaultValue: [String: CGFloat] = [:]
+
+    static func reduce(value: inout [String: CGFloat], nextValue: () -> [String: CGFloat]) {
+        value.merge(nextValue(), uniquingKeysWith: { _, new in new })
+    }
+}
+
+private struct DetailBottomBarHeightPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
+private struct DetailBottomBarInputTopPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 14
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
 private extension CGRect {
     var center: CGPoint {
         CGPoint(x: midX, y: midY)
@@ -1614,6 +2106,17 @@ private extension CGRect {
 }
 
 private extension View {
+    func detailDebugAnchor(id: String) -> some View {
+        background(
+            GeometryReader { proxy in
+                Color.clear.preference(
+                    key: DetailAnchorPreferenceKey.self,
+                    value: [id: proxy.frame(in: .named("detail-surface")).minY]
+                )
+            }
+        )
+    }
+
     @ViewBuilder
     func applyNoteSurfaceTransition(id: String, namespace: Namespace.ID, isEnabled: Bool, isSource: Bool = true) -> some View {
         if isEnabled && !debugDisableNoteSurfaceTransition {
