@@ -3,9 +3,11 @@ services:
     name: thinknote-backend
     runtime: node
     rootDir: backend
-    buildCommand: echo "no build step"
+    buildCommand: npm install
     startCommand: node server.js
     envVars:
+      - key: NODE_VERSION
+        value: 20.11.0
       - key: NODE_ENV
         value: production
       - key: AI_PROVIDER
