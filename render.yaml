@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: thinknote-backend
+    runtime: node
+    rootDir: backend
+    buildCommand: echo "no build step"
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: AI_PROVIDER
+        value: auto
+      - key: OPENAI_MODEL
+        value: gpt-4.1-mini
+      - key: OPENAI_BASE_URL
+        value: https://api.openai.com/v1
+      - key: AUTO_ENRICH_ON_CREATE
+        value: "false"
+      - key: AUTO_ENRICH_DELAY_HOURS
+        value: "24"
+      - key: JOB_POLL_INTERVAL_MS
+        value: "500"
+      - key: JOB_MAX_RETRIES
+        value: "3"
+      - key: SEED_DEFAULT_NOTES
+        value: "true"
+      - key: OPENAI_API_KEY
+        sync: false

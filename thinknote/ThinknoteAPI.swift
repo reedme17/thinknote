@@ -716,7 +716,13 @@ struct ThinknoteAPIClient {
     private let encoder: JSONEncoder
     private let baseURL: URL
 
-    init(baseURL: URL = URL(string: "http://127.0.0.1:8787")!) {
+    #if targetEnvironment(simulator)
+    static let defaultBaseURL = URL(string: "http://127.0.0.1:8787")!
+    #else
+    static let defaultBaseURL = URL(string: "https://thinknote-backend.onrender.com")!
+    #endif
+
+    init(baseURL: URL = ThinknoteAPIClient.defaultBaseURL) {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         self.decoder = decoder
