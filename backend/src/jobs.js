@@ -13,7 +13,7 @@ export function createJobProcessor({ config, store, logger, ai }) {
             }
 
             timer = setInterval(() => {
-                void processor.runDueJobs();
+                void processor.runDueJobs(new Date());
             }, config.jobPollIntervalMs);
         },
         stop() {
@@ -22,7 +22,11 @@ export function createJobProcessor({ config, store, logger, ai }) {
                 timer = null;
             }
         },
-        async enqueueEnrichment(noteId, payload = {}, triggerSource = "manual") {
+        async enqueueEnrichment(noteId, payload = {}, triggerSource = "manual", options = {}) {
+            const createdAt = new Date().toISOString();
+            const earliestRunAt = normalizeIsoDate(options.earliestRunAt || payload.earliestRunAt, createdAt);
+            const priority = normalizePriority(options.priority || payload.priority, triggerSource);
+            const maxRuns = normalizePositiveInteger(options.maxRuns ?? payload.maxRuns, 1);
             const job = {
                 id: randomUUID(),
                 noteId,
@@ -30,15 +34,19 @@ export function createJobProcessor({ config, store, logger, ai }) {
                 status: "queued",
                 triggerSource,
                 payload,
+                priority,
+                earliestRunAt,
                 retryCount: 0,
                 maxRetries: config.jobMaxRetries,
+                runCount: 0,
+                maxRuns,
                 lastError: null,
                 output: null,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
+                createdAt,
+                updatedAt: createdAt,
                 startedAt: null,
                 completedAt: null,
-                nextRunAt: new Date().toISOString()
+                nextRunAt: earliestRunAt
             };
 
             await store.transaction((state) => {
@@ -47,21 +55,33 @@ export function createJobProcessor({ config, store, logger, ai }) {
                 if (note) {
                     note.status = "queued";
                     note.updatedAt = new Date().toISOString();
-                    store.createTimelineEvent(note, "job_queued", `Enrichment queued from ${triggerSource}`);
+                    const scheduleSummary =
+                        new Date(earliestRunAt).getTime() > Date.now()
+                            ? `Growth scheduled from ${triggerSource}`
+                            : `Enrichment queued from ${triggerSource}`;
+                    store.createTimelineEvent(note, "job_queued", scheduleSummary, {
+                        priority,
+                        earliestRunAt
+                    });
                 }
             });
 
-            logger.info("job_enqueued", { jobId: job.id, noteId, triggerSource });
+            logger.info("job_enqueued", { jobId: job.id, noteId, triggerSource, priority, earliestRunAt });
             return job;
         },
-        async runDueJobs() {
+        async runDueJobs(now = new Date()) {
             if (running) {
                 return;
             }
 
             const nextJob = store
                 .getState()
-                .jobs.find((job) => ["queued", "retrying"].includes(job.status) && new Date(job.nextRunAt).getTime() <= Date.now());
+                .jobs.find(
+                    (job) =>
+                        ["queued", "retrying"].includes(job.status) &&
+                        job.runCount < job.maxRuns &&
+                        new Date(job.nextRunAt).getTime() <= now.getTime()
+                );
 
             if (!nextJob) {
                 return;
@@ -69,7 +89,7 @@ export function createJobProcessor({ config, store, logger, ai }) {
 
             running = true;
             try {
-                await runJob(nextJob);
+                await runJob(nextJob, now);
             } finally {
                 running = false;
             }
@@ -95,8 +115,8 @@ export function createJobProcessor({ config, store, logger, ai }) {
         }
     };
 
-    async function runJob(job) {
-        const startedAt = new Date().toISOString();
+    async function runJob(job, now = new Date()) {
+        const startedAt = now.toISOString();
 
         await store.transaction((state) => {
             const currentJob = state.jobs.find((entry) => entry.id === job.id);
@@ -140,7 +160,7 @@ export function createJobProcessor({ config, store, logger, ai }) {
 
                 if (currentJob.retryCount <= currentJob.maxRetries) {
                     currentJob.status = "retrying";
-                    currentJob.nextRunAt = new Date(Date.now() + currentJob.retryCount * 1500).toISOString();
+                    currentJob.nextRunAt = new Date(now.getTime() + currentJob.retryCount * 1500).toISOString();
                 } else {
                     currentJob.status = "failed";
                     currentJob.completedAt = new Date().toISOString();
@@ -191,6 +211,10 @@ export function createJobProcessor({ config, store, logger, ai }) {
             includeWeb: job.payload.includeWeb !== false,
             relatedNotes
         });
+        const growthParagraphs = normalizeGrowthParagraphs(enrichment.growthParagraphs);
+        const expansion = growthParagraphs.join("\n\n");
+        const headline = normalizeHeadline(enrichment.headline, note);
+        const timelineSummary = normalizeTimelineSummary(enrichment.timelineSummary);
 
         const completedAt = new Date().toISOString();
         const revision = {
@@ -198,7 +222,7 @@ export function createJobProcessor({ config, store, logger, ai }) {
             createdAt: completedAt,
             type: "ai_enrichment",
             summary: `Enrichment from ${enrichment.provider}`,
-            text: enrichment.expansion,
+            text: expansion,
             sourceJobId: job.id
         };
 
@@ -210,6 +234,7 @@ export function createJobProcessor({ config, store, logger, ai }) {
             }
 
             currentNote.status = "enriched";
+            currentNote.title = headline;
             currentNote.updatedAt = completedAt;
             currentNote.lastEnrichedAt = completedAt;
             currentNote.prompts = enrichment.prompts;
@@ -220,23 +245,31 @@ export function createJobProcessor({ config, store, logger, ai }) {
                 id: randomUUID(),
                 createdAt: completedAt,
                 provider: enrichment.provider,
-                expansion: enrichment.expansion,
+                headline,
+                growthParagraphs,
+                timelineSummary,
+                expansion,
                 relatedIdeas: enrichment.relatedIdeas,
                 prompts: enrichment.prompts,
                 links: relatedLinks,
                 sources: enrichment.sources
             });
             currentNote.revisions.unshift(revision);
-            store.createTimelineEvent(currentNote, "note_enriched", `Note enriched by ${enrichment.provider}`);
+            store.createTimelineEvent(currentNote, "note_enriched", timelineSummary, {
+                provider: enrichment.provider
+            });
             if (relatedLinks.length > 0) {
                 store.createTimelineEvent(currentNote, "related_notes_updated", `${relatedLinks.length} related notes refreshed`);
             }
 
             currentJob.status = "completed";
+            currentJob.runCount += 1;
             currentJob.completedAt = completedAt;
             currentJob.updatedAt = completedAt;
             currentJob.output = {
                 enrichmentId: currentNote.enrichments[0].id,
+                headline: currentNote.title,
+                paragraphCount: growthParagraphs.length,
                 sourceCount: enrichment.sources.length,
                 relatedCount: relatedLinks.length
             };
@@ -262,4 +295,64 @@ export function createJobProcessor({ config, store, logger, ai }) {
     }
 
     return processor;
+}
+
+function normalizeIsoDate(value, fallback) {
+    if (typeof value !== "string") {
+        return fallback;
+    }
+
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? fallback : parsed.toISOString();
+}
+
+function normalizePriority(value, triggerSource) {
+    if (typeof value === "string" && value.trim()) {
+        return value.trim();
+    }
+
+    return triggerSource === "manual" ? "user_initiated" : "background";
+}
+
+function normalizePositiveInteger(value, fallback) {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed < 1) {
+        return fallback;
+    }
+
+    return Math.floor(parsed);
+}
+
+function normalizeGrowthParagraphs(value) {
+    if (!Array.isArray(value)) {
+        return ["A new growth pass completed, but no structured paragraphs were returned."];
+    }
+
+    const paragraphs = value
+        .filter((item) => typeof item === "string")
+        .map((item) => item.trim())
+        .filter(Boolean);
+
+    return paragraphs.length > 0 ? paragraphs.slice(0, 3) : ["A new growth pass completed, but no structured paragraphs were returned."];
+}
+
+function normalizeHeadline(value, note) {
+    const fallback = String(note.title || note.rawText || note.text || "").trim();
+    const raw = typeof value === "string" && value.trim() ? value.trim() : fallback;
+    const compact = raw.replace(/\s+/g, " ").replace(/\.{3,}/g, "").trim();
+    if (compact.length <= 90) {
+        return compact;
+    }
+
+    const sliced = compact.slice(0, 90);
+    const boundary = sliced.lastIndexOf(" ");
+    return (boundary > 50 ? sliced.slice(0, boundary) : sliced).trim();
+}
+
+function normalizeTimelineSummary(value) {
+    if (typeof value !== "string" || !value.trim()) {
+        return "New growth added";
+    }
+
+    return value.trim().replace(/\s+/g, " ").slice(0, 80);
 }

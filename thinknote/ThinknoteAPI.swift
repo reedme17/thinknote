@@ -174,13 +174,15 @@ struct APITimelineEvent: Identifiable, Codable, Hashable, Sendable {
     let type: String
     let createdAt: Date
     let summary: String
+    let provider: String?
     let isNewSinceLastView: Bool
 
-    init(id: String, type: String, createdAt: Date, summary: String, isNewSinceLastView: Bool = false) {
+    init(id: String, type: String, createdAt: Date, summary: String, provider: String? = nil, isNewSinceLastView: Bool = false) {
         self.id = id
         self.type = type
         self.createdAt = createdAt
         self.summary = summary
+        self.provider = provider
         self.isNewSinceLastView = isNewSinceLastView
     }
 
@@ -189,6 +191,7 @@ struct APITimelineEvent: Identifiable, Codable, Hashable, Sendable {
         case type
         case createdAt
         case summary
+        case provider
         case isNewSinceLastView
     }
 
@@ -198,6 +201,7 @@ struct APITimelineEvent: Identifiable, Codable, Hashable, Sendable {
         type = try container.decode(String.self, forKey: .type)
         createdAt = try container.decode(Date.self, forKey: .createdAt)
         summary = try container.decode(String.self, forKey: .summary)
+        provider = try container.decodeIfPresent(String.self, forKey: .provider)
         isNewSinceLastView = try container.decodeIfPresent(Bool.self, forKey: .isNewSinceLastView) ?? false
     }
 
@@ -207,6 +211,7 @@ struct APITimelineEvent: Identifiable, Codable, Hashable, Sendable {
         try container.encode(type, forKey: .type)
         try container.encode(createdAt, forKey: .createdAt)
         try container.encode(summary, forKey: .summary)
+        try container.encodeIfPresent(provider, forKey: .provider)
         try container.encode(isNewSinceLastView, forKey: .isNewSinceLastView)
     }
 }
@@ -732,9 +737,9 @@ struct ThinknoteAPIClient {
         return response.note
     }
 
-    func createNote(title: String, text: String) async throws -> APINote {
-        let body = CreateNoteRequest(title: title, text: text)
-        let response: NoteResponse = try await request(path: "api/notes", method: "POST", body: body)
+    func upsertRemoteNote(id: String, title: String, text: String, scheduleGrowth: Bool = false) async throws -> APINote {
+        let body = CreateNoteRequest(id: id, title: title, text: text, scheduleGrowth: scheduleGrowth)
+        let response: CreateNoteResponse = try await request(path: "api/notes", method: "POST", body: body)
         return response.note
     }
 
@@ -744,16 +749,30 @@ struct ThinknoteAPIClient {
         return response.note
     }
 
-    func enrich(noteID: String) async throws -> APINote {
-        let body = EnrichNoteRequest(focus: "product thinking", includeWeb: true)
+    func enrich(
+        noteID: String,
+        triggerSource: String = "manual",
+        wait: Bool = true,
+        priority: String? = nil,
+        earliestRunAt: Date? = nil
+    ) async throws -> APINote {
+        let body = EnrichNoteRequest(
+            focus: "product thinking",
+            includeWeb: true,
+            wait: wait,
+            triggerSource: triggerSource,
+            priority: priority,
+            earliestRunAt: earliestRunAt
+        )
         let response: EnrichResponse = try await request(path: "api/notes/\(noteID)/enrich", method: "POST", body: body)
         return response.note
     }
 
-    func chat(noteID: String, message: String) async throws -> APIChat {
+    func chat(noteID: String, message: String) async throws -> RemoteChatResult {
         let body = ChatRequest(noteID: noteID, message: message)
         let response: ChatResponse = try await request(path: "api/chat", method: "POST", body: body)
-        return response.chat
+        let assistantMessage = response.messages.last { $0.role == "assistant" }
+        return RemoteChatResult(chat: response.chat, note: response.note, thread: response.thread, assistantMessage: assistantMessage)
     }
 
     private func request<Response: Decodable, Body: Encodable>(path: String, method: String, body: Body?) async throws -> Response {
@@ -788,17 +807,33 @@ private struct NoteResponse: Decodable {
     let note: APINote
 }
 
+private struct CreateNoteResponse: Decodable {
+    let note: APINote
+}
+
 private struct EnrichResponse: Decodable {
     let note: APINote
 }
 
 private struct ChatResponse: Decodable {
     let chat: APIChat
+    let note: APINote?
+    let thread: APIConversationThread?
+    let messages: [APIConversationMessage]
 }
 
 private struct CreateNoteRequest: Encodable {
+    let id: String?
     let title: String
     let text: String
+    let scheduleGrowth: Bool?
+
+    init(id: String? = nil, title: String, text: String, scheduleGrowth: Bool? = nil) {
+        self.id = id
+        self.title = title
+        self.text = text
+        self.scheduleGrowth = scheduleGrowth
+    }
 }
 
 private struct UpdateNoteRequest: Encodable {
@@ -809,6 +844,10 @@ private struct UpdateNoteRequest: Encodable {
 private struct EnrichNoteRequest: Encodable {
     let focus: String
     let includeWeb: Bool
+    let wait: Bool
+    let triggerSource: String
+    let priority: String?
+    let earliestRunAt: Date?
 }
 
 private struct ChatRequest: Encodable {
@@ -838,4 +877,11 @@ enum APIError: LocalizedError {
             return message
         }
     }
+}
+
+struct RemoteChatResult: Sendable {
+    let chat: APIChat
+    let note: APINote?
+    let thread: APIConversationThread?
+    let assistantMessage: APIConversationMessage?
 }

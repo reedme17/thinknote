@@ -70,7 +70,7 @@ async function loadState(storePath, config, logger) {
 function migrate(input, config, logger) {
     const source = input && typeof input === "object" ? input : {};
     const state = {
-        version: 2,
+        version: 3,
         notes: Array.isArray(source.notes) ? source.notes.map(migrateNote) : [],
         jobs: Array.isArray(source.jobs) ? source.jobs.map(migrateJob) : [],
         threads: Array.isArray(source.threads) ? source.threads.map(migrateThread) : [],
@@ -135,7 +135,7 @@ function migrateNote(note) {
         updatedAt,
         lastEnrichedAt: note.lastEnrichedAt || null,
         latestChatReply: typeof note.latestChatReply === "string" ? note.latestChatReply : null,
-        enrichments: Array.isArray(note.enrichments) ? note.enrichments : [],
+        enrichments: Array.isArray(note.enrichments) ? note.enrichments.map(migrateEnrichment) : [],
         prompts: Array.isArray(note.prompts) ? note.prompts : [],
         sources: Array.isArray(note.sources) ? note.sources.map(migrateSource) : [],
         links: Array.isArray(note.links) ? note.links.map(migrateLink) : [],
@@ -164,8 +164,12 @@ function migrateJob(job) {
         status: job.status || "queued",
         triggerSource: job.triggerSource || "unknown",
         payload: job.payload && typeof job.payload === "object" ? job.payload : {},
+        priority: typeof job.priority === "string" ? job.priority : "background",
+        earliestRunAt: job.earliestRunAt || createdAt,
         retryCount: Number(job.retryCount || 0),
         maxRetries: Number(job.maxRetries || 3),
+        runCount: Number(job.runCount || 0),
+        maxRuns: Number(job.maxRuns || 1),
         lastError: typeof job.lastError === "string" ? job.lastError : null,
         output: job.output && typeof job.output === "object" ? job.output : null,
         createdAt,
@@ -210,6 +214,30 @@ function migrateSource(source) {
         query: typeof source.query === "string" ? source.query : "",
         score: Number(source.score || 0),
         retrievedAt: source.retrievedAt || new Date().toISOString()
+    };
+}
+
+function migrateEnrichment(enrichment) {
+    const createdAt = enrichment.createdAt || new Date().toISOString();
+    const growthParagraphs = Array.isArray(enrichment.growthParagraphs)
+        ? enrichment.growthParagraphs.filter((item) => typeof item === "string")
+        : typeof enrichment.expansion === "string"
+          ? enrichment.expansion.split(/\n{2,}/).map((item) => item.trim()).filter(Boolean)
+          : [];
+    const expansion = typeof enrichment.expansion === "string" ? enrichment.expansion : growthParagraphs.join("\n\n");
+
+    return {
+        id: enrichment.id || randomUUID(),
+        createdAt,
+        provider: typeof enrichment.provider === "string" ? enrichment.provider : "mock",
+        headline: typeof enrichment.headline === "string" ? enrichment.headline : "",
+        growthParagraphs,
+        timelineSummary: typeof enrichment.timelineSummary === "string" ? enrichment.timelineSummary : "New growth added",
+        expansion,
+        relatedIdeas: Array.isArray(enrichment.relatedIdeas) ? enrichment.relatedIdeas.filter((item) => typeof item === "string") : [],
+        prompts: Array.isArray(enrichment.prompts) ? enrichment.prompts.filter((item) => typeof item === "string") : [],
+        links: Array.isArray(enrichment.links) ? enrichment.links.map(migrateLink) : [],
+        sources: Array.isArray(enrichment.sources) ? enrichment.sources.map(migrateSource) : []
     };
 }
 
@@ -273,10 +301,7 @@ function buildDefaultNotes() {
             status: "queued",
             updatedAt: seedTimestamp(13, 18),
             grownCount: 2,
-            growthParagraphs: [
-                "The UI of a tool is its epistemology: the categories it makes easy become the categories you think in.",
-                "A feed, for example, may teach recency and reaction before reflection. Over time the interface becomes a quiet tutor for attention itself."
-            ]
+            growthParagraphs: []
         }),
         buildDefaultNote({
             id: "seed-taste-pattern-recognition",
@@ -324,6 +349,9 @@ function buildDefaultNote({ id, title, text, status, updatedAt, grownCount, grow
                       id: `${id}-enrichment`,
                       createdAt: updatedAt,
                       provider: "prototype",
+                      headline: title,
+                      growthParagraphs,
+                      timelineSummary,
                       expansion: growthParagraphs.join("\n\n"),
                       relatedIdeas: [],
                       prompts,

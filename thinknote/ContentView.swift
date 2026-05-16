@@ -62,8 +62,8 @@ struct ContentView: View {
 
     var body: some View {
         ZStack {
-            Color(red: 0.95, green: 0.95, blue: 0.95)
-                .ignoresSafeArea()
+//            Color(red: 0.975, green: 0.975, blue: 0.97)
+//                .ignoresSafeArea()
 
             HomeScreen(
                 viewModel: viewModel,
@@ -677,9 +677,9 @@ private struct HomeBackgroundView: View {
 
             LinearGradient(
                 colors: [
-                    Color(red: 0.98, green: 0.98, blue: 0.96).opacity(0.2),
-                    Color(red: 0.96, green: 0.97, blue: 0.94).opacity(0.56),
-                    Color(red: 0.95, green: 0.95, blue: 0.93).opacity(0.7)
+                    Color(red: 0.98, green: 0.98, blue: 0.96).opacity(0.06),
+                    Color(red: 0.96, green: 0.97, blue: 0.94).opacity(0.24),
+                    Color(red: 0.95, green: 0.95, blue: 0.93).opacity(0.34)
                 ],
                 startPoint: .top,
                 endPoint: .bottom
@@ -844,14 +844,15 @@ private struct NoteFullPageScreen: View {
                     closeDetail()
                 } label: {
                     Text("home")
-                        .font(AppFont.heading(15, weight: .semibold))
-                        .foregroundStyle(.black)
+                        .font(AppFont.meta(11))
+                        .tracking(1.2)
+                        .foregroundStyle(noteAccentColor)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 10)
                         .background(Color.white.opacity(0.82), in: Capsule())
                         .overlay {
                             Capsule()
-                                .stroke(Color.black.opacity(0.08), lineWidth: 1)
+                                .stroke(noteAccentColor.opacity(0.16), lineWidth: 1)
                         }
                 }
                 .padding(.top, 8)
@@ -898,6 +899,14 @@ private struct NoteFullPageScreen: View {
                 detailTopContentOffsetY = 0
                 detailAnchorPositions = [:]
                 detailAnchorBaselines = [:]
+                startOpenSequence()
+            }
+            .onChange(of: note.id) { _, _ in
+                detailContentOffsetY = 0
+                detailTopContentOffsetY = 0
+                detailAnchorPositions = [:]
+                detailAnchorBaselines = [:]
+                dragOffset = 0
                 startOpenSequence()
             }
         }
@@ -974,7 +983,7 @@ private struct NoteFullPageScreen: View {
                                     .padding(.top, 28)
                             }
 
-                            if viewModel.showTimeline {
+                            if !note.timeline.isEmpty {
                                 timelineSection
                                     .padding(.top, 28)
                             }
@@ -1044,6 +1053,14 @@ private struct NoteFullPageScreen: View {
                     .foregroundStyle(noteAccentColor)
             }
 
+            if let providerLabel = visibleProviderLabel {
+                Text(providerLabel)
+                    .font(AppFont.meta(11))
+                    .tracking(1.6)
+                    .textCase(.uppercase)
+                    .foregroundStyle(noteAccentColor.opacity(0.82))
+            }
+
         }
         .opacity(showPrimaryContent ? 1 : 0)
     }
@@ -1071,21 +1088,25 @@ private struct NoteFullPageScreen: View {
         HStack {
             Spacer()
 
-            Button {
-                Task { await viewModel.requestResponse(for: note.id) }
-            } label: {
-                Text("Continue this thought")
-                    .font(AppFont.heading(15, weight: .semibold))
-                    .foregroundStyle(.black)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                    .background(Color.white.opacity(0.82), in: Capsule())
-                    .overlay {
-                        Capsule()
-                            .stroke(Color.black.opacity(0.08), lineWidth: 1)
-                    }
+            if viewModel.isEnriching {
+                ExploringLoadingLabel()
+            } else {
+                Button {
+                    Task { await viewModel.requestResponse(for: note.id) }
+                } label: {
+                    Text("continue this thought")
+                        .font(AppFont.meta(11))
+                        .tracking(1.2)
+                        .foregroundStyle(noteAccentColor)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .background(Color.white.opacity(0.82), in: Capsule())
+                        .overlay {
+                            Capsule()
+                                .stroke(noteAccentColor.opacity(0.16), lineWidth: 1)
+                        }
+                }
             }
-            .disabled(viewModel.isEnriching)
 
             Spacer()
         }
@@ -1176,6 +1197,14 @@ private struct NoteFullPageScreen: View {
                         .font(AppFont.body(16))
                         .foregroundStyle(.black.opacity(0.84))
 
+                    if let provider = timelineProviderLabel(for: event) {
+                        Text(provider)
+                            .font(AppFont.meta(10))
+                            .tracking(1.0)
+                            .textCase(.uppercase)
+                            .foregroundStyle(noteAccentColor.opacity(0.72))
+                    }
+
                     Text(event.createdAt.formatted(date: .abbreviated, time: .shortened))
                         .font(AppFont.meta(12))
                         .foregroundStyle(.black.opacity(0.5))
@@ -1185,6 +1214,27 @@ private struct NoteFullPageScreen: View {
         }
         .opacity(showFootnoteContent ? 1 : 0)
         .offset(y: showFootnoteContent ? 0 : 12)
+    }
+
+    private func timelineProviderLabel(for event: APITimelineEvent) -> String? {
+        let explicitProvider = event.provider?.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines) ?? ""
+        if !explicitProvider.isEmpty {
+            return explicitProvider
+        }
+
+        switch event.type {
+        case TimelineEventKind.noteEnriched.rawValue:
+            let provider = note.enrichments.first?.provider.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines) ?? ""
+            return provider.isEmpty ? nil : provider
+        case TimelineEventKind.chatUpdated.rawValue:
+            let provider = viewModel.currentThread?.messages
+                .last(where: { $0.role == MessageRole.assistant.rawValue })?
+                .provider
+                .trimmingCharacters(in: CharacterSet.whitespacesAndNewlines) ?? ""
+            return provider.isEmpty ? nil : provider
+        default:
+            return nil
+        }
     }
 
     private func latestReplySection(_ reply: String) -> some View {
@@ -1216,21 +1266,27 @@ private struct NoteFullPageScreen: View {
     private func bottomBar(bottomInset: CGFloat) -> some View {
         VStack(spacing: 12) {
             if shouldShowRequestResponseOnlyCTA {
-                Button {
-                    Task { await viewModel.requestResponse(for: note.id) }
-                } label: {
-                    Text("Request response")
-                        .font(AppFont.body(18))
-                        .foregroundStyle(.black)
-                        .padding(.horizontal, 18)
-                        .padding(.vertical, 12)
-                        .background(Color.white.opacity(0.92), in: Capsule())
-                        .overlay {
-                            Capsule()
-                                .stroke(noteBorderColor, lineWidth: 1)
+                Group {
+                    if viewModel.isEnriching {
+                        ExploringLoadingLabel()
+                    } else {
+                        Button {
+                            Task { await viewModel.requestResponse(for: note.id) }
+                        } label: {
+                            Text("request response")
+                                .font(AppFont.meta(11))
+                                .tracking(1.2)
+                                .foregroundStyle(noteAccentColor)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 10)
+                                .background(Color.white.opacity(0.92), in: Capsule())
+                                .overlay {
+                                    Capsule()
+                                        .stroke(noteAccentColor.opacity(0.16), lineWidth: 1)
+                                }
                         }
+                    }
                 }
-                .disabled(viewModel.isEnriching)
                 .frame(maxWidth: .infinity)
                 .background {
                     GeometryReader { proxy in
@@ -1242,49 +1298,55 @@ private struct NoteFullPageScreen: View {
                     }
                 }
             } else {
-                TextField("Ask about this", text: $viewModel.followUpDraft, axis: .vertical)
-                    .textFieldStyle(.plain)
-                    .font(AppFont.body(17))
-                    .foregroundStyle(.black)
-                    .lineLimit(1...4)
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 16)
-                    .background(
-                        RoundedRectangle(cornerRadius: 26, style: .continuous)
-                            .fill(Color(red: 0.985, green: 0.985, blue: 0.98))
-                    )
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 26, style: .continuous)
-                            .stroke(noteBorderColor.opacity(0.92), lineWidth: 1)
-                    }
-                    .shadow(color: .black.opacity(0.035), radius: 10, x: 0, y: 6)
-                    .background {
-                        GeometryReader { proxy in
-                            Color.clear
-                                .preference(
-                                    key: DetailBottomBarInputTopPreferenceKey.self,
-                                    value: proxy.frame(in: .named("detail-bottom-bar")).minY
-                                )
+                HStack(alignment: .center, spacing: 12) {
+                    ZStack(alignment: .leading) {
+                        if viewModel.followUpDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            Text("Ask about this")
+                                .font(AppFont.meta(11))
+                                .tracking(1.2)
+                                .foregroundStyle(.black.opacity(0.34))
                         }
+
+                        TextField("", text: $viewModel.followUpDraft, axis: .vertical)
+                            .textFieldStyle(.plain)
+                            .font(AppFont.meta(11))
+                            .tracking(1.2)
+                            .foregroundStyle(.black)
+                            .lineLimit(1...4)
                     }
 
-                if !viewModel.followUpDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    HStack {
-                        Spacer()
-
-                        Button("Send follow-up") {
+                    if !viewModel.followUpDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        Button("send") {
                             Task { await viewModel.sendFollowUp() }
                         }
-                        .font(AppFont.body(18))
-                        .foregroundStyle(.black)
-                        .padding(.horizontal, 18)
-                        .padding(.vertical, 12)
-                        .background(Color.white.opacity(0.92), in: Capsule())
-                        .overlay {
-                            Capsule()
-                                .stroke(noteBorderColor, lineWidth: 1)
-                        }
-                        .disabled(viewModel.isEnriching || viewModel.isSendingFollowUp)
+                        .font(AppFont.meta(11))
+                        .tracking(1.2)
+                        .foregroundStyle(noteAccentColor)
+                        .buttonStyle(.plain)
+                        .disabled(
+                            viewModel.isEnriching ||
+                            viewModel.isSendingFollowUp
+                        )
+                    }
+                }
+                .padding(.horizontal, 18)
+                .padding(.vertical, 16)
+                .background(
+                    RoundedRectangle(cornerRadius: 26, style: .continuous)
+                        .fill(Color(red: 0.985, green: 0.985, blue: 0.98))
+                )
+                .overlay {
+                    RoundedRectangle(cornerRadius: 26, style: .continuous)
+                        .stroke(noteBorderColor.opacity(0.92), lineWidth: 1)
+                }
+                .shadow(color: .black.opacity(0.035), radius: 10, x: 0, y: 6)
+                .background {
+                    GeometryReader { proxy in
+                        Color.clear
+                            .preference(
+                                key: DetailBottomBarInputTopPreferenceKey.self,
+                                value: proxy.frame(in: .named("detail-bottom-bar")).minY
+                            )
                     }
                 }
             }
@@ -1361,6 +1423,20 @@ private struct NoteFullPageScreen: View {
             return "noted"
         }
         return nil
+    }
+
+    private var visibleProviderLabel: String? {
+        if let provider = viewModel.currentThread?.messages
+            .last(where: { $0.role == MessageRole.assistant.rawValue })?
+            .provider
+            .trimmingCharacters(in: CharacterSet.whitespacesAndNewlines),
+           !provider.isEmpty {
+            return provider
+        }
+
+        let provider = note.enrichments.first?.provider
+            .trimmingCharacters(in: CharacterSet.whitespacesAndNewlines) ?? ""
+        return provider.isEmpty ? nil : provider
     }
 
     private var noteTimestamp: String {
@@ -1472,6 +1548,25 @@ private struct NoteFullPageScreen: View {
     }
 }
 
+private struct ExploringLoadingLabel: View {
+    @State private var dotCount = 1
+
+    var body: some View {
+        Text("exploring" + String(repeating: ".", count: dotCount))
+            .font(AppFont.meta(11))
+            .tracking(1.2)
+            .foregroundStyle(noteAccentColor)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .task {
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .seconds(1))
+                    dotCount = dotCount % 3 + 1
+                }
+            }
+    }
+}
+
 private struct AssistantSheet: View {
     @ObservedObject var viewModel: ContentViewModel
 
@@ -1532,7 +1627,9 @@ private struct NoteCard: View {
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 24.0)) { timeline in
             let jiggle = jiggleState(at: timeline.date)
-            let pulse = growingDotPulse(at: timeline.date)
+            let edgePhase = livingEdgePhase(at: timeline.date)
+            let edgeAmplitude = livingEdgeAmplitude
+            let cometProgress = runningStrokeProgress(at: timeline.date)
 
             VStack(alignment: .leading, spacing: 14) {
                 summaryText
@@ -1562,20 +1659,14 @@ private struct NoteCard: View {
             .background {
                 ZStack {
                     if !isExpanded {
-                        RoundedRectangle(cornerRadius: 30, style: .continuous)
-                            .fill(Color.white.opacity(0.96))
+                        LivingCellCardShape(phase: edgePhase, amplitude: edgeAmplitude)
+                            .fill(Color.white.opacity(0.93))
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                             .matchedGeometryEffect(id: "note-surface-\(note.id)", in: transitionNamespace)
-                            .shadow(
-                                color: noteShadowColor.opacity(isReordering ? 1 : 0.72),
-                                radius: isReordering ? 18 : 14,
-                                x: 0,
-                                y: isReordering ? 12 : 8
-                            )
 
-                        RoundedRectangle(cornerRadius: 30, style: .continuous)
+                        LivingCellCardShape(phase: edgePhase, amplitude: edgeAmplitude)
                             .stroke(
-                                isReordering || hasAIResponse ? noteAccentColor.opacity(isReordering ? 0.55 : 0.34) : noteBorderColor,
+                                .clear,
                                 lineWidth: isReordering ? 1.3 : 1
                             )
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -1588,18 +1679,41 @@ private struct NoteCard: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .overlay {
-                RoundedRectangle(cornerRadius: 30, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                hasAIResponse ? noteAccentColor.opacity(0.08) : .clear,
-                                .clear,
-                                .clear
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
+                if !isExpanded {
+                    ZStack {
+                        LivingCellCardShape(phase: edgePhase, amplitude: edgeAmplitude)
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        hasAIResponse ? noteAccentColor.opacity(0.055) : .clear,
+                                        hasAIResponse ? noteAccentColor.opacity(0.016) : .clear,
+                                        .clear
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+
+                        BilayerCardOutline(
+                            phase: edgePhase,
+                            amplitude: edgeAmplitude,
+                            innerColor: noteAccentColor,
+                            innerOpacity: hasAIResponse ? 0.17 : 0.09
                         )
-                    )
+
+                        if isActivelyGrowing {
+                            RunningStrokeIndicator(
+                                phase: edgePhase,
+                                amplitude: edgeAmplitude,
+                                progress: cometProgress,
+                                color: noteAccentColor
+                            )
+                        }
+                    }
+                    .padding(1.5)
+                    .opacity(showCardContent ? 1 : 0)
+                    .animation(.easeOut(duration: 0.22), value: showCardContent)
+                }
             }
             .overlay(alignment: .bottomTrailing) {
                 if let statusDot = statusDot {
@@ -1609,16 +1723,29 @@ private struct NoteCard: View {
                             width: statusDotDiameter(for: statusDot),
                             height: statusDotDiameter(for: statusDot)
                         )
-                        .opacity(statusDot == .growing ? pulse.opacity : 1)
-                        .scaleEffect(statusDot == .growing ? pulse.scale : 1)
                         .padding(.trailing, 18)
                         .padding(.bottom, 18)
+                        .opacity(showCardContent ? 1 : 0)
+                        .animation(.easeOut(duration: 0.22), value: showCardContent)
                 }
             }
-            .contentShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
+            .contentShape(LivingCellCardShape(phase: edgePhase, amplitude: edgeAmplitude))
             .rotationEffect(.degrees(rotation + jiggle.rotation))
             .offset(x: jiggle.offset.width, y: jiggle.offset.height)
             .scaleEffect(isReordering ? 1.02 : 1.0)
+            .compositingGroup()
+            .shadow(
+                color: Color.black.opacity(isReordering ? 0.167 : 0.153),
+                radius: isReordering ? 10 : 8.33,
+                x: 0,
+                y: isReordering ? 6 : 5
+            )
+            .shadow(
+                color: noteAccentColor.opacity(hasAIResponse ? 0.07 : 0.047),
+                radius: isReordering ? 6 : 5,
+                x: 0,
+                y: isReordering ? 3 : 2.33
+            )
             .opacity(isExpanded ? 0.001 : 1)
             .animation(.easeInOut(duration: 0.18), value: isReordering)
             .onChange(of: isExpanded) { wasExpanded, nowExpanded in
@@ -1658,14 +1785,8 @@ private struct NoteCard: View {
     }
 
     private var statusDot: StatusDot? {
-        if isActivelyGrowing {
-            return .growing
-        }
         if hasUnreadAIResponse {
             return .unread
-        }
-        if note.status == "enriched" && !note.hasChangesSinceLastVisit {
-            return .grown
         }
         return nil
     }
@@ -1721,11 +1842,25 @@ private struct NoteCard: View {
         return (rotation, CGSize(width: offsetX, height: offsetY))
     }
 
-    private func growingDotPulse(at date: Date) -> (opacity: Double, scale: CGFloat) {
-        let progress = (sin((date.timeIntervalSinceReferenceDate / 3.0) * 2 * .pi) + 1) / 2
-        let opacity = 0.28 + (0.62 * progress)
-        let scale = 0.86 + (0.22 * progress)
-        return (opacity, scale)
+    private func runningStrokeProgress(at date: Date) -> CGFloat {
+        let cycleDuration = 21.6
+        let progress = (date.timeIntervalSinceReferenceDate / cycleDuration).truncatingRemainder(dividingBy: 1)
+        return CGFloat(progress >= 0 ? progress : progress + 1)
+    }
+
+    private func livingEdgePhase(at date: Date) -> Double {
+        let speed = isActivelyGrowing ? 0.7 : 0.28
+        return date.timeIntervalSinceReferenceDate * speed + phaseSeed * .pi * 2
+    }
+
+    private var livingEdgeAmplitude: CGFloat {
+        if isActivelyGrowing {
+            return 1.15
+        }
+        if hasAIResponse {
+            return 0.82
+        }
+        return 0.52
     }
 
     private var hasUnreadAIResponse: Bool {
@@ -1739,15 +1874,188 @@ private struct NoteCard: View {
         switch statusDot {
         case .grown, .unread:
             return 8
-        case .growing:
-            return 16.0 / 3.0
         }
     }
 
     private enum StatusDot {
         case grown
-        case growing
         case unread
+    }
+}
+
+private struct LivingCellCardShape: InsettableShape {
+    let phase: Double
+    let amplitude: CGFloat
+    var cornerRadius: CGFloat = 30
+    var insetAmount: CGFloat = 0
+
+    func path(in rect: CGRect) -> Path {
+        let insetRect = rect.insetBy(dx: insetAmount, dy: insetAmount)
+        let w = insetRect.width
+        let h = insetRect.height
+        let r = min(max(cornerRadius - insetAmount, 14), min(w, h) * 0.28)
+        let maxCorner = min(w, h) * 0.42
+
+        func wave(_ speed: Double, _ offset: Double = 0) -> CGFloat {
+            CGFloat(sin(phase * speed + offset)) * amplitude
+        }
+
+        func clampedCorner(_ value: CGFloat) -> CGFloat {
+            min(max(14, value), maxCorner)
+        }
+
+        let dTL = clampedCorner(r + wave(1.1))
+        let dTR = clampedCorner(r + wave(0.9, 1.3))
+        let dBR = clampedCorner(r + wave(1.15, 2.5))
+        let dBL = clampedCorner(r + wave(1.05, 3.7))
+
+        let mT = wave(0.8, 0.4) * 0.55
+        let mR = wave(0.95, 1.9) * 0.55
+        let mB = wave(0.85, 3.1) * 0.55
+        let mL = wave(1.0, 4.6) * 0.55
+
+        var path = Path()
+        path.move(to: CGPoint(x: insetRect.minX + dTL, y: insetRect.minY - mT * 0.3))
+        path.addLine(to: CGPoint(x: insetRect.midX, y: insetRect.minY - mT))
+        path.addLine(to: CGPoint(x: insetRect.maxX - dTR, y: insetRect.minY - mT * 0.3))
+        path.addQuadCurve(
+            to: CGPoint(x: insetRect.maxX + mR * 0.3, y: insetRect.minY + dTR),
+            control: CGPoint(x: insetRect.maxX + mR * 0.3, y: insetRect.minY)
+        )
+        path.addLine(to: CGPoint(x: insetRect.maxX + mR, y: insetRect.midY))
+        path.addLine(to: CGPoint(x: insetRect.maxX + mR * 0.3, y: insetRect.maxY - dBR))
+        path.addQuadCurve(
+            to: CGPoint(x: insetRect.maxX - dBR, y: insetRect.maxY + mB * 0.3),
+            control: CGPoint(x: insetRect.maxX + mR * 0.3, y: insetRect.maxY + mB * 0.3)
+        )
+        path.addLine(to: CGPoint(x: insetRect.midX, y: insetRect.maxY + mB))
+        path.addLine(to: CGPoint(x: insetRect.minX + dBL, y: insetRect.maxY + mB * 0.3))
+        path.addQuadCurve(
+            to: CGPoint(x: insetRect.minX - mL * 0.3, y: insetRect.maxY - dBL),
+            control: CGPoint(x: insetRect.minX - mL * 0.3, y: insetRect.maxY + mB * 0.3)
+        )
+        path.addLine(to: CGPoint(x: insetRect.minX - mL, y: insetRect.midY))
+        path.addLine(to: CGPoint(x: insetRect.minX - mL * 0.3, y: insetRect.minY + dTL))
+        path.addQuadCurve(
+            to: CGPoint(x: insetRect.minX + dTL, y: insetRect.minY - mT * 0.3),
+            control: CGPoint(x: insetRect.minX - mL * 0.3, y: insetRect.minY - mT * 0.3)
+        )
+        path.closeSubpath()
+        return path
+    }
+
+    func inset(by amount: CGFloat) -> some InsettableShape {
+        var copy = self
+        copy.insetAmount += amount
+        return copy
+    }
+}
+
+private struct BilayerCardOutline: View {
+    let phase: Double
+    let amplitude: CGFloat
+    let innerColor: Color
+    let innerOpacity: Double
+    var inset: CGFloat = 3.5
+
+    var body: some View {
+        LivingCellCardShape(phase: phase, amplitude: amplitude)
+            .inset(by: inset)
+            .stroke(innerColor.opacity(innerOpacity), lineWidth: 0.7)
+    }
+}
+
+private struct RunningStrokeIndicator: View {
+    let phase: Double
+    let amplitude: CGFloat
+    let progress: CGFloat
+    let color: Color
+    var inset: CGFloat = 3.5
+
+    var body: some View {
+        ZStack {
+            ClosedLivingStrokeSegment(
+                phase: phase,
+                amplitude: amplitude,
+                inset: inset,
+                start: progress - 0.10,
+                end: progress,
+                color: color.opacity(0.035),
+                lineWidth: 0.72,
+                blurRadius: 0.55
+            )
+
+            ClosedLivingStrokeSegment(
+                phase: phase,
+                amplitude: amplitude,
+                inset: inset,
+                start: progress - 0.045,
+                end: progress,
+                color: color.opacity(0.075),
+                lineWidth: 0.88
+            )
+
+            ClosedLivingStrokeSegment(
+                phase: phase,
+                amplitude: amplitude,
+                inset: inset,
+                start: progress - 0.018,
+                end: progress,
+                color: color.opacity(0.14),
+                lineWidth: 1.02
+            )
+
+            ClosedLivingStrokeSegment(
+                phase: phase,
+                amplitude: amplitude,
+                inset: inset,
+                start: progress - 0.0022,
+                end: progress,
+                color: color.opacity(0.26),
+                lineWidth: 1.55
+            )
+        }
+    }
+}
+
+private struct ClosedLivingStrokeSegment: View {
+    let phase: Double
+    let amplitude: CGFloat
+    let inset: CGFloat
+    let start: CGFloat
+    let end: CGFloat
+    let color: Color
+    let lineWidth: CGFloat
+    var blurRadius: CGFloat = 0
+
+    var body: some View {
+        let normalizedStart = normalized(start)
+        let normalizedEnd = normalized(end)
+
+        return Group {
+            if normalizedStart <= normalizedEnd {
+                segment(from: normalizedStart, to: normalizedEnd)
+            } else {
+                segment(from: normalizedStart, to: 1)
+                segment(from: 0, to: normalizedEnd)
+            }
+        }
+    }
+
+    private func segment(from: CGFloat, to: CGFloat) -> some View {
+        LivingCellCardShape(phase: phase, amplitude: amplitude)
+            .inset(by: inset)
+            .trim(from: from, to: to)
+            .stroke(
+                color,
+                style: StrokeStyle(lineWidth: lineWidth, lineCap: .round, lineJoin: .round)
+            )
+            .blur(radius: blurRadius)
+    }
+
+    private func normalized(_ value: CGFloat) -> CGFloat {
+        let wrapped = value.truncatingRemainder(dividingBy: 1)
+        return wrapped >= 0 ? wrapped : wrapped + 1
     }
 }
 
@@ -1818,23 +2126,28 @@ private struct EmptyNoteCard: View {
         ZStack {
             if isMatched {
                 RoundedRectangle(cornerRadius: 30, style: .continuous)
-                    .fill(Color.white.opacity(0.96))
+                    .fill(Color.white.opacity(0.93))
                     .matchedGeometryEffect(id: "new-thought-surface", in: transitionNamespace)
-                    .shadow(color: noteShadowColor.opacity(0.58), radius: 12, x: 0, y: 8)
             } else {
                 RoundedRectangle(cornerRadius: 30, style: .continuous)
-                    .fill(Color.white.opacity(0.96))
-                    .shadow(color: noteShadowColor.opacity(0.58), radius: 12, x: 0, y: 8)
+                    .fill(Color.white.opacity(0.93))
             }
 
             if isMatched {
                 RoundedRectangle(cornerRadius: 30, style: .continuous)
-                    .stroke(noteBorderColor.opacity(0.35), lineWidth: 1)
+                    .stroke(.clear, lineWidth: 1)
                     .matchedGeometryEffect(id: "new-thought-stroke", in: transitionNamespace)
             } else {
                 RoundedRectangle(cornerRadius: 30, style: .continuous)
-                    .stroke(noteBorderColor.opacity(0.35), lineWidth: 1)
+                    .stroke(.clear, lineWidth: 1)
             }
+
+            BilayerCardOutline(
+                phase: 0.7,
+                amplitude: 0.48,
+                innerColor: noteAccentColor,
+                innerOpacity: 0.08
+            )
 
             if isMatched {
                 RoundedRectangle(cornerRadius: 30, style: .continuous)
@@ -1867,6 +2180,9 @@ private struct EmptyNoteCard: View {
                 .padding(.vertical, 18)
             }
         }
+        .compositingGroup()
+        .shadow(color: Color.black.opacity(0.153), radius: 8.33, x: 0, y: 5)
+        .shadow(color: noteAccentColor.opacity(0.047), radius: 5, x: 0, y: 2.33)
     }
 }
 
@@ -1877,12 +2193,20 @@ private struct MorphingAddedNoteTarget: View {
 
     var body: some View {
         RoundedRectangle(cornerRadius: 30, style: .continuous)
-            .fill(Color.white.opacity(0.96))
+            .fill(Color.white.opacity(0.93))
             .matchedGeometryEffect(id: "new-thought-surface", in: transitionNamespace)
             .overlay {
                 RoundedRectangle(cornerRadius: 30, style: .continuous)
-                    .stroke(noteBorderColor, lineWidth: 1)
+                    .stroke(.clear, lineWidth: 1)
                     .matchedGeometryEffect(id: "new-thought-stroke", in: transitionNamespace)
+            }
+            .overlay {
+                BilayerCardOutline(
+                    phase: 0.82,
+                    amplitude: 0.54,
+                    innerColor: noteAccentColor,
+                    innerOpacity: 0.09
+                )
             }
             .overlay {
                 RoundedRectangle(cornerRadius: 30, style: .continuous)
@@ -1892,7 +2216,9 @@ private struct MorphingAddedNoteTarget: View {
                     .opacity(0.001)
             }
             .rotationEffect(.degrees(rotation))
-            .shadow(color: noteShadowColor.opacity(0.72), radius: 14, x: 0, y: 8)
+            .compositingGroup()
+            .shadow(color: Color.black.opacity(0.153), radius: 8.33, x: 0, y: 5)
+            .shadow(color: noteAccentColor.opacity(0.047), radius: 5, x: 0, y: 2.33)
             .allowsHitTesting(false)
     }
 }

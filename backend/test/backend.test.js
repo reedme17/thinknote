@@ -7,7 +7,7 @@ import { Readable } from "node:stream";
 import { createThinknoteServer } from "../src/app.js";
 
 test("creating a note auto-enqueues and completes enrichment", async () => {
-    const app = await createApp();
+    const app = await createApp({ autoEnrichOnCreate: true, autoEnrichDelayHours: 0 });
     try {
         const createResponse = await request(app, "/api/notes", {
             method: "POST",
@@ -20,14 +20,59 @@ test("creating a note auto-enqueues and completes enrichment", async () => {
         assert.equal(createResponse.status, 201);
         assert.equal(createResponse.json.note.status, "queued");
         assert.ok(createResponse.json.job.id);
+        assert.equal(createResponse.json.job.priority, "background");
 
-        await app.services.jobs.runDueJobs();
+        await app.services.jobs.runDueJobs(new Date());
         const noteResponse = await request(app, `/api/notes/${createResponse.json.note.id}`);
         assert.equal(noteResponse.status, 200);
         assert.equal(noteResponse.json.note.status, "enriched");
+        assert.equal(noteResponse.json.note.rawText, "Thinknote should help unfinished thoughts mature quietly in the background.");
         assert.ok(noteResponse.json.note.enrichments.length > 0);
+        assert.ok(noteResponse.json.note.enrichments[0].headline.length > 0);
+        assert.ok(noteResponse.json.note.enrichments[0].growthParagraphs.length > 0);
         assert.ok(noteResponse.json.note.sources.length > 0);
         assert.ok(noteResponse.json.note.revisions.length >= 2);
+    } finally {
+        await app.close();
+    }
+});
+
+test("manual enrichment can be scheduled for later without mutating raw text", async () => {
+    const app = await createApp();
+    try {
+        const createResponse = await request(app, "/api/notes", {
+            method: "POST",
+            body: {
+                text: "A note should stay raw while background growth appends a better headline later."
+            }
+        });
+
+        const noteId = createResponse.json.note.id;
+        const future = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+        const enqueueResponse = await request(app, `/api/notes/${noteId}/enrich`, {
+            method: "POST",
+            body: {
+                wait: false,
+                earliestRunAt: future,
+                priority: "background"
+            }
+        });
+
+        assert.equal(enqueueResponse.status, 202);
+        assert.equal(enqueueResponse.json.job.earliestRunAt, future);
+        assert.equal(enqueueResponse.json.job.priority, "background");
+
+        await app.services.jobs.runDueJobs(new Date());
+        let noteResponse = await request(app, `/api/notes/${noteId}`);
+        assert.equal(noteResponse.json.note.status, "queued");
+        assert.equal(noteResponse.json.note.rawText, "A note should stay raw while background growth appends a better headline later.");
+
+        await app.services.jobs.runDueJobs(new Date(Date.now() + 2 * 60 * 60 * 1000));
+        noteResponse = await request(app, `/api/notes/${noteId}`);
+        assert.equal(noteResponse.json.note.status, "enriched");
+        assert.equal(noteResponse.json.note.rawText, "A note should stay raw while background growth appends a better headline later.");
+        assert.ok(noteResponse.json.note.title.length > 0);
+        assert.ok(noteResponse.json.note.enrichments[0].growthParagraphs.length > 0);
     } finally {
         await app.close();
     }
@@ -60,6 +105,37 @@ test("patching a note creates a user revision", async () => {
     }
 });
 
+test("posting a note with the same client id upserts remote state", async () => {
+    const app = await createApp();
+    try {
+        const first = await request(app, "/api/notes", {
+            method: "POST",
+            body: {
+                id: "client-note-1",
+                title: "Original title",
+                text: "original text"
+            }
+        });
+
+        const second = await request(app, "/api/notes", {
+            method: "POST",
+            body: {
+                id: "client-note-1",
+                title: "Updated title",
+                text: "updated text"
+            }
+        });
+
+        assert.equal(first.status, 201);
+        assert.equal(second.status, 200);
+        assert.equal(second.json.note.id, "client-note-1");
+        assert.equal(second.json.note.title, "Updated title");
+        assert.equal(second.json.note.rawText, "updated text");
+    } finally {
+        await app.close();
+    }
+});
+
 test("chat endpoint persists multi-turn thread messages", async () => {
     const app = await createApp();
     try {
@@ -81,6 +157,7 @@ test("chat endpoint persists multi-turn thread messages", async () => {
 
         assert.equal(chatResponse.status, 201);
         assert.equal(chatResponse.json.messages.length, 2);
+        assert.equal(chatResponse.json.note.id, noteId);
 
         const threadsResponse = await request(app, `/api/notes/${noteId}/threads`);
         assert.equal(threadsResponse.status, 200);
@@ -92,7 +169,7 @@ test("chat endpoint persists multi-turn thread messages", async () => {
 });
 
 test("related note endpoint returns semantic neighbors after enrichment", async () => {
-    const app = await createApp();
+    const app = await createApp({ autoEnrichOnCreate: true, autoEnrichDelayHours: 0 });
     try {
         const first = await request(app, "/api/notes", {
             method: "POST",
@@ -107,8 +184,8 @@ test("related note endpoint returns semantic neighbors after enrichment", async 
             }
         });
 
-        await app.services.jobs.runDueJobs();
-        await app.services.jobs.runDueJobs();
+        await app.services.jobs.runDueJobs(new Date());
+        await app.services.jobs.runDueJobs(new Date());
 
         const relatedResponse = await request(app, `/api/notes/${second.json.note.id}/related`);
         assert.equal(relatedResponse.status, 200);
@@ -120,7 +197,7 @@ test("related note endpoint returns semantic neighbors after enrichment", async 
 });
 
 test("store persistence includes richer schema", async () => {
-    const app = await createApp();
+    const app = await createApp({ autoEnrichOnCreate: true, autoEnrichDelayHours: 0 });
     try {
         await request(app, "/api/notes", {
             method: "POST",
@@ -129,20 +206,151 @@ test("store persistence includes richer schema", async () => {
             }
         });
 
-        await app.services.jobs.runDueJobs();
+        await app.services.jobs.runDueJobs(new Date());
         const raw = await readFile(app.config.storePath, "utf8");
         const parsed = JSON.parse(raw);
-        assert.equal(parsed.version, 2);
+        assert.equal(parsed.version, 3);
         assert.ok(Array.isArray(parsed.notes));
         assert.ok(Array.isArray(parsed.jobs));
         assert.ok(Array.isArray(parsed.threads));
         assert.ok(Array.isArray(parsed.messages));
+        assert.equal(parsed.jobs[0].priority, "background");
+        assert.ok(typeof parsed.jobs[0].earliestRunAt === "string");
+        assert.ok(Array.isArray(parsed.notes[0].enrichments[0].growthParagraphs));
     } finally {
         await app.close();
     }
 });
 
-async function createApp() {
+test("health reports openai provider when configured", async () => {
+    const app = await createApp({
+        env: {
+            AI_PROVIDER: "openai",
+            OPENAI_API_KEY: "test-openai-key"
+        }
+    });
+    try {
+        const healthResponse = await request(app, "/health");
+        assert.equal(healthResponse.status, 200);
+        assert.equal(healthResponse.json.provider, "openai");
+    } finally {
+        await app.close();
+    }
+});
+
+test("health reports cerebras provider when configured", async () => {
+    const app = await createApp({
+        env: {
+            AI_PROVIDER: "cerebras",
+            CEREBRAS_API_KEY: "test-cerebras-key"
+        }
+    });
+    try {
+        const healthResponse = await request(app, "/health");
+        assert.equal(healthResponse.status, 200);
+        assert.equal(healthResponse.json.provider, "cerebras");
+    } finally {
+        await app.close();
+    }
+});
+
+test("openai provider uses responses API for enrichment", async () => {
+    const requestedUrls = [];
+    const app = await createApp(
+        {
+            env: {
+                AI_PROVIDER: "openai",
+                OPENAI_API_KEY: "test-openai-key",
+                OPENAI_BASE_URL: "https://api.openai.test/v1"
+            }
+        },
+        async (url) => {
+            requestedUrls.push(String(url));
+            return {
+                ok: true,
+                status: 200,
+                async json() {
+                    return {
+                        output_text: JSON.stringify({
+                            headline: "A quieter background growth loop.",
+                            growthParagraphs: ["This is one appended paragraph."],
+                            timelineSummary: "Growth added",
+                            relatedIdeas: [],
+                            prompts: [],
+                            sources: []
+                        })
+                    };
+                }
+            };
+        }
+    );
+
+    try {
+        const result = await app.services.ai.generateEnrichment({
+            note: { id: "n1", title: "Original", rawText: "Original raw text", text: "Original raw text" },
+            focus: "",
+            relatedNotes: []
+        });
+
+        assert.equal(result.provider, "openai");
+        assert.equal(requestedUrls[0], "https://api.openai.test/v1/responses");
+    } finally {
+        await app.close();
+    }
+});
+
+test("cerebras provider uses chat completions API for enrichment", async () => {
+    const requestedUrls = [];
+    const app = await createApp(
+        {
+            env: {
+                AI_PROVIDER: "cerebras",
+                CEREBRAS_API_KEY: "test-cerebras-key",
+                CEREBRAS_BASE_URL: "https://api.cerebras.test/v1"
+            }
+        },
+        async (url) => {
+            requestedUrls.push(String(url));
+            return {
+                ok: true,
+                status: 200,
+                async json() {
+                    return {
+                        choices: [
+                            {
+                                message: {
+                                    content: JSON.stringify({
+                                        headline: "A quieter background growth loop.",
+                                        growthParagraphs: ["This is one appended paragraph."],
+                                        timelineSummary: "Growth added",
+                                        relatedIdeas: [],
+                                        prompts: [],
+                                        sources: []
+                                    })
+                                }
+                            }
+                        ]
+                    };
+                }
+            };
+        }
+    );
+
+    try {
+        const result = await app.services.ai.generateEnrichment({
+            note: { id: "n1", title: "Original", rawText: "Original raw text", text: "Original raw text" },
+            focus: "",
+            relatedNotes: []
+        });
+
+        assert.equal(result.provider, "cerebras");
+        assert.equal(requestedUrls[0], "https://api.cerebras.test/v1/chat/completions");
+    } finally {
+        await app.close();
+    }
+});
+
+async function createApp(overrides = {}, fetchImpl = mockFetch) {
     const dataDir = await mkdtemp(path.join(os.tmpdir(), "thinknote-backend-test-"));
     const config = {
         backendRoot: dataDir,
@@ -152,11 +360,13 @@ async function createApp() {
         env: {},
         jobPollIntervalMs: 1000000,
         jobMaxRetries: 2,
-        autoEnrichOnCreate: true,
-        seedDefaultNotes: false
+        autoEnrichOnCreate: false,
+        autoEnrichDelayHours: 24,
+        seedDefaultNotes: false,
+        ...overrides
     };
 
-    const app = await createThinknoteServer({ config, fetchImpl: mockFetch });
+    const app = await createThinknoteServer({ config, fetchImpl });
     app.config = config;
     return app;
 }

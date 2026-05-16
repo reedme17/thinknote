@@ -18,9 +18,19 @@ export function loadConfig() {
         env,
         jobPollIntervalMs: Number(env.JOB_POLL_INTERVAL_MS || 500),
         jobMaxRetries: Number(env.JOB_MAX_RETRIES || 3),
-        autoEnrichOnCreate: env.AUTO_ENRICH_ON_CREATE !== "false",
-        seedDefaultNotes: env.SEED_DEFAULT_NOTES !== "false"
+        autoEnrichOnCreate: env.AUTO_ENRICH_ON_CREATE === "true",
+        autoEnrichDelayHours: Number(env.AUTO_ENRICH_DELAY_HOURS || 24),
+        seedDefaultNotes: env.SEED_DEFAULT_NOTES !== "false",
+        aiProvider: normalizeAIProvider(env.AI_PROVIDER)
     };
+}
+
+function normalizeAIProvider(value) {
+    const normalized = String(value || "auto").trim().toLowerCase();
+    if (["auto", "openai", "cerebras", "mock"].includes(normalized)) {
+        return normalized;
+    }
+    return "auto";
 }
 
 function loadEnv(filePath) {

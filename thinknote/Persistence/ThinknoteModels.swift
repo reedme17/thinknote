@@ -126,6 +126,7 @@ final class RevisionRecord {
     var kindRaw: String
     var summary: String
     var text: String
+    var provider: String
 
     var note: NoteRecord?
     var sourceJob: JobRecord?
@@ -136,6 +137,7 @@ final class RevisionRecord {
         kind: RevisionKind,
         summary: String,
         text: String,
+        provider: String = "user",
         note: NoteRecord? = nil,
         sourceJob: JobRecord? = nil
     ) {
@@ -144,6 +146,7 @@ final class RevisionRecord {
         self.kindRaw = kind.rawValue
         self.summary = summary
         self.text = text
+        self.provider = provider
         self.note = note
         self.sourceJob = sourceJob
     }

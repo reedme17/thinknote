@@ -53,6 +53,7 @@ actor ThinknoteLocalStore {
                 kind: .userEdit,
                 summary: "Note updated by user",
                 text: text,
+                provider: "user",
                 note: existing
             )
             context.insert(revision)
@@ -93,6 +94,7 @@ actor ThinknoteLocalStore {
                 kind: .userCapture,
                 summary: "Initial note capture",
                 text: text,
+                provider: "user",
                 note: created
             )
             context.insert(revision)
@@ -260,6 +262,117 @@ actor ThinknoteLocalStore {
         return makeThread(from: thread)
     }
 
+    func hasPendingFollowUp(noteID: String) throws -> Bool {
+        let context = ModelContext(container)
+        guard let note = try fetchNoteRecord(noteID: noteID, in: context) else {
+            throw LocalStoreError.noteNotFound(noteID)
+        }
+        return hasPendingUserFollowUp(for: note)
+    }
+
+    func eligibleRemoteGrowthNoteIDs(now: Date = .now, limit: Int = 3) throws -> [String] {
+        let context = ModelContext(container)
+        return try eligibleEnrichmentJobs(in: context, now: now, noteID: nil, limit: limit).compactMap { $0.note?.id }
+    }
+
+    func mergeRemoteNote(noteID: String, remoteNote: APINote, triggerSource: String) throws -> APINote {
+        let context = ModelContext(container)
+        guard let note = try fetchNoteRecord(noteID: noteID, in: context) else {
+            throw LocalStoreError.noteNotFound(noteID)
+        }
+
+        let now = max(remoteNote.updatedAt, Date())
+        let insertedRevisionIDs = mergeRemoteEnrichments(into: note, remoteNote: remoteNote, in: context)
+        replaceNoteSources(for: note, remoteSources: remoteNote.sources, retrievedAt: remoteNote.lastEnrichedAt ?? remoteNote.updatedAt, in: context)
+
+        note.title = remoteNote.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? note.title : remoteNote.title
+        note.updatedAt = max(note.updatedAt, remoteNote.updatedAt)
+        note.lastEnrichedAt = remoteNote.lastEnrichedAt ?? note.lastEnrichedAt ?? remoteNote.updatedAt
+        note.latestChatReply = remoteNote.latestChatReply ?? note.latestChatReply
+        note.promptSuggestions = remoteNote.prompts
+        note.status = remoteNote.enrichments.isEmpty ? note.status : .enriched
+
+        if !insertedRevisionIDs.isEmpty {
+            let summary = remoteNote.timeline.first(where: { $0.type == TimelineEventKind.noteEnriched.rawValue })?.summary ?? "New growth added"
+            appendTimelineEvent(
+                type: .noteEnriched,
+                summary: summary,
+                note: note,
+                createdAt: now,
+                payload: [
+                    "triggerSource": triggerSource,
+                    "provider": remoteNote.enrichments.first?.provider ?? "remote"
+                ],
+                in: context
+            )
+        }
+
+        completeActiveEnrichmentJobs(for: note, completedAt: now, triggerSource: triggerSource, in: context)
+        try context.save()
+        return makeAPINote(from: note)
+    }
+
+    func applyRemoteAssistantReply(
+        noteID: String,
+        replyText: String,
+        provider: String,
+        sources: [APISource],
+        createdAt: Date = .now
+    ) throws -> APINote {
+        let context = ModelContext(container)
+        guard let note = try fetchNoteRecord(noteID: noteID, in: context) else {
+            throw LocalStoreError.noteNotFound(noteID)
+        }
+        guard let thread = try fetchThread(for: noteID, in: context) else {
+            throw LocalStoreError.noteNotFound(noteID)
+        }
+
+        let orderedMessages = thread.messages.sorted { $0.createdAt < $1.createdAt }
+        if let latestMessage = orderedMessages.last,
+           latestMessage.role == .assistant,
+           latestMessage.text == replyText {
+            return makeAPINote(from: note)
+        }
+
+        let assistantMessage = MessageRecord(
+            role: .assistant,
+            text: replyText,
+            provider: provider,
+            createdAt: createdAt,
+            thread: thread
+        )
+        context.insert(assistantMessage)
+
+        for source in sources {
+            let sourceRecord = SourceRecord(
+                id: source.id,
+                title: source.title,
+                urlString: source.url,
+                snippet: source.snippet,
+                retrievedAt: createdAt,
+                message: assistantMessage
+            )
+            context.insert(sourceRecord)
+        }
+
+        thread.updatedAt = createdAt
+        note.latestChatReply = replyText
+        note.updatedAt = max(note.updatedAt, createdAt)
+
+        appendTimelineEvent(
+            type: .chatUpdated,
+            summary: "AI conversation advanced",
+            note: note,
+            createdAt: createdAt,
+            payload: ["threadId": thread.id, "provider": provider],
+            in: context
+        )
+
+        completeActiveEnrichmentJobs(for: note, completedAt: createdAt, triggerSource: "manual", in: context)
+        try context.save()
+        return makeAPINote(from: note)
+    }
+
     private func importSeed(_ note: APINote, sortIndex: Double, into context: ModelContext) {
         let record = NoteRecord(
             id: note.id,
@@ -282,6 +395,7 @@ actor ThinknoteLocalStore {
             kind: .userCapture,
             summary: "Initial note capture",
             text: note.text,
+            provider: "user",
             note: record
         )
         context.insert(initialRevision)
@@ -293,6 +407,7 @@ actor ThinknoteLocalStore {
                 kind: .aiEnrichment,
                 summary: "AI interpretation refreshed",
                 text: enrichment.expansion,
+                provider: enrichment.provider,
                 note: record
             )
             context.insert(revision)
@@ -480,8 +595,25 @@ actor ThinknoteLocalStore {
         noteID: String?,
         limit: Int
     ) throws -> [NoteRecord] {
+        let eligibleJobs = try eligibleEnrichmentJobs(in: context, now: now, noteID: noteID, limit: limit)
+
+        var updatedNotes: [NoteRecord] = []
+        for job in eligibleJobs {
+            guard let note = job.note else { continue }
+            executeMockEnrichment(job: job, note: note, now: now, in: context)
+            updatedNotes.append(note)
+        }
+        return updatedNotes
+    }
+
+    private func eligibleEnrichmentJobs(
+        in context: ModelContext,
+        now: Date,
+        noteID: String?,
+        limit: Int
+    ) throws -> [JobRecord] {
         let jobs = try context.fetch(FetchDescriptor<JobRecord>())
-        let eligibleJobs = jobs
+        return jobs
             .filter { job in
                 guard job.type == .enrichNote else { return false }
                 guard [.queued, .retrying].contains(job.status) else { return false }
@@ -491,14 +623,8 @@ actor ThinknoteLocalStore {
                 return job.scheduledRunAt <= now && job.nextRunAt <= now
             }
             .sorted(by: eligibleJobComparator)
-
-        var updatedNotes: [NoteRecord] = []
-        for job in eligibleJobs.prefix(limit) {
-            guard let note = job.note else { continue }
-            executeMockEnrichment(job: job, note: note, now: now, in: context)
-            updatedNotes.append(note)
-        }
-        return updatedNotes
+            .prefix(limit)
+            .map { $0 }
     }
 
     private func executeMockEnrichment(
@@ -534,6 +660,7 @@ actor ThinknoteLocalStore {
             kind: .aiEnrichment,
             summary: "AI interpretation refreshed",
             text: "This thought can be developed further by turning the fragment into a clearer argument and checking it against outside knowledge.",
+            provider: "local",
             note: note,
             sourceJob: job
         )
@@ -561,7 +688,7 @@ actor ThinknoteLocalStore {
             summary: "AI interpretation refreshed",
             note: note,
             createdAt: now,
-            payload: ["revisionId": revision.id, "jobId": job.id],
+            payload: ["revisionId": revision.id, "jobId": job.id, "provider": "local"],
             in: context
         )
 
@@ -604,9 +731,89 @@ actor ThinknoteLocalStore {
             summary: "AI conversation advanced",
             note: note,
             createdAt: now,
-            payload: ["threadId": thread.id, "messageId": assistantMessage.id],
+            payload: ["threadId": thread.id, "messageId": assistantMessage.id, "provider": "local"],
             in: context
         )
+    }
+
+    @discardableResult
+    private func mergeRemoteEnrichments(into note: NoteRecord, remoteNote: APINote, in context: ModelContext) -> [String] {
+        let existingAIRevisions = note.revisions.filter { $0.kind == .aiEnrichment }
+        for revision in existingAIRevisions {
+            context.delete(revision)
+        }
+
+        var insertedIDs: [String] = []
+        for enrichment in remoteNote.enrichments.sorted(by: { $0.createdAt > $1.createdAt }) {
+            let revision = RevisionRecord(
+                id: enrichment.id,
+                createdAt: enrichment.createdAt,
+                kind: .aiEnrichment,
+                summary: "AI interpretation refreshed",
+                text: enrichment.expansion,
+                provider: enrichment.provider,
+                note: note
+            )
+            context.insert(revision)
+            insertedIDs.append(revision.id)
+        }
+        return insertedIDs
+    }
+
+    private func replaceNoteSources(
+        for note: NoteRecord,
+        remoteSources: [APISource],
+        retrievedAt: Date,
+        in context: ModelContext
+    ) {
+        for source in note.sources {
+            context.delete(source)
+        }
+
+        for source in remoteSources {
+            let sourceRecord = SourceRecord(
+                id: source.id,
+                title: source.title,
+                urlString: source.url,
+                snippet: source.snippet,
+                retrievedAt: retrievedAt,
+                note: note
+            )
+            context.insert(sourceRecord)
+        }
+    }
+
+    private func completeActiveEnrichmentJobs(
+        for note: NoteRecord,
+        completedAt: Date,
+        triggerSource: String,
+        in context: ModelContext
+    ) {
+        var completedAny = false
+        for job in note.jobs where job.type == .enrichNote && [.queued, .retrying, .running].contains(job.status) {
+            job.status = .completed
+            job.updatedAt = completedAt
+            job.completedAt = completedAt
+            job.lastAttemptAt = completedAt
+            if job.runCount == 0 {
+                job.runCount = 1
+            }
+            job.outputData = StoredJSONCodec.encode([
+                "triggerSource": triggerSource,
+                "completedAt": ISO8601DateFormatter().string(from: completedAt)
+            ])
+            completedAny = true
+        }
+
+        if completedAny {
+            appendTimelineEvent(
+                type: .jobCompleted,
+                summary: "Background growth completed",
+                note: note,
+                createdAt: completedAt,
+                in: context
+            )
+        }
     }
 
     private func eligibleJobComparator(_ lhs: JobRecord, _ rhs: JobRecord) -> Bool {
@@ -662,7 +869,7 @@ actor ThinknoteLocalStore {
                 APIEnrichment(
                     id: revision.id,
                     createdAt: revision.createdAt,
-                    provider: revision.sourceJob?.type.rawValue ?? "local",
+                    provider: revision.provider,
                     expansion: revision.text,
                     relatedIdeas: [],
                     prompts: note.promptSuggestions,
@@ -703,6 +910,7 @@ actor ThinknoteLocalStore {
                     type: record.type.rawValue,
                     createdAt: record.createdAt,
                     summary: record.summary,
+                    provider: timelineProvider(from: record),
                     isNewSinceLastView: isEventUnread(type: record.type, createdAt: record.createdAt, lastViewedAt: note.lastViewedAt)
                 )
             }
@@ -800,6 +1008,15 @@ actor ThinknoteLocalStore {
             note: note
         )
         context.insert(event)
+    }
+
+    private func timelineProvider(from record: TimelineEventRecord) -> String? {
+        guard let payload = StoredJSONCodec.decode([String: String].self, from: record.payloadData) else {
+            return nil
+        }
+
+        let provider = payload["provider"]?.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines) ?? ""
+        return provider.isEmpty ? nil : provider
     }
 
     private func isEventUnread(type: TimelineEventKind, createdAt: Date, lastViewedAt: Date?) -> Bool {

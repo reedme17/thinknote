@@ -136,15 +136,35 @@ async function handleListNotes({ res, services, url }) {
 async function handleCreateNote({ res, body, services, config }) {
     const text = typeof body?.text === "string" ? body.text.trim() : "";
     const title = typeof body?.title === "string" ? body.title.trim() : deriveTitle(text);
+    const requestedId = typeof body?.id === "string" && body.id.trim() ? body.id.trim() : null;
 
     if (!text) {
         sendJson(res, 400, { error: "Field `text` is required." });
         return;
     }
 
+    if (requestedId) {
+        const existing = services.store.getNote(requestedId);
+        if (existing) {
+            await services.store.transaction((state) => {
+                const current = state.notes.find((entry) => entry.id === requestedId);
+                current.rawText = text;
+                current.text = text;
+                current.title = title || deriveTitle(text);
+                current.updatedAt = new Date().toISOString();
+            });
+
+            sendJson(res, 200, {
+                note: decorateNote(services.store.getNote(requestedId), services.store, false),
+                job: null
+            });
+            return;
+        }
+    }
+
     const now = new Date().toISOString();
     const note = {
-        id: randomUUID(),
+        id: requestedId || randomUUID(),
         title: title || deriveTitle(text),
         text,
         rawText: text,
@@ -182,9 +202,26 @@ async function handleCreateNote({ res, body, services, config }) {
         services.store.touchAnalytics("captureCount");
     });
 
+    const shouldScheduleGrowth = body?.scheduleGrowth === true || config.autoEnrichOnCreate;
     let queuedJob = null;
-    if (config.autoEnrichOnCreate) {
-        queuedJob = await services.jobs.enqueueEnrichment(note.id, { includeWeb: true }, "auto_capture");
+    if (shouldScheduleGrowth) {
+        const earliestRunAt =
+            typeof body?.earliestRunAt === "string"
+                ? body.earliestRunAt
+                : new Date(Date.now() + config.autoEnrichDelayHours * 60 * 60 * 1000).toISOString();
+        queuedJob = await services.jobs.enqueueEnrichment(
+            note.id,
+            {
+                focus: typeof body?.focus === "string" ? body.focus.trim() : "",
+                includeWeb: body?.includeWeb !== false
+            },
+            "auto_capture",
+            {
+                earliestRunAt,
+                priority: "background",
+                maxRuns: 1
+            }
+        );
     }
 
     sendJson(res, 201, {
@@ -270,17 +307,28 @@ async function handleEnrichNote({ res, params, body, services, url }) {
     }
 
     const wait = body?.wait !== false && url.searchParams.get("wait") !== "false";
+    const now = new Date();
     const job = await services.jobs.enqueueEnrichment(
         note.id,
         {
             focus: typeof body?.focus === "string" ? body.focus.trim() : "",
             includeWeb: body?.includeWeb !== false
         },
-        "manual"
+        typeof body?.triggerSource === "string" && body.triggerSource.trim() ? body.triggerSource.trim() : "manual",
+        {
+            earliestRunAt: wait ? now.toISOString() : body?.earliestRunAt,
+            priority:
+                typeof body?.priority === "string" && body.priority.trim()
+                    ? body.priority.trim()
+                    : wait
+                      ? "user_initiated"
+                      : "background",
+            maxRuns: body?.maxRuns
+        }
     );
 
     if (wait) {
-        await services.jobs.runDueJobs();
+        await services.jobs.runDueJobs(now);
         const completedJob = await services.jobs.waitForJob(job.id);
         const refreshed = services.store.getNote(note.id);
         sendJson(res, 200, {
@@ -410,6 +458,7 @@ async function handleCreateThreadMessage({ res, params, body, services }) {
 
     sendJson(res, 201, {
         chat: buildLegacyChat({ thread, noteId: note?.id || null, message, reply }),
+        note: note ? decorateNote(services.store.getNote(note.id), services.store, true) : null,
         thread: decorateThread(services.store.getThread(thread.id), services.store),
         messages: [userMessage, assistantMessage]
     });
