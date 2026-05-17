@@ -13,7 +13,6 @@ private let detailDismissTopThreshold: CGFloat = 0.5
 private let detailDismissCornerRadiusStart: CGFloat = 42
 private let detailDismissCornerRadiusTravel: CGFloat = 96
 private let detailPrimaryScrollAnchorID = "thought-label"
-private let detailBottomBarVisualClearance: CGFloat = 50
 private let noteAccentColor = Color(red: 0.53, green: 0.66, blue: 0.61)
 private let noteBorderColor = Color(red: 0.88, green: 0.88, blue: 0.86)
 private let noteShadowColor = Color.black.opacity(0.08)
@@ -152,25 +151,52 @@ private struct HomeScreen: View {
     @State private var noteFrames: [String: CGRect] = [:]
     @State private var affinityCandidate: AffinityCandidate?
     @State private var jiggleProgress: CGFloat = 0
+    @State private var homeContentHeight: CGFloat = 0
+    @State private var homeDragOffset: CGFloat = 0
 
     var body: some View {
         GeometryReader { geometry in
+            let homeTopPadding: CGFloat = 20
+            let homeBottomPadding: CGFloat = isReorderMode ? 170 : 120
+            let homeMinContentHeight = max(geometry.size.height - homeTopPadding - homeBottomPadding, 0)
+            let allowsHomeRubberBand = homeContentHeight <= geometry.size.height + 1
+
             ZStack(alignment: .bottomTrailing) {
                 HomeBackgroundView()
 
-                ScrollView {
+                ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 0) {
                         homeHeader
                             .padding(.bottom, 18)
 
                         homeLayout(containerWidth: max(geometry.size.width - 36, 0))
                     }
-                    .frame(maxWidth: .infinity, minHeight: geometry.size.height, alignment: .topLeading)
+                    .frame(maxWidth: .infinity, minHeight: homeMinContentHeight, alignment: .topLeading)
                     .padding(.horizontal, 18)
-                    .padding(.top, 20)
-                    .padding(.bottom, isReorderMode ? 170 : 120)
+                    .padding(.top, homeTopPadding)
+                    .padding(.bottom, homeBottomPadding)
+                    .background {
+                        GeometryReader { proxy in
+                            Color.clear.preference(key: HomeContentHeightPreferenceKey.self, value: proxy.size.height)
+                        }
+                    }
                 }
+                .scrollBounceBehavior(.basedOnSize)
                 .coordinateSpace(name: "home-scroll")
+                .offset(y: homeDragOffset)
+                .simultaneousGesture(
+                    DragGesture(minimumDistance: 1, coordinateSpace: .named("home-scroll"))
+                        .onChanged { value in
+                            guard allowsHomeRubberBand, !isReorderMode else { return }
+                            homeDragOffset = rubberBandOffset(for: value.translation.height)
+                        }
+                        .onEnded { _ in
+                            guard homeDragOffset != 0 else { return }
+                            withAnimation(.spring(response: 0.34, dampingFraction: 0.78)) {
+                                homeDragOffset = 0
+                            }
+                        }
+                )
                 .onAppear {
                     synchronizeOrderingIfNeeded()
                 }
@@ -179,6 +205,9 @@ private struct HomeScreen: View {
                 }
                 .onPreferenceChange(NoteFramePreferenceKey.self) { frames in
                     noteFrames = frames
+                }
+                .onPreferenceChange(HomeContentHeightPreferenceKey.self) { height in
+                    homeContentHeight = height
                 }
                 .onTapGesture {
                     if isReorderMode {
@@ -314,15 +343,14 @@ private struct HomeScreen: View {
                 endDragging(noteID: noteID, translation: translation)
             }
         case .seed:
-            if !isReorderMode {
-                EmptyNoteCard(
-                    transitionNamespace: newThoughtNamespace,
-                    isExpanded: viewModel.screen == .newNote,
-                    isAddMorphActive: viewModel.addMorphTargetNoteID != nil
-                ) {
-                    withAnimation(noteTransitionAnimation) {
-                        viewModel.openNewNote()
-                    }
+            EmptyNoteCard(
+                transitionNamespace: newThoughtNamespace,
+                isExpanded: viewModel.screen == .newNote,
+                isAddMorphActive: viewModel.addMorphTargetNoteID != nil,
+                isVisible: !isReorderMode
+            ) {
+                withAnimation(noteTransitionAnimation) {
+                    viewModel.openNewNote()
                 }
             }
         }
@@ -589,29 +617,29 @@ private struct HomeScreen: View {
         return Double(scalarSum % 13) / 13.0
     }
 
-    private func reorderInstruction(bottomInset: CGFloat) -> some View {
-        VStack(spacing: 10) {
-            ReorderMarqueeView(
-                message: "drag to reorder · overlap another card to create an affinity group · swipe up to exit ·"
-            )
-                .frame(height: 46)
-                .frame(maxWidth: .infinity)
+    private func rubberBandOffset(for translation: CGFloat) -> CGFloat {
+        let direction: CGFloat = translation >= 0 ? 1 : -1
+        let magnitude = pow(abs(translation), 0.82) * 0.78
+        return direction * magnitude
+    }
 
-            Capsule()
-                .fill(Color.black.opacity(0.22))
-                .frame(width: 128, height: 5)
-                .gesture(
-                    DragGesture(minimumDistance: 6)
-                        .onEnded { value in
-                            if value.translation.height < -18 {
-                                cancelDragging()
-                            }
-                        }
-                )
-        }
+    private func reorderInstruction(bottomInset: CGFloat) -> some View {
+        ReorderMarqueeView(
+            message: "drag to reorder · overlap another card to create an affinity group · swipe up to exit ·"
+        )
+        .frame(height: 46)
+        .frame(maxWidth: .infinity)
         .padding(.horizontal, 18)
         .padding(.bottom, max(bottomInset, 10))
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+        .gesture(
+            DragGesture(minimumDistance: 6)
+                .onEnded { value in
+                    if value.translation.height < -18 {
+                        cancelDragging()
+                    }
+                }
+        )
         .transition(.move(edge: .bottom).combined(with: .opacity))
     }
 }
@@ -753,25 +781,35 @@ private struct NewNoteScreen: View {
 
     private var newNoteContent: some View {
         VStack(alignment: .leading, spacing: 0) {
-            TextField("start a thought", text: $viewModel.draftText, axis: .vertical)
-                .focused($isEditorFocused)
-                .textFieldStyle(.plain)
-                .font(AppFont.body(21))
-                .foregroundStyle(.black)
-                .lineLimit(1...8)
-                .padding(.horizontal, 20)
-                .padding(.top, 20)
-                .frame(maxWidth: .infinity, minHeight: 172, alignment: .topLeading)
+            ZStack(alignment: .topLeading) {
+                if viewModel.draftText.isEmpty {
+                    Text("start a thought")
+                        .font(AppFont.body(21))
+                        .foregroundStyle(.black.opacity(0.34))
+                }
+
+                TextField("", text: $viewModel.draftText, axis: .vertical)
+                    .focused($isEditorFocused)
+                    .textFieldStyle(.plain)
+                    .font(AppFont.body(21))
+                    .foregroundStyle(.black)
+                    .lineLimit(1...8)
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 20)
+            .frame(maxWidth: .infinity, minHeight: 172, alignment: .topLeading)
 
             HStack {
-                Button("Cancel") {
+                Button("cancel") {
                     isEditorFocused = false
                     withAnimation(noteTransitionAnimation) {
                         viewModel.discardDraft()
                     }
                 }
-                .font(AppFont.meta(12))
+                .font(AppFont.meta(11))
+                .tracking(1.2)
                 .foregroundStyle(.black.opacity(0.58))
+                .buttonStyle(.plain)
 
                 Spacer()
 
@@ -792,22 +830,17 @@ private struct NewNoteScreen: View {
                         }
                     }
                 } label: {
-                    Text("Add")
-                        .font(AppFont.body(18))
-                        .foregroundStyle(.black)
-                        .padding(.horizontal, 18)
-                        .padding(.vertical, 12)
-                        .background(Color.white.opacity(0.92), in: Capsule())
-                        .overlay {
-                            Capsule()
-                                .stroke(noteBorderColor, lineWidth: 1)
-                        }
+                    Text("add")
+                        .font(AppFont.meta(11))
+                        .tracking(1.2)
+                        .foregroundStyle(noteAccentColor)
                 }
+                .buttonStyle(.plain)
                 .disabled(viewModel.trimmedDraftText.isEmpty || viewModel.isDraftSaving)
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 12)
-            .padding(.bottom, 18)
+            .padding(.horizontal, 24)
+            .padding(.top, 36)
+            .padding(.bottom, 24)
         }
     }
 }
@@ -826,19 +859,14 @@ private struct NoteFullPageScreen: View {
     @State private var detailTopContentOffsetY: CGFloat = 0
     @State private var detailAnchorPositions: [String: CGFloat] = [:]
     @State private var detailAnchorBaselines: [String: CGFloat] = [:]
-    @State private var detailBottomBarHeight: CGFloat = 128
-    @State private var detailBottomBarInputTop: CGFloat = 14
+    @State private var homeIndicatorHeight: CGFloat = 18
 
     var body: some View {
         GeometryReader { geometry in
             let topInset = geometry.safeAreaInsets.top
-            let bottomInset = max(geometry.safeAreaInsets.bottom, 18)
 
             ZStack(alignment: .topTrailing) {
-                detailSurface(
-                    topInset: topInset,
-                    bottomInset: bottomInset
-                )
+                detailSurface(topInset: topInset)
 
                 Button {
                     closeDetail()
@@ -909,6 +937,15 @@ private struct NoteFullPageScreen: View {
                 dragOffset = 0
                 startOpenSequence()
             }
+            .background(
+                GeometryReader { bg in
+                    Color.clear.preference(key: HomeIndicatorHeightKey.self, value: max(bg.safeAreaInsets.bottom, 18))
+                }
+                .ignoresSafeArea(.keyboard)
+            )
+            .onPreferenceChange(HomeIndicatorHeightKey.self) { value in
+                homeIndicatorHeight = value
+            }
         }
     }
 
@@ -924,13 +961,9 @@ private struct NoteFullPageScreen: View {
         return showPrimaryContent ? 0 : 30
     }
 
-    private var detailScrollBottomPadding: CGFloat {
-        max(detailBottomBarHeight - detailBottomBarInputTop + detailBottomBarVisualClearance, 36)
-    }
 
     private func detailSurface(
-        topInset: CGFloat,
-        bottomInset: CGFloat
+        topInset: CGFloat
     ) -> some View {
         ZStack(alignment: .topLeading) {
             RoundedRectangle(cornerRadius: surfaceCornerRadius, style: .continuous)
@@ -945,90 +978,75 @@ private struct NoteFullPageScreen: View {
                 .ignoresSafeArea()
 
             if showPrimaryContent {
-                ZStack(alignment: .bottom) {
-                    ScrollView(showsIndicators: false) {
-                        VStack(alignment: .leading, spacing: 0) {
-                            metaStrip
-                                .detailDebugAnchor(id: "meta-strip")
-                                .padding(.top, 22)
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        metaStrip
+                            .detailDebugAnchor(id: "meta-strip")
+                            .padding(.top, 22)
 
-                            Text(note.displayHeadline)
-                                .font(AppFont.heading(26))
-                                .lineSpacing(4)
-                                .foregroundStyle(.black)
-                                .detailDebugAnchor(id: "thought-body")
-                                .detailDebugAnchor(id: detailPrimaryScrollAnchorID)
-                                .padding(.top, 22)
+                        Text(note.displayHeadline)
+                            .font(AppFont.heading(26))
+                            .lineSpacing(4)
+                            .foregroundStyle(.black)
+                            .detailDebugAnchor(id: "thought-body")
+                            .detailDebugAnchor(id: detailPrimaryScrollAnchorID)
+                            .padding(.top, 22)
 
-                            divider
-                                .padding(.top, 30)
+                        divider
+                            .padding(.top, 30)
 
-                            if hasAIGrowthParagraphs {
-                                aiGrowthSection
-                                    .padding(.top, 26)
+                        if hasAIGrowthParagraphs {
+                            aiGrowthSection
+                                .padding(.top, 26)
 
-                                if shouldShowInlineContinueThoughtCTA {
-                                    inlineContinueThoughtCTA
-                                        .padding(.top, 28)
-                                }
-                            }
-
-                            if !note.sources.isEmpty {
-                                footnotesSection
-                                    .padding(.top, 28)
-                            }
-
-                            if !note.prompts.isEmpty {
-                                openAnglesSection
-                                    .padding(.top, 28)
-                            }
-
-                            if !note.timeline.isEmpty {
-                                timelineSection
-                                    .padding(.top, 28)
-                            }
-
-                            if let latestReply = note.latestChatReply, !latestReply.isEmpty {
-                                latestReplySection(latestReply)
-                                    .padding(.top, 28)
-                            }
-
-                            if let pendingFollowUp = pendingFollowUpText {
-                                pendingFollowUpSection(pendingFollowUp)
+                            if shouldShowInlineContinueThoughtCTA {
+                                inlineContinueThoughtCTA
                                     .padding(.top, 28)
                             }
                         }
-                        .padding(.horizontal, 28)
-                        .padding(.bottom, detailScrollBottomPadding)
-                    }
-                    .scrollDisabled(dragOffset > 0)
-                    .onPreferenceChange(DetailAnchorPreferenceKey.self) { anchors in
-                        detailAnchorPositions = anchors
-                        for (id, value) in anchors where detailAnchorBaselines[id] == nil {
-                            detailAnchorBaselines[id] = value
+
+                        if !note.sources.isEmpty {
+                            footnotesSection
+                                .padding(.top, 28)
                         }
-                        detailTopContentOffsetY = 0
-                        if let current = anchors[detailPrimaryScrollAnchorID],
-                           let baseline = detailAnchorBaselines[detailPrimaryScrollAnchorID] {
-                            detailContentOffsetY = max(baseline - current, 0)
+
+                        if !note.prompts.isEmpty {
+                            openAnglesSection
+                                .padding(.top, 28)
+                        }
+
+                        if !note.timeline.isEmpty {
+                            timelineSection
+                                .padding(.top, 28)
+                        }
+
+                        if let latestReply = note.latestChatReply, !latestReply.isEmpty {
+                            latestReplySection(latestReply)
+                                .padding(.top, 28)
+                        }
+
+                        if let pendingFollowUp = pendingFollowUpText {
+                            pendingFollowUpSection(pendingFollowUp)
+                                .padding(.top, 28)
                         }
                     }
-
-                    bottomBar(bottomInset: bottomInset)
-                        .background {
-                            GeometryReader { proxy in
-                                Color.clear
-                                    .preference(key: DetailBottomBarHeightPreferenceKey.self, value: proxy.size.height)
-                            }
-                        }
+                    .padding(.horizontal, 28)
+                    .padding(.bottom, 24)
                 }
-                .onPreferenceChange(DetailBottomBarHeightPreferenceKey.self) { height in
-                    guard height > 0 else { return }
-                    detailBottomBarHeight = height
+                .scrollDisabled(dragOffset > 0)
+                .onPreferenceChange(DetailAnchorPreferenceKey.self) { anchors in
+                    detailAnchorPositions = anchors
+                    for (id, value) in anchors where detailAnchorBaselines[id] == nil {
+                        detailAnchorBaselines[id] = value
+                    }
+                    detailTopContentOffsetY = 0
+                    if let current = anchors[detailPrimaryScrollAnchorID],
+                       let baseline = detailAnchorBaselines[detailPrimaryScrollAnchorID] {
+                        detailContentOffsetY = max(baseline - current, 0)
+                    }
                 }
-                .onPreferenceChange(DetailBottomBarInputTopPreferenceKey.self) { top in
-                    guard top >= 0 else { return }
-                    detailBottomBarInputTop = top
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    bottomBar(bottomInset: homeIndicatorHeight)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .transition(.opacity)
@@ -2063,6 +2081,7 @@ private struct EmptyNoteCard: View {
     let transitionNamespace: Namespace.ID
     let isExpanded: Bool
     let isAddMorphActive: Bool
+    let isVisible: Bool
     let onTap: () -> Void
     @State private var showContent: Bool = true
     @State private var showStaticFadeCard = false
@@ -2085,6 +2104,10 @@ private struct EmptyNoteCard: View {
         }
         .buttonStyle(.plain)
         .disabled(isAddMorphActive || showStaticFadeCard)
+        .allowsHitTesting(isVisible && !isAddMorphActive && !showStaticFadeCard)
+        .opacity(isVisible ? 1 : 0)
+        .scaleEffect(isVisible ? 1 : 0.96)
+        .animation(.easeInOut(duration: 0.22), value: isVisible)
         .onChange(of: isExpanded) { _, nowExpanded in
             if nowExpanded {
                 showContent = false
@@ -2419,6 +2442,22 @@ private struct DetailBottomBarHeightPreferenceKey: PreferenceKey {
 
 private struct DetailBottomBarInputTopPreferenceKey: PreferenceKey {
     static var defaultValue: CGFloat = 14
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
+private struct HomeContentHeightPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
+private struct HomeIndicatorHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 18
 
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
         value = nextValue()

@@ -719,7 +719,7 @@ struct ThinknoteAPIClient {
     #if targetEnvironment(simulator)
     static let defaultBaseURL = URL(string: "http://127.0.0.1:8787")!
     #else
-    static let defaultBaseURL = URL(string: "https://thinknote-backend.onrender.com")!
+    static let defaultBaseURL = URL(string: "https://thinknote-8zt0.onrender.com")!
     #endif
 
     init(baseURL: URL = ThinknoteAPIClient.defaultBaseURL) {
