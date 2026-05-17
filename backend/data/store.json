@@ -1,6 +1,193 @@
 {
-  "version": 2,
+  "version": 3,
   "notes": [
+    {
+      "id": "B54FE7AD-48A1-4267-B27D-FCD8418194CD",
+      "title": "Is yogurt ever good?",
+      "text": "is yogurt ever good?",
+      "rawText": "is yogurt ever good?",
+      "createdAt": "2026-05-16T03:25:44.316Z",
+      "updatedAt": "2026-05-16T03:25:53.769Z",
+      "status": "enriched",
+      "lastEnrichedAt": "2026-05-16T03:25:53.769Z",
+      "latestChatReply": null,
+      "enrichments": [
+        {
+          "id": "b0f86444-9f2d-4773-a2b3-b38b9a146577",
+          "createdAt": "2026-05-16T03:25:53.769Z",
+          "provider": "openai",
+          "headline": "Is yogurt ever good?",
+          "growthParagraphs": [
+            "Evaluating whether yogurt is 'good' depends on various factors such as nutritional value, taste preferences, and health benefits. Yogurt is often praised for its probiotics, which support digestive health, and its high protein content, making it a valuable food in many diets.",
+            "However, not all yogurts are created equal. Variations in sugar levels, additives, and fat content can significantly affect whether a particular yogurt is beneficial or enjoyable. Additionally, personal dietary restrictions and flavor preferences will influence individual assessments of yogurt's quality.",
+            "Understanding yogurt's role within broader dietary goals and product categories can help define when it is good. Considering cultural contexts or consumer habits can also provide insights into how yogurt is valued and experienced differently by diverse groups."
+          ],
+          "timelineSummary": "Explored yogurt's value based on health and taste factors",
+          "expansion": "Evaluating whether yogurt is 'good' depends on various factors such as nutritional value, taste preferences, and health benefits. Yogurt is often praised for its probiotics, which support digestive health, and its high protein content, making it a valuable food in many diets.\n\nHowever, not all yogurts are created equal. Variations in sugar levels, additives, and fat content can significantly affect whether a particular yogurt is beneficial or enjoyable. Additionally, personal dietary restrictions and flavor preferences will influence individual assessments of yogurt's quality.\n\nUnderstanding yogurt's role within broader dietary goals and product categories can help define when it is good. Considering cultural contexts or consumer habits can also provide insights into how yogurt is valued and experienced differently by diverse groups.",
+          "relatedIdeas": [
+            "Evaluating food products through health benefits and personal preferences",
+            "Balancing nutritional content with flavor in product development",
+            "Understanding consumer perception of dairy and fermented foods"
+          ],
+          "prompts": [
+            "What criteria define 'good' when it comes to food products like yogurt?",
+            "How do nutritional benefits weigh against taste preferences in consumer choices?",
+            "In what ways can yogurt's formulation be improved to increase its perceived goodness?"
+          ],
+          "links": [],
+          "sources": [
+            {
+              "id": "source-1",
+              "title": "Building a second brain for unfinished ideas",
+              "url": "https://example.org/second-brain-ideas",
+              "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+              "publisher": "Idea Systems Journal",
+              "query": "is yogurt ever good? is yogurt ever good? product thinking",
+              "score": 1,
+              "retrievedAt": "2026-05-16T03:25:44.334Z"
+            },
+            {
+              "id": "source-2",
+              "title": "Knowledge gardens and personal note networks",
+              "url": "https://example.org/knowledge-gardens",
+              "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+              "publisher": "Personal Knowledge Review",
+              "query": "is yogurt ever good? is yogurt ever good? product thinking",
+              "score": 0.9,
+              "retrievedAt": "2026-05-16T03:25:44.334Z"
+            },
+            {
+              "id": "source-3",
+              "title": "Prompting users with questions instead of summaries",
+              "url": "https://example.org/reflection-prompts",
+              "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+              "publisher": "Designing for Thought",
+              "query": "is yogurt ever good? is yogurt ever good? product thinking",
+              "score": 0.8,
+              "retrievedAt": "2026-05-16T03:25:44.334Z"
+            }
+          ]
+        }
+      ],
+      "links": [],
+      "sources": [
+        {
+          "id": "source-1",
+          "title": "Building a second brain for unfinished ideas",
+          "url": "https://example.org/second-brain-ideas",
+          "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+          "publisher": "Idea Systems Journal",
+          "query": "is yogurt ever good? is yogurt ever good? product thinking",
+          "score": 1,
+          "retrievedAt": "2026-05-16T03:25:44.334Z"
+        },
+        {
+          "id": "source-2",
+          "title": "Knowledge gardens and personal note networks",
+          "url": "https://example.org/knowledge-gardens",
+          "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+          "publisher": "Personal Knowledge Review",
+          "query": "is yogurt ever good? is yogurt ever good? product thinking",
+          "score": 0.9,
+          "retrievedAt": "2026-05-16T03:25:44.334Z"
+        },
+        {
+          "id": "source-3",
+          "title": "Prompting users with questions instead of summaries",
+          "url": "https://example.org/reflection-prompts",
+          "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+          "publisher": "Designing for Thought",
+          "query": "is yogurt ever good? is yogurt ever good? product thinking",
+          "score": 0.8,
+          "retrievedAt": "2026-05-16T03:25:44.334Z"
+        }
+      ],
+      "prompts": [
+        "What criteria define 'good' when it comes to food products like yogurt?",
+        "How do nutritional benefits weigh against taste preferences in consumer choices?",
+        "In what ways can yogurt's formulation be improved to increase its perceived goodness?"
+      ],
+      "relatedNoteIds": [],
+      "timeline": [
+        {
+          "id": "6dcd5fff-c80d-4c5f-a579-a682f30daed4",
+          "type": "note_enriched",
+          "createdAt": "2026-05-16T03:25:53.769Z",
+          "summary": "Explored yogurt's value based on health and taste factors",
+          "provider": "openai"
+        },
+        {
+          "id": "f3c649d6-850a-464e-bdbb-7d53ab03c88c",
+          "type": "job_started",
+          "createdAt": "2026-05-16T03:25:44.332Z",
+          "summary": "Background enrichment started"
+        },
+        {
+          "id": "8a6b3b61-a770-4468-aedc-73320241a338",
+          "type": "job_queued",
+          "createdAt": "2026-05-16T03:25:44.331Z",
+          "summary": "Enrichment queued from manual",
+          "priority": "user_initiated",
+          "earliestRunAt": "2026-05-16T03:25:44.331Z"
+        },
+        {
+          "id": "c735c232-6865-4bc1-a6ea-eedc8077450d",
+          "type": "note_created",
+          "createdAt": "2026-05-16T03:25:44.316Z",
+          "summary": "Note created"
+        }
+      ],
+      "revisions": [
+        {
+          "id": "55e006ef-a067-474f-8659-2fd1e2d2f918",
+          "createdAt": "2026-05-16T03:25:53.769Z",
+          "type": "ai_enrichment",
+          "summary": "Enrichment from openai",
+          "text": "Evaluating whether yogurt is 'good' depends on various factors such as nutritional value, taste preferences, and health benefits. Yogurt is often praised for its probiotics, which support digestive health, and its high protein content, making it a valuable food in many diets.\n\nHowever, not all yogurts are created equal. Variations in sugar levels, additives, and fat content can significantly affect whether a particular yogurt is beneficial or enjoyable. Additionally, personal dietary restrictions and flavor preferences will influence individual assessments of yogurt's quality.\n\nUnderstanding yogurt's role within broader dietary goals and product categories can help define when it is good. Considering cultural contexts or consumer habits can also provide insights into how yogurt is valued and experienced differently by diverse groups.",
+          "sourceJobId": "3d1d007b-6a57-4e2c-854c-dcae8d58058e"
+        },
+        {
+          "id": "ca425a84-d14c-47f4-a857-2689b6aa21aa",
+          "createdAt": "2026-05-16T03:25:44.316Z",
+          "type": "user_capture",
+          "summary": "Initial note capture",
+          "text": "is yogurt ever good?"
+        }
+      ]
+    },
+    {
+      "id": "provider-debug-note-2",
+      "title": "A short note to verify whether",
+      "text": "A short note to verify whether backend enrichment is really using OpenAI after the request fix.",
+      "rawText": "A short note to verify whether backend enrichment is really using OpenAI after the request fix.",
+      "status": "captured",
+      "createdAt": "2026-05-16T03:17:50.190Z",
+      "updatedAt": "2026-05-16T03:17:50.190Z",
+      "lastEnrichedAt": null,
+      "latestChatReply": null,
+      "enrichments": [],
+      "prompts": [],
+      "sources": [],
+      "links": [],
+      "relatedNoteIds": [],
+      "timeline": [
+        {
+          "id": "9aa6e699-d408-4272-8869-d765f1d30501",
+          "type": "note_created",
+          "createdAt": "2026-05-16T03:17:50.190Z",
+          "summary": "Note created"
+        }
+      ],
+      "revisions": [
+        {
+          "id": "6495a5b9-900a-498d-b4b9-543469f6468f",
+          "createdAt": "2026-05-16T03:17:50.190Z",
+          "type": "user_capture",
+          "summary": "Initial note capture",
+          "text": "A short note to verify whether backend enrichment is really using OpenAI after the request fix."
+        }
+      ]
+    },
     {
       "id": "646d59a7-4285-46b7-96e7-4041d49b464b",
       "title": "Bed and dream",
@@ -16,6 +203,11 @@
           "id": "0ee0b492-34d7-4f9d-a8d3-e8486ee56d8a",
           "createdAt": "2026-04-22T03:47:13.284Z",
           "provider": "mock",
+          "headline": "",
+          "growthParagraphs": [
+            "This note points toward a stronger claim: Bed and dream A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks."
+          ],
+          "timelineSummary": "New growth added",
           "expansion": "This note points toward a stronger claim: Bed and dream A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
           "relatedIdeas": [
             "What changes if you push this note further through the lens of product thinking?",
@@ -74,6 +266,11 @@
           "id": "93ac1902-437b-4acb-9c10-290dd20a588b",
           "createdAt": "2026-04-22T03:46:55.212Z",
           "provider": "mock",
+          "headline": "",
+          "growthParagraphs": [
+            "This note points toward a stronger claim: Bed and dream A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks."
+          ],
+          "timelineSummary": "New growth added",
           "expansion": "This note points toward a stronger claim: Bed and dream A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
           "relatedIdeas": [
             "What hidden assumption is carrying this thought?",
@@ -276,6 +473,11 @@
           "id": "7ffd658a-1c3f-43d2-a3cd-9a776643e66a",
           "createdAt": "2026-04-22T03:46:22.625Z",
           "provider": "mock",
+          "headline": "",
+          "growthParagraphs": [
+            "This note points toward a stronger claim: Bed A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks."
+          ],
+          "timelineSummary": "New growth added",
           "expansion": "This note points toward a stronger claim: Bed A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
           "relatedIdeas": [
             "What hidden assumption is carrying this thought?",
@@ -420,6 +622,11 @@
           "id": "e6ddf5ee-14cc-431e-bedc-590474e3dd0e",
           "createdAt": "2026-04-23T02:03:43.264Z",
           "provider": "mock",
+          "headline": "",
+          "growthParagraphs": [
+            "This note points toward a stronger claim: Nana’s A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks."
+          ],
+          "timelineSummary": "New growth added",
           "expansion": "This note points toward a stronger claim: Nana’s A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
           "relatedIdeas": [
             "What changes if you push this note further through the lens of product thinking?",
@@ -469,6 +676,11 @@
           "id": "64040247-e4c8-4e68-9230-246a92417c80",
           "createdAt": "2026-04-22T03:43:56.709Z",
           "provider": "mock",
+          "headline": "",
+          "growthParagraphs": [
+            "This note points toward a stronger claim: Nana’s A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks."
+          ],
+          "timelineSummary": "New growth added",
           "expansion": "This note points toward a stronger claim: Nana’s A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
           "relatedIdeas": [
             "What hidden assumption is carrying this thought?",
@@ -639,6 +851,11 @@
           "id": "ff94709e-85a6-46ff-820b-aba1e41e9d17",
           "createdAt": "2026-04-22T03:43:01.059Z",
           "provider": "mock",
+          "headline": "",
+          "growthParagraphs": [
+            "This note points toward a stronger claim: Ffff A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks."
+          ],
+          "timelineSummary": "New growth added",
           "expansion": "This note points toward a stronger claim: Ffff A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
           "relatedIdeas": [
             "What hidden assumption is carrying this thought?",
@@ -783,6 +1000,11 @@
           "id": "d75b8f30-f595-457d-9963-520a7fb85873",
           "createdAt": "2026-04-22T03:42:07.907Z",
           "provider": "mock",
+          "headline": "",
+          "growthParagraphs": [
+            "This note points toward a stronger claim: Ba A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks."
+          ],
+          "timelineSummary": "New growth added",
           "expansion": "This note points toward a stronger claim: Ba A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
           "relatedIdeas": [
             "What hidden assumption is carrying this thought?",
@@ -927,6 +1149,11 @@
           "id": "66da5967-6b71-4f39-a6eb-01f1a0455d6c",
           "createdAt": "2026-04-22T03:39:29.368Z",
           "provider": "mock",
+          "headline": "",
+          "growthParagraphs": [
+            "This note points toward a stronger claim: Do A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks."
+          ],
+          "timelineSummary": "New growth added",
           "expansion": "This note points toward a stronger claim: Do A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
           "relatedIdeas": [
             "What hidden assumption is carrying this thought?",
@@ -1071,6 +1298,11 @@
           "id": "ae649316-0f55-4ce1-ac2b-016afd6a9e04",
           "createdAt": "2026-04-22T03:39:21.341Z",
           "provider": "mock",
+          "headline": "",
+          "growthParagraphs": [
+            "This note points toward a stronger claim: E A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks."
+          ],
+          "timelineSummary": "New growth added",
           "expansion": "This note points toward a stronger claim: E A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
           "relatedIdeas": [
             "What hidden assumption is carrying this thought?",
@@ -1215,6 +1447,11 @@
           "id": "55d1643f-060a-4858-9a4f-346fe47a263d",
           "createdAt": "2026-04-22T03:38:09.623Z",
           "provider": "mock",
+          "headline": "",
+          "growthParagraphs": [
+            "This note points toward a stronger claim: F A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks."
+          ],
+          "timelineSummary": "New growth added",
           "expansion": "This note points toward a stronger claim: F A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
           "relatedIdeas": [
             "What hidden assumption is carrying this thought?",
@@ -1359,6 +1596,11 @@
           "id": "fa1e5585-2c28-4169-b9e5-2f5c72a21135",
           "createdAt": "2026-04-22T03:35:19.890Z",
           "provider": "mock",
+          "headline": "",
+          "growthParagraphs": [
+            "This note points toward a stronger claim: D A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks."
+          ],
+          "timelineSummary": "New growth added",
           "expansion": "This note points toward a stronger claim: D A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
           "relatedIdeas": [
             "What hidden assumption is carrying this thought?",
@@ -1503,6 +1745,11 @@
           "id": "b0d0a7b1-0fc1-485f-87f4-9e46d2c04029",
           "createdAt": "2026-04-22T03:33:56.178Z",
           "provider": "mock",
+          "headline": "",
+          "growthParagraphs": [
+            "This note points toward a stronger claim: D A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks."
+          ],
+          "timelineSummary": "New growth added",
           "expansion": "This note points toward a stronger claim: D A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
           "relatedIdeas": [
             "What hidden assumption is carrying this thought?",
@@ -1647,6 +1894,11 @@
           "id": "27d68bf9-721e-404d-8e67-670e2ec466c2",
           "createdAt": "2026-04-22T03:30:53.876Z",
           "provider": "mock",
+          "headline": "",
+          "growthParagraphs": [
+            "This note points toward a stronger claim: Fads A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks."
+          ],
+          "timelineSummary": "New growth added",
           "expansion": "This note points toward a stronger claim: Fads A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
           "relatedIdeas": [
             "What hidden assumption is carrying this thought?",
@@ -1791,6 +2043,11 @@
           "id": "dd8e42ac-5e18-4db5-8d21-2ed56bb4a49d",
           "createdAt": "2026-04-22T03:30:31.820Z",
           "provider": "mock",
+          "headline": "",
+          "growthParagraphs": [
+            "This note points toward a stronger claim: D A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks."
+          ],
+          "timelineSummary": "New growth added",
           "expansion": "This note points toward a stronger claim: D A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
           "relatedIdeas": [
             "What hidden assumption is carrying this thought?",
@@ -1935,6 +2192,11 @@
           "id": "8072c3b3-fa3c-45a0-94f8-143e7332b583",
           "createdAt": "2026-04-22T03:22:48.645Z",
           "provider": "mock",
+          "headline": "",
+          "growthParagraphs": [
+            "This note points toward a stronger claim: Ddd A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks."
+          ],
+          "timelineSummary": "New growth added",
           "expansion": "This note points toward a stronger claim: Ddd A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
           "relatedIdeas": [
             "What hidden assumption is carrying this thought?",
@@ -2079,6 +2341,11 @@
           "id": "8f1484ee-fa42-449d-b191-44dfd1145afa",
           "createdAt": "2026-04-22T03:22:41.639Z",
           "provider": "mock",
+          "headline": "",
+          "growthParagraphs": [
+            "This note points toward a stronger claim: Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdf... A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks."
+          ],
+          "timelineSummary": "New growth added",
           "expansion": "This note points toward a stronger claim: Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdfqpwofnqpwfnqpof Fed ddddawdf... A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
           "relatedIdeas": [
             "What hidden assumption is carrying this thought?",
@@ -2210,19 +2477,329 @@
     },
     {
       "id": "seed-reading-compression",
-      "title": "Reading is compression. Writing is decompression. The ratio between them tells you how clearly you actually understand something.",
-      "text": "reading is compression, writing is decompression",
-      "rawText": "reading is compression, writing is decompression",
+      "title": "Writing reveals whether reading became understanding",
+      "text": "Writing reveals whether reading became understanding.",
+      "rawText": "Writing reveals whether reading became understanding.",
       "status": "enriched",
       "createdAt": "2026-04-20T18:17:00.000Z",
-      "updatedAt": "2026-04-20T18:32:00.000Z",
-      "lastEnrichedAt": "2026-04-20T18:32:00.000Z",
+      "updatedAt": "2026-05-16T03:24:54.017Z",
+      "lastEnrichedAt": "2026-05-16T03:24:54.017Z",
       "latestChatReply": null,
       "enrichments": [
+        {
+          "id": "794eb74a-947d-4c2a-bdca-6285bc4e6dc8",
+          "createdAt": "2026-05-16T03:24:54.017Z",
+          "provider": "openai",
+          "headline": "Writing reveals whether reading became understanding",
+          "growthParagraphs": [
+            "Writing acts as a practical test of comprehension by forcing the reader to articulate insights and connections from the material. This process highlights gaps or uncertainties that passive reading alone may leave unnoticed.",
+            "By converting thoughts into written form, individuals can clarify meaning, reinforce memory, and deepen their cognitive grasp. Writing also enables reflective thinking, allowing for the exploration of nuances beyond initial impressions.",
+            "In product thinking, encouraging users to write about what they have read can transform information consumption into meaningful understanding, fostering actionable ideas and better decision-making."
+          ],
+          "timelineSummary": "Recognition that writing validates and deepens reading comprehension",
+          "expansion": "Writing acts as a practical test of comprehension by forcing the reader to articulate insights and connections from the material. This process highlights gaps or uncertainties that passive reading alone may leave unnoticed.\n\nBy converting thoughts into written form, individuals can clarify meaning, reinforce memory, and deepen their cognitive grasp. Writing also enables reflective thinking, allowing for the exploration of nuances beyond initial impressions.\n\nIn product thinking, encouraging users to write about what they have read can transform information consumption into meaningful understanding, fostering actionable ideas and better decision-making.",
+          "relatedIdeas": [
+            "A short note to verify whether",
+            "Knowledge gardens and personal note networks",
+            "Building a second brain for unfinished ideas",
+            "Prompting users with questions instead of summaries"
+          ],
+          "prompts": [
+            "What key insights did writing help clarify that reading alone did not?",
+            "Where did writing reveal uncertainties or gaps in my understanding?",
+            "How can I use writing to turn reading into actionable ideas?"
+          ],
+          "links": [
+            {
+              "id": "39c2bad8-aef1-4be0-8c48-0c58662126f0",
+              "noteId": "provider-debug-note-2",
+              "title": "A short note to verify whether",
+              "relationship": "complementary",
+              "confidence": 0.06,
+              "summary": "Shared themes: whether"
+            }
+          ],
+          "sources": [
+            {
+              "id": "source-1",
+              "title": "Knowledge gardens and personal note networks",
+              "url": "https://example.org/knowledge-gardens",
+              "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+              "publisher": "Personal Knowledge Review",
+              "query": "Writing reveals whether reading became understanding. Writing reveals whether reading became understanding. product thinking",
+              "score": 0.14285714285714285,
+              "retrievedAt": "2026-05-16T03:24:47.978Z"
+            },
+            {
+              "id": "source-2",
+              "title": "Building a second brain for unfinished ideas",
+              "url": "https://example.org/second-brain-ideas",
+              "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+              "publisher": "Idea Systems Journal",
+              "query": "Writing reveals whether reading became understanding. Writing reveals whether reading became understanding. product thinking",
+              "score": 0.9,
+              "retrievedAt": "2026-05-16T03:24:47.978Z"
+            },
+            {
+              "id": "source-3",
+              "title": "Prompting users with questions instead of summaries",
+              "url": "https://example.org/reflection-prompts",
+              "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+              "publisher": "Designing for Thought",
+              "query": "Writing reveals whether reading became understanding. Writing reveals whether reading became understanding. product thinking",
+              "score": 0.8,
+              "retrievedAt": "2026-05-16T03:24:47.978Z"
+            }
+          ]
+        },
+        {
+          "id": "af80e6fd-9a6c-412b-989e-aafe179c5896",
+          "createdAt": "2026-05-16T03:18:58.845Z",
+          "provider": "openai",
+          "headline": "Writing reveals whether reading became understanding",
+          "growthParagraphs": [
+            "Writing acts as a reflective process that tests and clarifies the reader's grasp of the material. When reading turns into writing, it forces the individual to organize thoughts, identify key concepts, and articulate insights, which confirms whether comprehension has truly taken place.",
+            "This process not only highlights what was understood but also exposes gaps in knowledge or misunderstandings that may have been missed during reading. Writing can therefore serve as a diagnostic tool to improve learning and retention by making implicit understanding explicit.",
+            "Moreover, integrating writing into the reading workflow supports knowledge development by encouraging active engagement, critical thinking, and synthesis. This reinforces reading as an interactive rather than passive activity, fostering deeper intellectual growth."
+          ],
+          "timelineSummary": "Recognition that writing confirms and deepens reading comprehension",
+          "expansion": "Writing acts as a reflective process that tests and clarifies the reader's grasp of the material. When reading turns into writing, it forces the individual to organize thoughts, identify key concepts, and articulate insights, which confirms whether comprehension has truly taken place.\n\nThis process not only highlights what was understood but also exposes gaps in knowledge or misunderstandings that may have been missed during reading. Writing can therefore serve as a diagnostic tool to improve learning and retention by making implicit understanding explicit.\n\nMoreover, integrating writing into the reading workflow supports knowledge development by encouraging active engagement, critical thinking, and synthesis. This reinforces reading as an interactive rather than passive activity, fostering deeper intellectual growth.",
+          "relatedIdeas": [
+            "A short note to verify whether backend enrichment is really using OpenAI after the request fix."
+          ],
+          "prompts": [
+            "What key insights does writing reveal about your understanding of this reading?",
+            "How does writing help identify gaps in the knowledge gained from reading?",
+            "In what ways can writing transform passive reading into active learning?"
+          ],
+          "links": [
+            {
+              "id": "dbf577be-62a1-4fb4-b18f-482c777d49a8",
+              "noteId": "provider-debug-note-2",
+              "title": "A short note to verify whether",
+              "relationship": "complementary",
+              "confidence": 0.06,
+              "summary": "Shared themes: whether"
+            }
+          ],
+          "sources": [
+            {
+              "id": "source-1",
+              "title": "Knowledge gardens and personal note networks",
+              "url": "https://example.org/knowledge-gardens",
+              "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+              "publisher": "Personal Knowledge Review",
+              "query": "Writing reveals whether reading became understanding. Writing reveals whether reading became understanding.",
+              "score": 0.16666666666666666,
+              "retrievedAt": "2026-05-16T03:18:51.726Z"
+            },
+            {
+              "id": "source-2",
+              "title": "Building a second brain for unfinished ideas",
+              "url": "https://example.org/second-brain-ideas",
+              "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+              "publisher": "Idea Systems Journal",
+              "query": "Writing reveals whether reading became understanding. Writing reveals whether reading became understanding.",
+              "score": 0.9,
+              "retrievedAt": "2026-05-16T03:18:51.726Z"
+            },
+            {
+              "id": "source-3",
+              "title": "Prompting users with questions instead of summaries",
+              "url": "https://example.org/reflection-prompts",
+              "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+              "publisher": "Designing for Thought",
+              "query": "Writing reveals whether reading became understanding. Writing reveals whether reading became understanding.",
+              "score": 0.8,
+              "retrievedAt": "2026-05-16T03:18:51.726Z"
+            }
+          ]
+        },
+        {
+          "id": "4769541e-3999-4352-a5c3-6b8155ae89e9",
+          "createdAt": "2026-05-16T03:18:23.738Z",
+          "provider": "mock",
+          "headline": "Writing reveals whether reading became understanding.",
+          "growthParagraphs": [
+            "This note points toward a stronger claim: Writing reveals whether reading became understanding. A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Knowledge gardens and personal note networks and Building a second brain for unfinished ideas.",
+            "What makes the note valuable is not just the observation itself, but the decision or experiment it could unlock once the idea is made more explicit."
+          ],
+          "timelineSummary": "New growth added",
+          "expansion": "This note points toward a stronger claim: Writing reveals whether reading became understanding. A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Knowledge gardens and personal note networks and Building a second brain for unfinished ideas.\n\nWhat makes the note valuable is not just the observation itself, but the decision or experiment it could unlock once the idea is made more explicit.",
+          "relatedIdeas": [
+            "What hidden assumption is carrying this thought?",
+            "How does this note reinforce or challenge \"A short note to verify whether\"?",
+            "If this became a project this week, what is the smallest visible action?"
+          ],
+          "prompts": [
+            "What do you believe now that you could not say clearly when you first captured this thought?",
+            "Which source, example, or observation would make the idea more grounded?",
+            "What unresolved question should stay attached to this note?"
+          ],
+          "links": [
+            {
+              "id": "60a7f82c-0a1f-4fce-b0b3-96fc76454b72",
+              "noteId": "provider-debug-note-2",
+              "title": "A short note to verify whether",
+              "relationship": "complementary",
+              "confidence": 0.06,
+              "summary": "Shared themes: whether"
+            }
+          ],
+          "sources": [
+            {
+              "id": "src-1-knowledge-gardens-and-personal-note-networks",
+              "title": "Knowledge gardens and personal note networks",
+              "url": "https://example.org/knowledge-gardens",
+              "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+              "publisher": "Personal Knowledge Review",
+              "query": "Writing reveals whether reading became understanding. Writing reveals whether reading became understanding.",
+              "score": 0.16666666666666666,
+              "retrievedAt": "2026-05-16T03:18:15.492Z"
+            },
+            {
+              "id": "src-2-building-a-second-brain-for-unfinished-ideas",
+              "title": "Building a second brain for unfinished ideas",
+              "url": "https://example.org/second-brain-ideas",
+              "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+              "publisher": "Idea Systems Journal",
+              "query": "Writing reveals whether reading became understanding. Writing reveals whether reading became understanding.",
+              "score": 0.9,
+              "retrievedAt": "2026-05-16T03:18:15.492Z"
+            },
+            {
+              "id": "src-3-prompting-users-with-questions-instead-of-summaries",
+              "title": "Prompting users with questions instead of summaries",
+              "url": "https://example.org/reflection-prompts",
+              "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+              "publisher": "Designing for Thought",
+              "query": "Writing reveals whether reading became understanding. Writing reveals whether reading became understanding.",
+              "score": 0.8,
+              "retrievedAt": "2026-05-16T03:18:15.492Z"
+            }
+          ]
+        },
+        {
+          "id": "d334e251-94a3-4033-8cdf-044fd6972633",
+          "createdAt": "2026-05-16T03:09:46.155Z",
+          "provider": "mock",
+          "headline": "Writing reveals whether reading became understanding.",
+          "growthParagraphs": [
+            "This note points toward a stronger claim: Writing reveals whether reading became understanding. A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Knowledge gardens and personal note networks and Building a second brain for unfinished ideas.",
+            "If you keep developing it through the lens of product thinking, the note becomes more actionable because it stops being a mood and starts becoming a decision."
+          ],
+          "timelineSummary": "New growth added",
+          "expansion": "This note points toward a stronger claim: Writing reveals whether reading became understanding. A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Knowledge gardens and personal note networks and Building a second brain for unfinished ideas.\n\nIf you keep developing it through the lens of product thinking, the note becomes more actionable because it stops being a mood and starts becoming a decision.",
+          "relatedIdeas": [
+            "What changes if you push this note further through the lens of product thinking?",
+            "What earlier note might disagree with this idea in a productive way?",
+            "If this became a project this week, what is the smallest visible action?"
+          ],
+          "prompts": [
+            "What do you believe now that you could not say clearly when you first captured this thought?",
+            "Which source, example, or observation would make the idea more grounded?",
+            "What unresolved question should stay attached to this note?"
+          ],
+          "links": [],
+          "sources": [
+            {
+              "id": "src-1-knowledge-gardens-and-personal-note-networks",
+              "title": "Knowledge gardens and personal note networks",
+              "url": "https://example.org/knowledge-gardens",
+              "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+              "publisher": "Personal Knowledge Review",
+              "query": "Writing reveals whether reading became understanding. Writing reveals whether reading became understanding. product thinking",
+              "score": 0.14285714285714285,
+              "retrievedAt": "2026-05-16T03:09:45.680Z"
+            },
+            {
+              "id": "src-2-building-a-second-brain-for-unfinished-ideas",
+              "title": "Building a second brain for unfinished ideas",
+              "url": "https://example.org/second-brain-ideas",
+              "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+              "publisher": "Idea Systems Journal",
+              "query": "Writing reveals whether reading became understanding. Writing reveals whether reading became understanding. product thinking",
+              "score": 0.9,
+              "retrievedAt": "2026-05-16T03:09:45.680Z"
+            },
+            {
+              "id": "src-3-prompting-users-with-questions-instead-of-summaries",
+              "title": "Prompting users with questions instead of summaries",
+              "url": "https://example.org/reflection-prompts",
+              "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+              "publisher": "Designing for Thought",
+              "query": "Writing reveals whether reading became understanding. Writing reveals whether reading became understanding. product thinking",
+              "score": 0.8,
+              "retrievedAt": "2026-05-16T03:09:45.680Z"
+            }
+          ]
+        },
+        {
+          "id": "bfeaeebd-8199-44a8-968b-c577df81605f",
+          "createdAt": "2026-05-16T03:05:52.696Z",
+          "provider": "mock",
+          "headline": "Writing reveals whether reading became understanding.",
+          "growthParagraphs": [
+            "This note points toward a stronger claim: Writing reveals whether reading became understanding. A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Knowledge gardens and personal note networks and Building a second brain for unfinished ideas.",
+            "If you keep developing it through the lens of product thinking, the note becomes more actionable because it stops being a mood and starts becoming a decision."
+          ],
+          "timelineSummary": "New growth added",
+          "expansion": "This note points toward a stronger claim: Writing reveals whether reading became understanding. A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Knowledge gardens and personal note networks and Building a second brain for unfinished ideas.\n\nIf you keep developing it through the lens of product thinking, the note becomes more actionable because it stops being a mood and starts becoming a decision.",
+          "relatedIdeas": [
+            "What changes if you push this note further through the lens of product thinking?",
+            "What earlier note might disagree with this idea in a productive way?",
+            "If this became a project this week, what is the smallest visible action?"
+          ],
+          "prompts": [
+            "What do you believe now that you could not say clearly when you first captured this thought?",
+            "Which source, example, or observation would make the idea more grounded?",
+            "What unresolved question should stay attached to this note?"
+          ],
+          "links": [],
+          "sources": [
+            {
+              "id": "src-1-knowledge-gardens-and-personal-note-networks",
+              "title": "Knowledge gardens and personal note networks",
+              "url": "https://example.org/knowledge-gardens",
+              "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+              "publisher": "Personal Knowledge Review",
+              "query": "Writing reveals whether reading became understanding. Writing reveals whether reading became understanding. product thinking",
+              "score": 0.14285714285714285,
+              "retrievedAt": "2026-05-16T03:05:52.277Z"
+            },
+            {
+              "id": "src-2-building-a-second-brain-for-unfinished-ideas",
+              "title": "Building a second brain for unfinished ideas",
+              "url": "https://example.org/second-brain-ideas",
+              "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+              "publisher": "Idea Systems Journal",
+              "query": "Writing reveals whether reading became understanding. Writing reveals whether reading became understanding. product thinking",
+              "score": 0.9,
+              "retrievedAt": "2026-05-16T03:05:52.278Z"
+            },
+            {
+              "id": "src-3-prompting-users-with-questions-instead-of-summaries",
+              "title": "Prompting users with questions instead of summaries",
+              "url": "https://example.org/reflection-prompts",
+              "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+              "publisher": "Designing for Thought",
+              "query": "Writing reveals whether reading became understanding. Writing reveals whether reading became understanding. product thinking",
+              "score": 0.8,
+              "retrievedAt": "2026-05-16T03:05:52.278Z"
+            }
+          ]
+        },
         {
           "id": "seed-reading-compression-enrichment",
           "createdAt": "2026-04-20T18:32:00.000Z",
           "provider": "prototype",
+          "headline": "",
+          "growthParagraphs": [
+            "When you read, you're absorbing many people's thinking, condensed. When you write, you're forced to unpack a single thread and make it survive daylight. The act of writing reveals where the compression was doing the thinking for you.",
+            "A useful test: if you can't decompress an idea into your own words without the scaffolding falling apart, you probably imported the conclusion but not the path.",
+            "That makes writing a diagnostic, not just an output format. It exposes whether the idea has actually become yours."
+          ],
+          "timelineSummary": "New growth added",
           "expansion": "When you read, you're absorbing many people's thinking, condensed. When you write, you're forced to unpack a single thread and make it survive daylight. The act of writing reveals where the compression was doing the thinking for you.\n\nA useful test: if you can't decompress an idea into your own words without the scaffolding falling apart, you probably imported the conclusion but not the path.\n\nThat makes writing a diagnostic, not just an output format. It exposes whether the idea has actually become yours.",
           "relatedIdeas": [],
           "prompts": [
@@ -2256,35 +2833,179 @@
         }
       ],
       "prompts": [
-        "Is the inverse true — does decompression (writing) actually compress future reading?",
-        "What's the equivalent for listening and conversation?",
-        "Could this reframe how we evaluate AI-generated summaries?"
+        "What key insights did writing help clarify that reading alone did not?",
+        "Where did writing reveal uncertainties or gaps in my understanding?",
+        "How can I use writing to turn reading into actionable ideas?"
       ],
       "sources": [
         {
-          "id": "6f5b62e7-44c8-41d7-a2c1-8bf657d2031b",
-          "title": "Writing and Speaking",
-          "url": "https://paulgraham.com/writing44.html",
-          "snippet": "Having good ideas is most of writing well. If you know what you're talking about, you can say it in the plainest words.",
-          "publisher": "paulgraham.com",
-          "query": "",
-          "score": 0,
-          "retrievedAt": "2026-04-20T18:32:00.000Z"
+          "id": "source-1",
+          "title": "Knowledge gardens and personal note networks",
+          "url": "https://example.org/knowledge-gardens",
+          "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+          "publisher": "Personal Knowledge Review",
+          "query": "Writing reveals whether reading became understanding. Writing reveals whether reading became understanding. product thinking",
+          "score": 0.14285714285714285,
+          "retrievedAt": "2026-05-16T03:24:47.978Z"
         },
         {
-          "id": "2e732a0c-7410-4e39-9028-e032c24c59be",
-          "title": "The Noncentral Fallacy",
-          "url": "https://www.lesswrong.com/posts/2J6iHq8x7P8N6L9XK/the-noncentral-fallacy-the-worst-argument-in-the-world",
-          "snippet": "Compression loses information; the question is which information you can afford to lose.",
-          "publisher": "lesswrong.com",
-          "query": "",
-          "score": 0,
-          "retrievedAt": "2026-04-20T18:32:00.000Z"
+          "id": "source-2",
+          "title": "Building a second brain for unfinished ideas",
+          "url": "https://example.org/second-brain-ideas",
+          "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+          "publisher": "Idea Systems Journal",
+          "query": "Writing reveals whether reading became understanding. Writing reveals whether reading became understanding. product thinking",
+          "score": 0.9,
+          "retrievedAt": "2026-05-16T03:24:47.978Z"
+        },
+        {
+          "id": "source-3",
+          "title": "Prompting users with questions instead of summaries",
+          "url": "https://example.org/reflection-prompts",
+          "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+          "publisher": "Designing for Thought",
+          "query": "Writing reveals whether reading became understanding. Writing reveals whether reading became understanding. product thinking",
+          "score": 0.8,
+          "retrievedAt": "2026-05-16T03:24:47.978Z"
         }
       ],
-      "links": [],
-      "relatedNoteIds": [],
+      "links": [
+        {
+          "id": "39c2bad8-aef1-4be0-8c48-0c58662126f0",
+          "noteId": "provider-debug-note-2",
+          "title": "A short note to verify whether",
+          "relationship": "complementary",
+          "confidence": 0.06,
+          "summary": "Shared themes: whether"
+        }
+      ],
+      "relatedNoteIds": [
+        "provider-debug-note-2"
+      ],
       "timeline": [
+        {
+          "id": "1a826f77-9110-4135-aeb1-92a3a5b2a601",
+          "type": "related_notes_updated",
+          "createdAt": "2026-05-16T03:24:54.017Z",
+          "summary": "1 related notes refreshed"
+        },
+        {
+          "id": "69ba1a81-9a91-4a3e-8aa5-8b3602d9407a",
+          "type": "note_enriched",
+          "createdAt": "2026-05-16T03:24:54.017Z",
+          "summary": "Recognition that writing validates and deepens reading comprehension",
+          "provider": "openai"
+        },
+        {
+          "id": "085c57dd-5ab6-4aa2-ab69-3312e7fc0c6f",
+          "type": "job_started",
+          "createdAt": "2026-05-16T03:24:47.976Z",
+          "summary": "Background enrichment started"
+        },
+        {
+          "id": "4edbd0cb-3a38-4d7b-9b13-b3abbcb7fdf5",
+          "type": "job_queued",
+          "createdAt": "2026-05-16T03:24:47.974Z",
+          "summary": "Enrichment queued from manual",
+          "priority": "user_initiated",
+          "earliestRunAt": "2026-05-16T03:24:47.974Z"
+        },
+        {
+          "id": "2e53a9a8-2408-4be9-b528-2f80527f1f49",
+          "type": "related_notes_updated",
+          "createdAt": "2026-05-16T03:18:58.845Z",
+          "summary": "1 related notes refreshed"
+        },
+        {
+          "id": "acb34322-1cb1-46c9-ac89-d4c5ff77d71b",
+          "type": "note_enriched",
+          "createdAt": "2026-05-16T03:18:58.845Z",
+          "summary": "Recognition that writing confirms and deepens reading comprehension",
+          "provider": "openai"
+        },
+        {
+          "id": "f763d184-18ce-462c-b6cf-a096cef91e69",
+          "type": "job_started",
+          "createdAt": "2026-05-16T03:18:51.723Z",
+          "summary": "Background enrichment started"
+        },
+        {
+          "id": "f6802dcd-2e0a-4ed7-a43f-3d054a86f628",
+          "type": "job_queued",
+          "createdAt": "2026-05-16T03:18:51.720Z",
+          "summary": "Enrichment queued from manual",
+          "priority": "user_initiated",
+          "earliestRunAt": "2026-05-16T03:18:51.720Z"
+        },
+        {
+          "id": "47c828f4-e006-4924-86bc-f15cec1d755a",
+          "type": "related_notes_updated",
+          "createdAt": "2026-05-16T03:18:23.738Z",
+          "summary": "1 related notes refreshed"
+        },
+        {
+          "id": "66b18404-ed0f-4e61-8f0f-c15af1207120",
+          "type": "note_enriched",
+          "createdAt": "2026-05-16T03:18:23.738Z",
+          "summary": "New growth added",
+          "provider": "mock"
+        },
+        {
+          "id": "5f0ba976-7987-4b0f-857e-b415e07a3786",
+          "type": "job_started",
+          "createdAt": "2026-05-16T03:18:15.488Z",
+          "summary": "Background enrichment started"
+        },
+        {
+          "id": "bcb68298-fc73-4d42-a2a6-abf85a4c499c",
+          "type": "job_queued",
+          "createdAt": "2026-05-16T03:18:15.486Z",
+          "summary": "Enrichment queued from manual",
+          "priority": "user_initiated",
+          "earliestRunAt": "2026-05-16T03:18:15.486Z"
+        },
+        {
+          "id": "87c39ce4-7f1a-410c-84f7-c0e407b73169",
+          "type": "note_enriched",
+          "createdAt": "2026-05-16T03:09:46.156Z",
+          "summary": "New growth added",
+          "provider": "mock"
+        },
+        {
+          "id": "6291faf1-0a7b-4fb8-8182-6833da386b29",
+          "type": "job_started",
+          "createdAt": "2026-05-16T03:09:45.679Z",
+          "summary": "Background enrichment started"
+        },
+        {
+          "id": "7f242018-5cbc-477f-ba4c-245ed1ff49c7",
+          "type": "job_queued",
+          "createdAt": "2026-05-16T03:09:45.675Z",
+          "summary": "Enrichment queued from manual",
+          "priority": "user_initiated",
+          "earliestRunAt": "2026-05-16T03:09:45.675Z"
+        },
+        {
+          "id": "35ebb436-307e-49fd-8d10-bc9998d55278",
+          "type": "note_enriched",
+          "createdAt": "2026-05-16T03:05:52.696Z",
+          "summary": "New growth added",
+          "provider": "mock"
+        },
+        {
+          "id": "c6678927-bc62-485b-bb41-d3e29c48a339",
+          "type": "job_started",
+          "createdAt": "2026-05-16T03:05:52.269Z",
+          "summary": "Background enrichment started"
+        },
+        {
+          "id": "d24a5bee-093b-48b4-8fa7-fc678639e64e",
+          "type": "job_queued",
+          "createdAt": "2026-05-16T03:05:52.266Z",
+          "summary": "Enrichment queued from manual",
+          "priority": "user_initiated",
+          "earliestRunAt": "2026-05-16T03:05:52.265Z"
+        },
         {
           "id": "seed-reading-compression-timeline",
           "type": "note_enriched",
@@ -2293,6 +3014,46 @@
         }
       ],
       "revisions": [
+        {
+          "id": "dfa9b5d8-15ca-43f9-b2cb-b397827779da",
+          "createdAt": "2026-05-16T03:24:54.017Z",
+          "type": "ai_enrichment",
+          "summary": "Enrichment from openai",
+          "text": "Writing acts as a practical test of comprehension by forcing the reader to articulate insights and connections from the material. This process highlights gaps or uncertainties that passive reading alone may leave unnoticed.\n\nBy converting thoughts into written form, individuals can clarify meaning, reinforce memory, and deepen their cognitive grasp. Writing also enables reflective thinking, allowing for the exploration of nuances beyond initial impressions.\n\nIn product thinking, encouraging users to write about what they have read can transform information consumption into meaningful understanding, fostering actionable ideas and better decision-making.",
+          "sourceJobId": "b81ef6d4-132f-4bd1-9fa4-7b4dc5ff68a2"
+        },
+        {
+          "id": "2b071a02-5e73-40db-ab4d-71ec1e59f4c7",
+          "createdAt": "2026-05-16T03:18:58.845Z",
+          "type": "ai_enrichment",
+          "summary": "Enrichment from openai",
+          "text": "Writing acts as a reflective process that tests and clarifies the reader's grasp of the material. When reading turns into writing, it forces the individual to organize thoughts, identify key concepts, and articulate insights, which confirms whether comprehension has truly taken place.\n\nThis process not only highlights what was understood but also exposes gaps in knowledge or misunderstandings that may have been missed during reading. Writing can therefore serve as a diagnostic tool to improve learning and retention by making implicit understanding explicit.\n\nMoreover, integrating writing into the reading workflow supports knowledge development by encouraging active engagement, critical thinking, and synthesis. This reinforces reading as an interactive rather than passive activity, fostering deeper intellectual growth.",
+          "sourceJobId": "789d0a2a-9e7e-4dc5-b6fa-c3bfd0664a52"
+        },
+        {
+          "id": "a0587c56-a53d-464c-bc03-af50aad8db09",
+          "createdAt": "2026-05-16T03:18:23.738Z",
+          "type": "ai_enrichment",
+          "summary": "Enrichment from mock",
+          "text": "This note points toward a stronger claim: Writing reveals whether reading became understanding. A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Knowledge gardens and personal note networks and Building a second brain for unfinished ideas.\n\nWhat makes the note valuable is not just the observation itself, but the decision or experiment it could unlock once the idea is made more explicit.",
+          "sourceJobId": "1d64a9e2-b16b-452e-9d4c-b4392c43f3dc"
+        },
+        {
+          "id": "ae4999ac-ce4d-45df-b114-d9064a8fa3b1",
+          "createdAt": "2026-05-16T03:09:46.155Z",
+          "type": "ai_enrichment",
+          "summary": "Enrichment from mock",
+          "text": "This note points toward a stronger claim: Writing reveals whether reading became understanding. A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Knowledge gardens and personal note networks and Building a second brain for unfinished ideas.\n\nIf you keep developing it through the lens of product thinking, the note becomes more actionable because it stops being a mood and starts becoming a decision.",
+          "sourceJobId": "23918c5d-6221-4c5b-8168-f8ba128ad136"
+        },
+        {
+          "id": "dadd04c6-aa83-4e35-b5d2-2bb752b1a75f",
+          "createdAt": "2026-05-16T03:05:52.696Z",
+          "type": "ai_enrichment",
+          "summary": "Enrichment from mock",
+          "text": "This note points toward a stronger claim: Writing reveals whether reading became understanding. A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Knowledge gardens and personal note networks and Building a second brain for unfinished ideas.\n\nIf you keep developing it through the lens of product thinking, the note becomes more actionable because it stops being a mood and starts becoming a decision.",
+          "sourceJobId": "1e2509ef-3858-4073-a0e2-6ea0fa2d9726"
+        },
         {
           "id": "seed-reading-compression-revision",
           "createdAt": "2026-04-20T18:17:00.000Z",
@@ -2304,19 +3065,357 @@
     },
     {
       "id": "seed-tool-worldview",
-      "title": "Every tool quietly teaches you its worldview. Figma teaches layers. Excel teaches tables. What does a feed teach?",
-      "text": "every tool teaches you a worldview",
-      "rawText": "every tool teaches you a worldview",
-      "status": "queued",
+      "title": "Every tool teaches you how to think",
+      "text": "Every tool teaches you how to think.",
+      "rawText": "Every tool teaches you how to think.",
+      "status": "enriched",
       "createdAt": "2026-04-20T17:03:00.000Z",
-      "updatedAt": "2026-04-20T17:18:00.000Z",
-      "lastEnrichedAt": null,
+      "updatedAt": "2026-05-16T03:27:14.050Z",
+      "lastEnrichedAt": "2026-05-16T03:27:14.050Z",
       "latestChatReply": null,
       "enrichments": [
+        {
+          "id": "13d37946-1768-47bc-bfa7-532c4e7829c9",
+          "createdAt": "2026-05-16T03:27:14.050Z",
+          "provider": "openai",
+          "headline": "Every tool teaches you how to think",
+          "growthParagraphs": [
+            "Each tool we use inherently shapes our cognitive approach and problem-solving style. Whether it’s a note-taking app, a design platform, or a project management system, the way it structures information and workflows influences how we process ideas and make decisions.",
+            "Understanding that tools embody distinct thinking patterns can help users select and customize their environments to better align with their creative and analytical goals. This awareness encourages critical reflection on workflows and promotes more deliberate use of technology to foster deeper insight.",
+            "Moreover, embracing tools as extensions of our mental models highlights the importance of developing digital habits that amplify clarity, connection, and continual growth rather than mere storage or task completion."
+          ],
+          "timelineSummary": "Recognizing tools shape cognitive processes and thinking patterns",
+          "expansion": "Each tool we use inherently shapes our cognitive approach and problem-solving style. Whether it’s a note-taking app, a design platform, or a project management system, the way it structures information and workflows influences how we process ideas and make decisions.\n\nUnderstanding that tools embody distinct thinking patterns can help users select and customize their environments to better align with their creative and analytical goals. This awareness encourages critical reflection on workflows and promotes more deliberate use of technology to foster deeper insight.\n\nMoreover, embracing tools as extensions of our mental models highlights the importance of developing digital habits that amplify clarity, connection, and continual growth rather than mere storage or task completion.",
+          "relatedIdeas": [
+            "Building a second brain for unfinished ideas",
+            "Knowledge gardens and personal note networks",
+            "Prompting users with questions instead of summaries"
+          ],
+          "prompts": [
+            "How does the design of a tool influence the way you approach problems?",
+            "In what ways can you customize your tools to better support your thinking style?",
+            "What assumptions does a tool make about your workflow, and how do these affect your productivity?"
+          ],
+          "links": [],
+          "sources": [
+            {
+              "id": "source-1",
+              "title": "Building a second brain for unfinished ideas",
+              "url": "https://example.org/second-brain-ideas",
+              "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+              "publisher": "Idea Systems Journal",
+              "query": "Every tool teaches you how to think. Every tool teaches you how to think. product thinking",
+              "score": 1,
+              "retrievedAt": "2026-05-16T03:26:50.640Z"
+            },
+            {
+              "id": "source-2",
+              "title": "Knowledge gardens and personal note networks",
+              "url": "https://example.org/knowledge-gardens",
+              "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+              "publisher": "Personal Knowledge Review",
+              "query": "Every tool teaches you how to think. Every tool teaches you how to think. product thinking",
+              "score": 0.9,
+              "retrievedAt": "2026-05-16T03:26:50.640Z"
+            },
+            {
+              "id": "source-3",
+              "title": "Prompting users with questions instead of summaries",
+              "url": "https://example.org/reflection-prompts",
+              "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+              "publisher": "Designing for Thought",
+              "query": "Every tool teaches you how to think. Every tool teaches you how to think. product thinking",
+              "score": 0.8,
+              "retrievedAt": "2026-05-16T03:26:50.640Z"
+            }
+          ]
+        },
+        {
+          "id": "60fff162-fedc-4dfe-bfc5-9511ba842950",
+          "createdAt": "2026-05-16T03:26:45.282Z",
+          "provider": "mock",
+          "headline": "Every tool teaches you how to think.",
+          "growthParagraphs": [
+            "This note points toward a stronger claim: Every tool teaches you how to think. A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
+            "If you keep developing it through the lens of product thinking, the note becomes more actionable because it stops being a mood and starts becoming a decision."
+          ],
+          "timelineSummary": "New growth added",
+          "expansion": "This note points toward a stronger claim: Every tool teaches you how to think. A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.\n\nIf you keep developing it through the lens of product thinking, the note becomes more actionable because it stops being a mood and starts becoming a decision.",
+          "relatedIdeas": [
+            "What changes if you push this note further through the lens of product thinking?",
+            "What earlier note might disagree with this idea in a productive way?",
+            "If this became a project this week, what is the smallest visible action?"
+          ],
+          "prompts": [
+            "What do you believe now that you could not say clearly when you first captured this thought?",
+            "Which source, example, or observation would make the idea more grounded?",
+            "What unresolved question should stay attached to this note?"
+          ],
+          "links": [],
+          "sources": [
+            {
+              "id": "src-1-building-a-second-brain-for-unfinished-ideas",
+              "title": "Building a second brain for unfinished ideas",
+              "url": "https://example.org/second-brain-ideas",
+              "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+              "publisher": "Idea Systems Journal",
+              "query": "Every tool teaches you how to think. Every tool teaches you how to think. product thinking",
+              "score": 1,
+              "retrievedAt": "2026-05-16T03:26:38.095Z"
+            },
+            {
+              "id": "src-2-knowledge-gardens-and-personal-note-networks",
+              "title": "Knowledge gardens and personal note networks",
+              "url": "https://example.org/knowledge-gardens",
+              "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+              "publisher": "Personal Knowledge Review",
+              "query": "Every tool teaches you how to think. Every tool teaches you how to think. product thinking",
+              "score": 0.9,
+              "retrievedAt": "2026-05-16T03:26:38.095Z"
+            },
+            {
+              "id": "src-3-prompting-users-with-questions-instead-of-summaries",
+              "title": "Prompting users with questions instead of summaries",
+              "url": "https://example.org/reflection-prompts",
+              "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+              "publisher": "Designing for Thought",
+              "query": "Every tool teaches you how to think. Every tool teaches you how to think. product thinking",
+              "score": 0.8,
+              "retrievedAt": "2026-05-16T03:26:38.095Z"
+            }
+          ]
+        },
+        {
+          "id": "258ef48b-0b84-433b-a1bc-542d14bcac44",
+          "createdAt": "2026-05-16T03:24:44.917Z",
+          "provider": "openai",
+          "headline": "Every tool teaches you how to think",
+          "growthParagraphs": [
+            "The design and functionality of any tool inherently shape the user's thought process. Tools act as cognitive extensions, guiding how problems are approached and solutions are formed. For instance, a mind mapping tool encourages associative thinking and pattern recognition, while a spreadsheet promotes structured logic and quantitative analysis.",
+            "Recognizing that every tool teaches a specific mode of thinking empowers product designers to choose or create tools that cultivate desired cognitive skills in users. This perspective helps align tool features with deeper educational or professional goals, transforming tools from mere utilities into environments that foster meaningful mental growth.",
+            "Additionally, users benefit by becoming more mindful of how adopting particular tools influences their reasoning. This awareness can drive intentional selection of tools suited to different challenges or stages of creative work, ultimately enhancing problem-solving versatility."
+          ],
+          "timelineSummary": "Understanding how tool design shapes cognitive habits and thinking styles",
+          "expansion": "The design and functionality of any tool inherently shape the user's thought process. Tools act as cognitive extensions, guiding how problems are approached and solutions are formed. For instance, a mind mapping tool encourages associative thinking and pattern recognition, while a spreadsheet promotes structured logic and quantitative analysis.\n\nRecognizing that every tool teaches a specific mode of thinking empowers product designers to choose or create tools that cultivate desired cognitive skills in users. This perspective helps align tool features with deeper educational or professional goals, transforming tools from mere utilities into environments that foster meaningful mental growth.\n\nAdditionally, users benefit by becoming more mindful of how adopting particular tools influences their reasoning. This awareness can drive intentional selection of tools suited to different challenges or stages of creative work, ultimately enhancing problem-solving versatility.",
+          "relatedIdeas": [
+            "Building a second brain for unfinished ideas",
+            "Knowledge gardens and personal note networks",
+            "Prompting users with questions instead of summaries"
+          ],
+          "prompts": [
+            "How does the design of this tool influence the way I approach problems?",
+            "In what ways can I use different tools to foster various modes of thinking?",
+            "What assumptions or habits does this tool encourage or discourage?"
+          ],
+          "links": [],
+          "sources": [
+            {
+              "id": "source-1",
+              "title": "Building a second brain for unfinished ideas",
+              "url": "https://example.org/second-brain-ideas",
+              "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+              "publisher": "Idea Systems Journal",
+              "query": "Every tool teaches you how to think. Every tool teaches you how to think. product thinking",
+              "score": 1,
+              "retrievedAt": "2026-05-16T03:24:33.147Z"
+            },
+            {
+              "id": "source-2",
+              "title": "Knowledge gardens and personal note networks",
+              "url": "https://example.org/knowledge-gardens",
+              "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+              "publisher": "Personal Knowledge Review",
+              "query": "Every tool teaches you how to think. Every tool teaches you how to think. product thinking",
+              "score": 0.9,
+              "retrievedAt": "2026-05-16T03:24:33.147Z"
+            },
+            {
+              "id": "source-3",
+              "title": "Prompting users with questions instead of summaries",
+              "url": "https://example.org/reflection-prompts",
+              "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+              "publisher": "Designing for Thought",
+              "query": "Every tool teaches you how to think. Every tool teaches you how to think. product thinking",
+              "score": 0.8,
+              "retrievedAt": "2026-05-16T03:24:33.147Z"
+            }
+          ]
+        },
+        {
+          "id": "0e11a71c-9a52-40c4-86ff-26733bd0eb40",
+          "createdAt": "2026-05-16T03:14:30.346Z",
+          "provider": "mock",
+          "headline": "Every tool teaches you how to think.",
+          "growthParagraphs": [
+            "This note points toward a stronger claim: Every tool teaches you how to think. A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
+            "If you keep developing it through the lens of product thinking, the note becomes more actionable because it stops being a mood and starts becoming a decision."
+          ],
+          "timelineSummary": "New growth added",
+          "expansion": "This note points toward a stronger claim: Every tool teaches you how to think. A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.\n\nIf you keep developing it through the lens of product thinking, the note becomes more actionable because it stops being a mood and starts becoming a decision.",
+          "relatedIdeas": [
+            "What changes if you push this note further through the lens of product thinking?",
+            "What earlier note might disagree with this idea in a productive way?",
+            "If this became a project this week, what is the smallest visible action?"
+          ],
+          "prompts": [
+            "What do you believe now that you could not say clearly when you first captured this thought?",
+            "Which source, example, or observation would make the idea more grounded?",
+            "What unresolved question should stay attached to this note?"
+          ],
+          "links": [],
+          "sources": [
+            {
+              "id": "src-1-building-a-second-brain-for-unfinished-ideas",
+              "title": "Building a second brain for unfinished ideas",
+              "url": "https://example.org/second-brain-ideas",
+              "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+              "publisher": "Idea Systems Journal",
+              "query": "Every tool teaches you how to think. Every tool teaches you how to think. product thinking",
+              "score": 1,
+              "retrievedAt": "2026-05-16T03:14:30.037Z"
+            },
+            {
+              "id": "src-2-knowledge-gardens-and-personal-note-networks",
+              "title": "Knowledge gardens and personal note networks",
+              "url": "https://example.org/knowledge-gardens",
+              "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+              "publisher": "Personal Knowledge Review",
+              "query": "Every tool teaches you how to think. Every tool teaches you how to think. product thinking",
+              "score": 0.9,
+              "retrievedAt": "2026-05-16T03:14:30.037Z"
+            },
+            {
+              "id": "src-3-prompting-users-with-questions-instead-of-summaries",
+              "title": "Prompting users with questions instead of summaries",
+              "url": "https://example.org/reflection-prompts",
+              "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+              "publisher": "Designing for Thought",
+              "query": "Every tool teaches you how to think. Every tool teaches you how to think. product thinking",
+              "score": 0.8,
+              "retrievedAt": "2026-05-16T03:14:30.037Z"
+            }
+          ]
+        },
+        {
+          "id": "399d19bd-4d58-41de-8a89-ac00818458b7",
+          "createdAt": "2026-05-16T03:10:01.737Z",
+          "provider": "mock",
+          "headline": "Every tool teaches you how to think.",
+          "growthParagraphs": [
+            "This note points toward a stronger claim: Every tool teaches you how to think. A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
+            "If you keep developing it through the lens of product thinking, the note becomes more actionable because it stops being a mood and starts becoming a decision."
+          ],
+          "timelineSummary": "New growth added",
+          "expansion": "This note points toward a stronger claim: Every tool teaches you how to think. A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.\n\nIf you keep developing it through the lens of product thinking, the note becomes more actionable because it stops being a mood and starts becoming a decision.",
+          "relatedIdeas": [
+            "What changes if you push this note further through the lens of product thinking?",
+            "What earlier note might disagree with this idea in a productive way?",
+            "If this became a project this week, what is the smallest visible action?"
+          ],
+          "prompts": [
+            "What do you believe now that you could not say clearly when you first captured this thought?",
+            "Which source, example, or observation would make the idea more grounded?",
+            "What unresolved question should stay attached to this note?"
+          ],
+          "links": [],
+          "sources": [
+            {
+              "id": "src-1-building-a-second-brain-for-unfinished-ideas",
+              "title": "Building a second brain for unfinished ideas",
+              "url": "https://example.org/second-brain-ideas",
+              "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+              "publisher": "Idea Systems Journal",
+              "query": "Every tool teaches you how to think. Every tool teaches you how to think. product thinking",
+              "score": 1,
+              "retrievedAt": "2026-05-16T03:10:01.418Z"
+            },
+            {
+              "id": "src-2-knowledge-gardens-and-personal-note-networks",
+              "title": "Knowledge gardens and personal note networks",
+              "url": "https://example.org/knowledge-gardens",
+              "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+              "publisher": "Personal Knowledge Review",
+              "query": "Every tool teaches you how to think. Every tool teaches you how to think. product thinking",
+              "score": 0.9,
+              "retrievedAt": "2026-05-16T03:10:01.418Z"
+            },
+            {
+              "id": "src-3-prompting-users-with-questions-instead-of-summaries",
+              "title": "Prompting users with questions instead of summaries",
+              "url": "https://example.org/reflection-prompts",
+              "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+              "publisher": "Designing for Thought",
+              "query": "Every tool teaches you how to think. Every tool teaches you how to think. product thinking",
+              "score": 0.8,
+              "retrievedAt": "2026-05-16T03:10:01.419Z"
+            }
+          ]
+        },
+        {
+          "id": "d30fac63-59a9-4bce-800f-2f35b4f80536",
+          "createdAt": "2026-05-16T03:06:12.478Z",
+          "provider": "mock",
+          "headline": "Every tool teaches you how to think.",
+          "growthParagraphs": [
+            "This note points toward a stronger claim: Every tool teaches you how to think. A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
+            "If you keep developing it through the lens of product thinking, the note becomes more actionable because it stops being a mood and starts becoming a decision."
+          ],
+          "timelineSummary": "New growth added",
+          "expansion": "This note points toward a stronger claim: Every tool teaches you how to think. A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.\n\nIf you keep developing it through the lens of product thinking, the note becomes more actionable because it stops being a mood and starts becoming a decision.",
+          "relatedIdeas": [
+            "What changes if you push this note further through the lens of product thinking?",
+            "What earlier note might disagree with this idea in a productive way?",
+            "If this became a project this week, what is the smallest visible action?"
+          ],
+          "prompts": [
+            "What do you believe now that you could not say clearly when you first captured this thought?",
+            "Which source, example, or observation would make the idea more grounded?",
+            "What unresolved question should stay attached to this note?"
+          ],
+          "links": [],
+          "sources": [
+            {
+              "id": "src-1-building-a-second-brain-for-unfinished-ideas",
+              "title": "Building a second brain for unfinished ideas",
+              "url": "https://example.org/second-brain-ideas",
+              "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+              "publisher": "Idea Systems Journal",
+              "query": "Every tool teaches you how to think. Every tool teaches you how to think. product thinking",
+              "score": 1,
+              "retrievedAt": "2026-05-16T03:06:11.934Z"
+            },
+            {
+              "id": "src-2-knowledge-gardens-and-personal-note-networks",
+              "title": "Knowledge gardens and personal note networks",
+              "url": "https://example.org/knowledge-gardens",
+              "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+              "publisher": "Personal Knowledge Review",
+              "query": "Every tool teaches you how to think. Every tool teaches you how to think. product thinking",
+              "score": 0.9,
+              "retrievedAt": "2026-05-16T03:06:11.934Z"
+            },
+            {
+              "id": "src-3-prompting-users-with-questions-instead-of-summaries",
+              "title": "Prompting users with questions instead of summaries",
+              "url": "https://example.org/reflection-prompts",
+              "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+              "publisher": "Designing for Thought",
+              "query": "Every tool teaches you how to think. Every tool teaches you how to think. product thinking",
+              "score": 0.8,
+              "retrievedAt": "2026-05-16T03:06:11.934Z"
+            }
+          ]
+        },
         {
           "id": "seed-tool-worldview-enrichment",
           "createdAt": "2026-04-20T17:18:00.000Z",
           "provider": "prototype",
+          "headline": "",
+          "growthParagraphs": [
+            "The UI of a tool is its epistemology: the categories it makes easy become the categories you think in.",
+            "A feed, for example, may teach recency and reaction before reflection. Over time the interface becomes a quiet tutor for attention itself."
+          ],
+          "timelineSummary": "New growth added",
           "expansion": "The UI of a tool is its epistemology: the categories it makes easy become the categories you think in.\n\nA feed, for example, may teach recency and reaction before reflection. Over time the interface becomes a quiet tutor for attention itself.",
           "relatedIdeas": [],
           "prompts": [],
@@ -2324,11 +3423,172 @@
           "sources": []
         }
       ],
-      "prompts": [],
-      "sources": [],
+      "prompts": [
+        "How does the design of a tool influence the way you approach problems?",
+        "In what ways can you customize your tools to better support your thinking style?",
+        "What assumptions does a tool make about your workflow, and how do these affect your productivity?"
+      ],
+      "sources": [
+        {
+          "id": "source-1",
+          "title": "Building a second brain for unfinished ideas",
+          "url": "https://example.org/second-brain-ideas",
+          "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+          "publisher": "Idea Systems Journal",
+          "query": "Every tool teaches you how to think. Every tool teaches you how to think. product thinking",
+          "score": 1,
+          "retrievedAt": "2026-05-16T03:26:50.640Z"
+        },
+        {
+          "id": "source-2",
+          "title": "Knowledge gardens and personal note networks",
+          "url": "https://example.org/knowledge-gardens",
+          "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+          "publisher": "Personal Knowledge Review",
+          "query": "Every tool teaches you how to think. Every tool teaches you how to think. product thinking",
+          "score": 0.9,
+          "retrievedAt": "2026-05-16T03:26:50.640Z"
+        },
+        {
+          "id": "source-3",
+          "title": "Prompting users with questions instead of summaries",
+          "url": "https://example.org/reflection-prompts",
+          "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+          "publisher": "Designing for Thought",
+          "query": "Every tool teaches you how to think. Every tool teaches you how to think. product thinking",
+          "score": 0.8,
+          "retrievedAt": "2026-05-16T03:26:50.640Z"
+        }
+      ],
       "links": [],
       "relatedNoteIds": [],
       "timeline": [
+        {
+          "id": "44e70ec2-7743-483e-b0af-a46ec40d8055",
+          "type": "note_enriched",
+          "createdAt": "2026-05-16T03:27:14.050Z",
+          "summary": "Recognizing tools shape cognitive processes and thinking patterns",
+          "provider": "openai"
+        },
+        {
+          "id": "e2d55915-3ce2-4ef8-b9d5-3722b61d9668",
+          "type": "job_started",
+          "createdAt": "2026-05-16T03:26:50.639Z",
+          "summary": "Background enrichment started"
+        },
+        {
+          "id": "275fff64-fcc2-4cdc-ad47-1e82163fb18d",
+          "type": "job_queued",
+          "createdAt": "2026-05-16T03:26:50.637Z",
+          "summary": "Enrichment queued from manual",
+          "priority": "user_initiated",
+          "earliestRunAt": "2026-05-16T03:26:50.637Z"
+        },
+        {
+          "id": "65907808-6824-4b35-b30e-ea10a152e1df",
+          "type": "note_enriched",
+          "createdAt": "2026-05-16T03:26:45.282Z",
+          "summary": "New growth added",
+          "provider": "mock"
+        },
+        {
+          "id": "6ddf4e53-9323-48f2-91c8-1f55ff0541ce",
+          "type": "job_started",
+          "createdAt": "2026-05-16T03:26:38.092Z",
+          "summary": "Background enrichment started"
+        },
+        {
+          "id": "b23595a5-8a12-4160-bc91-0b809001b2a0",
+          "type": "job_queued",
+          "createdAt": "2026-05-16T03:26:38.088Z",
+          "summary": "Enrichment queued from manual",
+          "priority": "user_initiated",
+          "earliestRunAt": "2026-05-16T03:26:38.087Z"
+        },
+        {
+          "id": "1a4df7ad-c854-4112-9475-e2a87b8dc8ad",
+          "type": "note_enriched",
+          "createdAt": "2026-05-16T03:24:44.918Z",
+          "summary": "Understanding how tool design shapes cognitive habits and thinking styles",
+          "provider": "openai"
+        },
+        {
+          "id": "37d9dcc8-f274-48bb-b263-d4e1f4806782",
+          "type": "job_started",
+          "createdAt": "2026-05-16T03:24:33.143Z",
+          "summary": "Background enrichment started"
+        },
+        {
+          "id": "8b11c944-7d5b-4109-825f-f88dbd99a951",
+          "type": "job_queued",
+          "createdAt": "2026-05-16T03:24:33.139Z",
+          "summary": "Enrichment queued from manual",
+          "priority": "user_initiated",
+          "earliestRunAt": "2026-05-16T03:24:33.139Z"
+        },
+        {
+          "id": "7eaa3e55-6d3a-442c-8152-23a0c936e266",
+          "type": "note_enriched",
+          "createdAt": "2026-05-16T03:14:30.346Z",
+          "summary": "New growth added",
+          "provider": "mock"
+        },
+        {
+          "id": "7a6bcc91-9d10-4f3c-a4e3-3f421d5565d2",
+          "type": "job_started",
+          "createdAt": "2026-05-16T03:14:30.036Z",
+          "summary": "Background enrichment started"
+        },
+        {
+          "id": "f167bab4-e717-4ab7-8435-408f8fe83341",
+          "type": "job_queued",
+          "createdAt": "2026-05-16T03:14:30.034Z",
+          "summary": "Enrichment queued from manual",
+          "priority": "user_initiated",
+          "earliestRunAt": "2026-05-16T03:14:30.034Z"
+        },
+        {
+          "id": "08101003-c8f5-4978-8569-189f9265f0f8",
+          "type": "note_enriched",
+          "createdAt": "2026-05-16T03:10:01.737Z",
+          "summary": "New growth added",
+          "provider": "mock"
+        },
+        {
+          "id": "954dfcef-8c34-4525-9c79-b78a96376b20",
+          "type": "job_started",
+          "createdAt": "2026-05-16T03:10:01.417Z",
+          "summary": "Background enrichment started"
+        },
+        {
+          "id": "74eef45e-4a5d-4aa6-8503-e98f490cac05",
+          "type": "job_queued",
+          "createdAt": "2026-05-16T03:10:01.416Z",
+          "summary": "Enrichment queued from manual",
+          "priority": "user_initiated",
+          "earliestRunAt": "2026-05-16T03:10:01.415Z"
+        },
+        {
+          "id": "fb84323b-0c06-4909-934c-00439ec91d8d",
+          "type": "note_enriched",
+          "createdAt": "2026-05-16T03:06:12.478Z",
+          "summary": "New growth added",
+          "provider": "mock"
+        },
+        {
+          "id": "eee13015-47a8-4a31-9af2-8e8acb4b110f",
+          "type": "job_started",
+          "createdAt": "2026-05-16T03:06:11.932Z",
+          "summary": "Background enrichment started"
+        },
+        {
+          "id": "81cfec24-8146-4a7d-8cf7-55e0888a9885",
+          "type": "job_queued",
+          "createdAt": "2026-05-16T03:06:11.930Z",
+          "summary": "Enrichment queued from manual",
+          "priority": "user_initiated",
+          "earliestRunAt": "2026-05-16T03:06:11.930Z"
+        },
         {
           "id": "seed-tool-worldview-timeline",
           "type": "note_growing",
@@ -2337,6 +3597,54 @@
         }
       ],
       "revisions": [
+        {
+          "id": "a235be94-0c31-4e63-93ad-5f2236acafe3",
+          "createdAt": "2026-05-16T03:27:14.050Z",
+          "type": "ai_enrichment",
+          "summary": "Enrichment from openai",
+          "text": "Each tool we use inherently shapes our cognitive approach and problem-solving style. Whether it’s a note-taking app, a design platform, or a project management system, the way it structures information and workflows influences how we process ideas and make decisions.\n\nUnderstanding that tools embody distinct thinking patterns can help users select and customize their environments to better align with their creative and analytical goals. This awareness encourages critical reflection on workflows and promotes more deliberate use of technology to foster deeper insight.\n\nMoreover, embracing tools as extensions of our mental models highlights the importance of developing digital habits that amplify clarity, connection, and continual growth rather than mere storage or task completion.",
+          "sourceJobId": "e49721c6-c4f0-4960-ab14-ea728bb34951"
+        },
+        {
+          "id": "26a9acd5-6dca-4071-92cb-bf617d892d60",
+          "createdAt": "2026-05-16T03:26:45.282Z",
+          "type": "ai_enrichment",
+          "summary": "Enrichment from mock",
+          "text": "This note points toward a stronger claim: Every tool teaches you how to think. A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.\n\nIf you keep developing it through the lens of product thinking, the note becomes more actionable because it stops being a mood and starts becoming a decision.",
+          "sourceJobId": "1a71cdad-1cc0-4a76-b342-a856e58f6054"
+        },
+        {
+          "id": "e9aacd5f-5268-4371-aa70-710aff4303c7",
+          "createdAt": "2026-05-16T03:24:44.917Z",
+          "type": "ai_enrichment",
+          "summary": "Enrichment from openai",
+          "text": "The design and functionality of any tool inherently shape the user's thought process. Tools act as cognitive extensions, guiding how problems are approached and solutions are formed. For instance, a mind mapping tool encourages associative thinking and pattern recognition, while a spreadsheet promotes structured logic and quantitative analysis.\n\nRecognizing that every tool teaches a specific mode of thinking empowers product designers to choose or create tools that cultivate desired cognitive skills in users. This perspective helps align tool features with deeper educational or professional goals, transforming tools from mere utilities into environments that foster meaningful mental growth.\n\nAdditionally, users benefit by becoming more mindful of how adopting particular tools influences their reasoning. This awareness can drive intentional selection of tools suited to different challenges or stages of creative work, ultimately enhancing problem-solving versatility.",
+          "sourceJobId": "7a001337-c482-4334-be05-46643f0cc5a1"
+        },
+        {
+          "id": "303c3b48-f2c0-4d7b-a17c-d8ab2d471981",
+          "createdAt": "2026-05-16T03:14:30.346Z",
+          "type": "ai_enrichment",
+          "summary": "Enrichment from mock",
+          "text": "This note points toward a stronger claim: Every tool teaches you how to think. A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.\n\nIf you keep developing it through the lens of product thinking, the note becomes more actionable because it stops being a mood and starts becoming a decision.",
+          "sourceJobId": "142dc882-6e2d-4bbf-8505-0480b79ad247"
+        },
+        {
+          "id": "600b4caa-144c-4869-8769-26b5d77632ac",
+          "createdAt": "2026-05-16T03:10:01.737Z",
+          "type": "ai_enrichment",
+          "summary": "Enrichment from mock",
+          "text": "This note points toward a stronger claim: Every tool teaches you how to think. A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.\n\nIf you keep developing it through the lens of product thinking, the note becomes more actionable because it stops being a mood and starts becoming a decision.",
+          "sourceJobId": "b2e13e26-a346-4cf3-a698-4b1ceb2eb0e2"
+        },
+        {
+          "id": "2b243d82-fdfc-45ab-a834-8e07576ea31f",
+          "createdAt": "2026-05-16T03:06:12.478Z",
+          "type": "ai_enrichment",
+          "summary": "Enrichment from mock",
+          "text": "This note points toward a stronger claim: Every tool teaches you how to think. A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.\n\nIf you keep developing it through the lens of product thinking, the note becomes more actionable because it stops being a mood and starts becoming a decision.",
+          "sourceJobId": "dfa58760-a117-48cd-8ba5-4bf233f1e096"
+        },
         {
           "id": "seed-tool-worldview-revision",
           "createdAt": "2026-04-20T17:03:00.000Z",
@@ -2348,19 +3656,242 @@
     },
     {
       "id": "seed-taste-pattern-recognition",
-      "title": "Taste is just pattern recognition across a huge dataset of things you paid full attention to.",
-      "text": "taste = pattern recognition at scale",
-      "rawText": "taste = pattern recognition at scale",
+      "title": "Taste is memory for structure",
+      "text": "Taste is memory for structure.",
+      "rawText": "Taste is memory for structure.",
       "status": "enriched",
       "createdAt": "2026-04-20T15:32:00.000Z",
-      "updatedAt": "2026-04-20T15:47:00.000Z",
-      "lastEnrichedAt": "2026-04-20T15:47:00.000Z",
+      "updatedAt": "2026-05-16T03:20:53.805Z",
+      "lastEnrichedAt": "2026-05-16T03:20:53.805Z",
       "latestChatReply": null,
       "enrichments": [
+        {
+          "id": "7a42aa28-715f-4c84-9a4d-76b5e9a3ec1e",
+          "createdAt": "2026-05-16T03:20:53.805Z",
+          "provider": "openai",
+          "headline": "Taste is memory for structure",
+          "growthParagraphs": [
+            "The phrase 'Taste is memory for structure' highlights how our preferences and discernments are deeply informed by the patterns and frameworks we have previously encountered. In product thinking, this means that user choices and feedback often reflect an intuitive recognition of structural coherence or dissonance from past experiences.",
+            "Recognizing taste as a form of memory emphasizes the importance of designing products with consistent and comprehensible structures. It encourages product teams to consider not only the immediate function or aesthetics but also how the underlying organization resonates with users over time.",
+            "By focusing on memory for structure, product thinkers can better predict user behavior, refine user experiences, and create more meaningful interactions that build trust and familiarity—key drivers of product success."
+          ],
+          "timelineSummary": "Expanded on how taste reflects memory of structure in product design",
+          "expansion": "The phrase 'Taste is memory for structure' highlights how our preferences and discernments are deeply informed by the patterns and frameworks we have previously encountered. In product thinking, this means that user choices and feedback often reflect an intuitive recognition of structural coherence or dissonance from past experiences.\n\nRecognizing taste as a form of memory emphasizes the importance of designing products with consistent and comprehensible structures. It encourages product teams to consider not only the immediate function or aesthetics but also how the underlying organization resonates with users over time.\n\nBy focusing on memory for structure, product thinkers can better predict user behavior, refine user experiences, and create more meaningful interactions that build trust and familiarity—key drivers of product success.",
+          "relatedIdeas": [],
+          "prompts": [
+            "How does a user's past experience shape their taste and perception of product structure?",
+            "In what ways can we design products to align with or challenge users' memory of familiar structures?",
+            "How can understanding taste as memory inform iterative improvements in product design?"
+          ],
+          "links": [],
+          "sources": [
+            {
+              "id": "source-1",
+              "title": "Building a second brain for unfinished ideas",
+              "url": "https://example.org/second-brain-ideas",
+              "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+              "publisher": "Idea Systems Journal",
+              "query": "Taste is memory for structure Taste is memory for structure. product thinking",
+              "score": 0.2,
+              "retrievedAt": "2026-05-16T03:20:43.582Z"
+            },
+            {
+              "id": "source-2",
+              "title": "Knowledge gardens and personal note networks",
+              "url": "https://example.org/knowledge-gardens",
+              "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+              "publisher": "Personal Knowledge Review",
+              "query": "Taste is memory for structure Taste is memory for structure. product thinking",
+              "score": 0.9,
+              "retrievedAt": "2026-05-16T03:20:43.582Z"
+            },
+            {
+              "id": "source-3",
+              "title": "Prompting users with questions instead of summaries",
+              "url": "https://example.org/reflection-prompts",
+              "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+              "publisher": "Designing for Thought",
+              "query": "Taste is memory for structure Taste is memory for structure. product thinking",
+              "score": 0.8,
+              "retrievedAt": "2026-05-16T03:20:43.582Z"
+            }
+          ]
+        },
+        {
+          "id": "987729f3-7961-4a97-9ba5-3a285f470d65",
+          "createdAt": "2026-05-16T03:20:05.112Z",
+          "provider": "openai",
+          "headline": "Taste is memory for structure",
+          "growthParagraphs": [
+            "The concept that taste functions as memory for structure highlights how aesthetic appreciation relies on recalling familiar patterns and arrangements. This perspective links sensory experience directly to cognitive processes, suggesting that what we perceive as 'taste' is informed by previously encountered structures stored in memory.",
+            "In product thinking, this insight can drive design decisions by emphasizing structural consistency and recognizability. Designers can harness users’ memory for structure to create intuitive and pleasing experiences, reinforcing engagement through familiar yet innovative configurations.",
+            "Moreover, understanding taste as a memory mechanism opens avenues for deeper reflection on how cultural and personal histories shape preferences. This can inform personalized product experiences and adaptive interfaces that resonate with individual users’ structural memories."
+          ],
+          "timelineSummary": "Exploring taste as linked to memory and structural recognition",
+          "expansion": "The concept that taste functions as memory for structure highlights how aesthetic appreciation relies on recalling familiar patterns and arrangements. This perspective links sensory experience directly to cognitive processes, suggesting that what we perceive as 'taste' is informed by previously encountered structures stored in memory.\n\nIn product thinking, this insight can drive design decisions by emphasizing structural consistency and recognizability. Designers can harness users’ memory for structure to create intuitive and pleasing experiences, reinforcing engagement through familiar yet innovative configurations.\n\nMoreover, understanding taste as a memory mechanism opens avenues for deeper reflection on how cultural and personal histories shape preferences. This can inform personalized product experiences and adaptive interfaces that resonate with individual users’ structural memories.",
+          "relatedIdeas": [
+            "Building a second brain for unfinished ideas",
+            "Knowledge gardens and personal note networks",
+            "Prompting users with questions instead of summaries"
+          ],
+          "prompts": [
+            "How does memory of structural patterns influence your perception of taste in design?",
+            "What structural elements consistently trigger a sense of familiarity or preference?",
+            "How can recognizing taste as memory for structure improve user-centered product development?"
+          ],
+          "links": [],
+          "sources": [
+            {
+              "id": "source-1",
+              "title": "Building a second brain for unfinished ideas",
+              "url": "https://example.org/second-brain-ideas",
+              "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+              "publisher": "Idea Systems Journal",
+              "query": "Taste is memory for structure. Taste is memory for structure. product thinking",
+              "score": 0.2,
+              "retrievedAt": "2026-05-16T03:19:57.121Z"
+            },
+            {
+              "id": "source-2",
+              "title": "Knowledge gardens and personal note networks",
+              "url": "https://example.org/knowledge-gardens",
+              "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+              "publisher": "Personal Knowledge Review",
+              "query": "Taste is memory for structure. Taste is memory for structure. product thinking",
+              "score": 0.9,
+              "retrievedAt": "2026-05-16T03:19:57.121Z"
+            },
+            {
+              "id": "source-3",
+              "title": "Prompting users with questions instead of summaries",
+              "url": "https://example.org/reflection-prompts",
+              "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+              "publisher": "Designing for Thought",
+              "query": "Taste is memory for structure. Taste is memory for structure. product thinking",
+              "score": 0.8,
+              "retrievedAt": "2026-05-16T03:19:57.121Z"
+            }
+          ]
+        },
+        {
+          "id": "3bfcc887-eb71-4095-8ba3-f7069d89afb3",
+          "createdAt": "2026-05-16T03:14:13.553Z",
+          "provider": "mock",
+          "headline": "Taste is memory for structure.",
+          "growthParagraphs": [
+            "This note points toward a stronger claim: Taste is memory for structure. A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
+            "If you keep developing it through the lens of product thinking, the note becomes more actionable because it stops being a mood and starts becoming a decision."
+          ],
+          "timelineSummary": "New growth added",
+          "expansion": "This note points toward a stronger claim: Taste is memory for structure. A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.\n\nIf you keep developing it through the lens of product thinking, the note becomes more actionable because it stops being a mood and starts becoming a decision.",
+          "relatedIdeas": [
+            "What changes if you push this note further through the lens of product thinking?",
+            "What earlier note might disagree with this idea in a productive way?",
+            "If this became a project this week, what is the smallest visible action?"
+          ],
+          "prompts": [
+            "What do you believe now that you could not say clearly when you first captured this thought?",
+            "Which source, example, or observation would make the idea more grounded?",
+            "What unresolved question should stay attached to this note?"
+          ],
+          "links": [],
+          "sources": [
+            {
+              "id": "src-1-building-a-second-brain-for-unfinished-ideas",
+              "title": "Building a second brain for unfinished ideas",
+              "url": "https://example.org/second-brain-ideas",
+              "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+              "publisher": "Idea Systems Journal",
+              "query": "Taste is memory for structure. Taste is memory for structure. product thinking",
+              "score": 0.2,
+              "retrievedAt": "2026-05-16T03:14:13.052Z"
+            },
+            {
+              "id": "src-2-knowledge-gardens-and-personal-note-networks",
+              "title": "Knowledge gardens and personal note networks",
+              "url": "https://example.org/knowledge-gardens",
+              "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+              "publisher": "Personal Knowledge Review",
+              "query": "Taste is memory for structure. Taste is memory for structure. product thinking",
+              "score": 0.9,
+              "retrievedAt": "2026-05-16T03:14:13.052Z"
+            },
+            {
+              "id": "src-3-prompting-users-with-questions-instead-of-summaries",
+              "title": "Prompting users with questions instead of summaries",
+              "url": "https://example.org/reflection-prompts",
+              "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+              "publisher": "Designing for Thought",
+              "query": "Taste is memory for structure. Taste is memory for structure. product thinking",
+              "score": 0.8,
+              "retrievedAt": "2026-05-16T03:14:13.052Z"
+            }
+          ]
+        },
+        {
+          "id": "ee6105b7-bffc-4b00-b024-b089ea2b0111",
+          "createdAt": "2026-05-16T02:57:51.126Z",
+          "provider": "mock",
+          "headline": "Taste is memory for structure.",
+          "growthParagraphs": [
+            "This note points toward a stronger claim: Taste is memory for structure. A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.",
+            "If you keep developing it through the lens of product thinking, the note becomes more actionable because it stops being a mood and starts becoming a decision."
+          ],
+          "timelineSummary": "New growth added",
+          "expansion": "This note points toward a stronger claim: Taste is memory for structure. A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.\n\nIf you keep developing it through the lens of product thinking, the note becomes more actionable because it stops being a mood and starts becoming a decision.",
+          "relatedIdeas": [
+            "What changes if you push this note further through the lens of product thinking?",
+            "What earlier note might disagree with this idea in a productive way?",
+            "If this became a project this week, what is the smallest visible action?"
+          ],
+          "prompts": [
+            "What do you believe now that you could not say clearly when you first captured this thought?",
+            "Which source, example, or observation would make the idea more grounded?",
+            "What unresolved question should stay attached to this note?"
+          ],
+          "links": [],
+          "sources": [
+            {
+              "id": "src-1-building-a-second-brain-for-unfinished-ideas",
+              "title": "Building a second brain for unfinished ideas",
+              "url": "https://example.org/second-brain-ideas",
+              "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+              "publisher": "Idea Systems Journal",
+              "query": "Taste is memory for structure. Taste is memory for structure. product thinking",
+              "score": 0.2,
+              "retrievedAt": "2026-05-16T02:57:49.460Z"
+            },
+            {
+              "id": "src-2-knowledge-gardens-and-personal-note-networks",
+              "title": "Knowledge gardens and personal note networks",
+              "url": "https://example.org/knowledge-gardens",
+              "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+              "publisher": "Personal Knowledge Review",
+              "query": "Taste is memory for structure. Taste is memory for structure. product thinking",
+              "score": 0.9,
+              "retrievedAt": "2026-05-16T02:57:49.460Z"
+            },
+            {
+              "id": "src-3-prompting-users-with-questions-instead-of-summaries",
+              "title": "Prompting users with questions instead of summaries",
+              "url": "https://example.org/reflection-prompts",
+              "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+              "publisher": "Designing for Thought",
+              "query": "Taste is memory for structure. Taste is memory for structure. product thinking",
+              "score": 0.8,
+              "retrievedAt": "2026-05-16T02:57:49.460Z"
+            }
+          ]
+        },
         {
           "id": "seed-taste-pattern-recognition-enrichment",
           "createdAt": "2026-04-20T15:47:00.000Z",
           "provider": "prototype",
+          "headline": "",
+          "growthParagraphs": [
+            "Taste compounds when attention gets specific enough to remember structure, not just preference. What feels intuitive later is often the residue of many slow comparisons you once made on purpose."
+          ],
+          "timelineSummary": "New growth added",
           "expansion": "Taste compounds when attention gets specific enough to remember structure, not just preference. What feels intuitive later is often the residue of many slow comparisons you once made on purpose.",
           "relatedIdeas": [],
           "prompts": [],
@@ -2368,11 +3899,130 @@
           "sources": []
         }
       ],
-      "prompts": [],
-      "sources": [],
+      "prompts": [
+        "How does a user's past experience shape their taste and perception of product structure?",
+        "In what ways can we design products to align with or challenge users' memory of familiar structures?",
+        "How can understanding taste as memory inform iterative improvements in product design?"
+      ],
+      "sources": [
+        {
+          "id": "source-1",
+          "title": "Building a second brain for unfinished ideas",
+          "url": "https://example.org/second-brain-ideas",
+          "snippet": "People revisit incomplete thoughts more often when notes preserve uncertainty, tension, and next questions instead of only polished summaries.",
+          "publisher": "Idea Systems Journal",
+          "query": "Taste is memory for structure Taste is memory for structure. product thinking",
+          "score": 0.2,
+          "retrievedAt": "2026-05-16T03:20:43.582Z"
+        },
+        {
+          "id": "source-2",
+          "title": "Knowledge gardens and personal note networks",
+          "url": "https://example.org/knowledge-gardens",
+          "snippet": "Knowledge gardens work best when notes are linked by theme, contradiction, and complement rather than stored as isolated documents.",
+          "publisher": "Personal Knowledge Review",
+          "query": "Taste is memory for structure Taste is memory for structure. product thinking",
+          "score": 0.9,
+          "retrievedAt": "2026-05-16T03:20:43.582Z"
+        },
+        {
+          "id": "source-3",
+          "title": "Prompting users with questions instead of summaries",
+          "url": "https://example.org/reflection-prompts",
+          "snippet": "Reflection prompts should deepen a note by surfacing assumptions, evidence gaps, and actionable next steps.",
+          "publisher": "Designing for Thought",
+          "query": "Taste is memory for structure Taste is memory for structure. product thinking",
+          "score": 0.8,
+          "retrievedAt": "2026-05-16T03:20:43.582Z"
+        }
+      ],
       "links": [],
       "relatedNoteIds": [],
       "timeline": [
+        {
+          "id": "183a284c-044d-455e-9583-5fd31f77e995",
+          "type": "note_enriched",
+          "createdAt": "2026-05-16T03:20:53.805Z",
+          "summary": "Expanded on how taste reflects memory of structure in product design",
+          "provider": "openai"
+        },
+        {
+          "id": "af80daa9-3afc-4a63-a813-6ba6a3cd8858",
+          "type": "job_started",
+          "createdAt": "2026-05-16T03:20:43.580Z",
+          "summary": "Background enrichment started"
+        },
+        {
+          "id": "01379ea8-d4af-4741-8bc7-aa5f5f6b4d58",
+          "type": "job_queued",
+          "createdAt": "2026-05-16T03:20:43.578Z",
+          "summary": "Enrichment queued from manual",
+          "priority": "user_initiated",
+          "earliestRunAt": "2026-05-16T03:20:43.578Z"
+        },
+        {
+          "id": "84708f6a-5a26-4493-b062-fb774d2a0d6d",
+          "type": "note_enriched",
+          "createdAt": "2026-05-16T03:20:05.112Z",
+          "summary": "Exploring taste as linked to memory and structural recognition",
+          "provider": "openai"
+        },
+        {
+          "id": "2a20b033-76f7-4041-ad0f-96e126917bf0",
+          "type": "job_started",
+          "createdAt": "2026-05-16T03:19:57.120Z",
+          "summary": "Background enrichment started"
+        },
+        {
+          "id": "268d18af-74fe-4206-b311-976eaa8d3328",
+          "type": "job_queued",
+          "createdAt": "2026-05-16T03:19:57.117Z",
+          "summary": "Enrichment queued from manual",
+          "priority": "user_initiated",
+          "earliestRunAt": "2026-05-16T03:19:57.117Z"
+        },
+        {
+          "id": "c7c4fa7a-3b45-4891-9478-bedd84400216",
+          "type": "note_enriched",
+          "createdAt": "2026-05-16T03:14:13.553Z",
+          "summary": "New growth added",
+          "provider": "mock"
+        },
+        {
+          "id": "7d6764a1-2d93-4871-b38d-a7c6fa7e5c85",
+          "type": "job_started",
+          "createdAt": "2026-05-16T03:14:13.042Z",
+          "summary": "Background enrichment started"
+        },
+        {
+          "id": "f9186b3c-3c44-4c21-904c-1704c2259636",
+          "type": "job_queued",
+          "createdAt": "2026-05-16T03:14:13.037Z",
+          "summary": "Enrichment queued from manual",
+          "priority": "user_initiated",
+          "earliestRunAt": "2026-05-16T03:14:13.036Z"
+        },
+        {
+          "id": "850805cb-2257-477e-b67c-c4304de21fc9",
+          "type": "note_enriched",
+          "createdAt": "2026-05-16T02:57:51.126Z",
+          "summary": "New growth added",
+          "provider": "mock"
+        },
+        {
+          "id": "280195aa-e516-4bf7-92bf-322b806549c5",
+          "type": "job_started",
+          "createdAt": "2026-05-16T02:57:49.456Z",
+          "summary": "Background enrichment started"
+        },
+        {
+          "id": "e19846ac-ea02-4ee5-9999-79826faa2ec1",
+          "type": "job_queued",
+          "createdAt": "2026-05-16T02:57:49.453Z",
+          "summary": "Enrichment queued from manual",
+          "priority": "user_initiated",
+          "earliestRunAt": "2026-05-16T02:57:49.446Z"
+        },
         {
           "id": "seed-taste-pattern-recognition-timeline",
           "type": "note_enriched",
@@ -2381,6 +4031,38 @@
         }
       ],
       "revisions": [
+        {
+          "id": "e7c9f3fe-b9e9-4fd8-86d6-c1afa11300ee",
+          "createdAt": "2026-05-16T03:20:53.805Z",
+          "type": "ai_enrichment",
+          "summary": "Enrichment from openai",
+          "text": "The phrase 'Taste is memory for structure' highlights how our preferences and discernments are deeply informed by the patterns and frameworks we have previously encountered. In product thinking, this means that user choices and feedback often reflect an intuitive recognition of structural coherence or dissonance from past experiences.\n\nRecognizing taste as a form of memory emphasizes the importance of designing products with consistent and comprehensible structures. It encourages product teams to consider not only the immediate function or aesthetics but also how the underlying organization resonates with users over time.\n\nBy focusing on memory for structure, product thinkers can better predict user behavior, refine user experiences, and create more meaningful interactions that build trust and familiarity—key drivers of product success.",
+          "sourceJobId": "5229ac69-c7b8-4803-ad46-587fe2e6168d"
+        },
+        {
+          "id": "0819c412-d483-41c6-8f14-154c90a2658d",
+          "createdAt": "2026-05-16T03:20:05.112Z",
+          "type": "ai_enrichment",
+          "summary": "Enrichment from openai",
+          "text": "The concept that taste functions as memory for structure highlights how aesthetic appreciation relies on recalling familiar patterns and arrangements. This perspective links sensory experience directly to cognitive processes, suggesting that what we perceive as 'taste' is informed by previously encountered structures stored in memory.\n\nIn product thinking, this insight can drive design decisions by emphasizing structural consistency and recognizability. Designers can harness users’ memory for structure to create intuitive and pleasing experiences, reinforcing engagement through familiar yet innovative configurations.\n\nMoreover, understanding taste as a memory mechanism opens avenues for deeper reflection on how cultural and personal histories shape preferences. This can inform personalized product experiences and adaptive interfaces that resonate with individual users’ structural memories.",
+          "sourceJobId": "73cd62a1-b8d8-49f6-99c3-2d248e8be529"
+        },
+        {
+          "id": "1781b8a6-d80e-479c-ad88-edaa0f838416",
+          "createdAt": "2026-05-16T03:14:13.553Z",
+          "type": "ai_enrichment",
+          "summary": "Enrichment from mock",
+          "text": "This note points toward a stronger claim: Taste is memory for structure. A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.\n\nIf you keep developing it through the lens of product thinking, the note becomes more actionable because it stops being a mood and starts becoming a decision.",
+          "sourceJobId": "adebdb8d-c7e7-4841-841c-c5694fe3a25d"
+        },
+        {
+          "id": "9848c149-2bd2-4872-9c65-6df1a79399b8",
+          "createdAt": "2026-05-16T02:57:51.126Z",
+          "type": "ai_enrichment",
+          "summary": "Enrichment from mock",
+          "text": "This note points toward a stronger claim: Taste is memory for structure. A useful next step is to name the tension inside the idea, then decide what evidence or example would make it feel real. Nearby references suggest themes from Building a second brain for unfinished ideas and Knowledge gardens and personal note networks.\n\nIf you keep developing it through the lens of product thinking, the note becomes more actionable because it stops being a mood and starts becoming a decision.",
+          "sourceJobId": "d43053f4-2d28-4b28-a3cb-46ecabd6410c"
+        },
         {
           "id": "seed-taste-pattern-recognition-revision",
           "createdAt": "2026-04-20T15:32:00.000Z",
@@ -2405,6 +4087,12 @@
           "id": "seed-productivity-anxiety-enrichment",
           "createdAt": "2026-04-20T14:03:00.000Z",
           "provider": "prototype",
+          "headline": "",
+          "growthParagraphs": [
+            "A lot of systems promise clarity, but what they really deliver is temporary emotional relief. The ritual matters because it reduces uncertainty, even when it does little to increase the amount of meaningful work that gets finished.",
+            "That is why productivity theater can feel effective even when nothing meaningful moved: the system successfully soothed the operator."
+          ],
+          "timelineSummary": "New growth added",
           "expansion": "A lot of systems promise clarity, but what they really deliver is temporary emotional relief. The ritual matters because it reduces uncertainty, even when it does little to increase the amount of meaningful work that gets finished.\n\nThat is why productivity theater can feel effective even when nothing meaningful moved: the system successfully soothed the operator.",
           "relatedIdeas": [],
           "prompts": [],
@@ -2437,6 +4125,486 @@
   ],
   "jobs": [
     {
+      "id": "e49721c6-c4f0-4960-ab14-ea728bb34951",
+      "noteId": "seed-tool-worldview",
+      "type": "enrich_note",
+      "status": "completed",
+      "triggerSource": "manual",
+      "payload": {
+        "focus": "product thinking",
+        "includeWeb": true
+      },
+      "priority": "user_initiated",
+      "earliestRunAt": "2026-05-16T03:26:50.637Z",
+      "retryCount": 0,
+      "maxRetries": 3,
+      "runCount": 1,
+      "maxRuns": 1,
+      "lastError": null,
+      "output": {
+        "enrichmentId": "13d37946-1768-47bc-bfa7-532c4e7829c9",
+        "headline": "Every tool teaches you how to think",
+        "paragraphCount": 3,
+        "sourceCount": 3,
+        "relatedCount": 0
+      },
+      "createdAt": "2026-05-16T03:26:50.637Z",
+      "updatedAt": "2026-05-16T03:27:14.050Z",
+      "startedAt": "2026-05-16T03:26:50.637Z",
+      "completedAt": "2026-05-16T03:27:14.050Z",
+      "nextRunAt": "2026-05-16T03:26:50.637Z"
+    },
+    {
+      "id": "1a71cdad-1cc0-4a76-b342-a856e58f6054",
+      "noteId": "seed-tool-worldview",
+      "type": "enrich_note",
+      "status": "completed",
+      "triggerSource": "manual",
+      "payload": {
+        "focus": "product thinking",
+        "includeWeb": true
+      },
+      "priority": "user_initiated",
+      "earliestRunAt": "2026-05-16T03:26:38.087Z",
+      "retryCount": 0,
+      "maxRetries": 3,
+      "runCount": 1,
+      "maxRuns": 1,
+      "lastError": null,
+      "output": {
+        "enrichmentId": "60fff162-fedc-4dfe-bfc5-9511ba842950",
+        "headline": "Every tool teaches you how to think.",
+        "paragraphCount": 2,
+        "sourceCount": 3,
+        "relatedCount": 0
+      },
+      "createdAt": "2026-05-16T03:26:38.087Z",
+      "updatedAt": "2026-05-16T03:26:45.282Z",
+      "startedAt": "2026-05-16T03:26:38.087Z",
+      "completedAt": "2026-05-16T03:26:45.282Z",
+      "nextRunAt": "2026-05-16T03:26:38.087Z"
+    },
+    {
+      "id": "3d1d007b-6a57-4e2c-854c-dcae8d58058e",
+      "noteId": "B54FE7AD-48A1-4267-B27D-FCD8418194CD",
+      "type": "enrich_note",
+      "status": "completed",
+      "triggerSource": "manual",
+      "payload": {
+        "focus": "product thinking",
+        "includeWeb": true
+      },
+      "priority": "user_initiated",
+      "earliestRunAt": "2026-05-16T03:25:44.331Z",
+      "retryCount": 0,
+      "maxRetries": 3,
+      "runCount": 1,
+      "maxRuns": 1,
+      "lastError": null,
+      "output": {
+        "enrichmentId": "b0f86444-9f2d-4773-a2b3-b38b9a146577",
+        "headline": "Is yogurt ever good?",
+        "paragraphCount": 3,
+        "sourceCount": 3,
+        "relatedCount": 0
+      },
+      "createdAt": "2026-05-16T03:25:44.331Z",
+      "updatedAt": "2026-05-16T03:25:53.769Z",
+      "startedAt": "2026-05-16T03:25:44.331Z",
+      "completedAt": "2026-05-16T03:25:53.769Z",
+      "nextRunAt": "2026-05-16T03:25:44.331Z"
+    },
+    {
+      "id": "b81ef6d4-132f-4bd1-9fa4-7b4dc5ff68a2",
+      "noteId": "seed-reading-compression",
+      "type": "enrich_note",
+      "status": "completed",
+      "triggerSource": "manual",
+      "payload": {
+        "focus": "product thinking",
+        "includeWeb": true
+      },
+      "priority": "user_initiated",
+      "earliestRunAt": "2026-05-16T03:24:47.974Z",
+      "retryCount": 0,
+      "maxRetries": 3,
+      "runCount": 1,
+      "maxRuns": 1,
+      "lastError": null,
+      "output": {
+        "enrichmentId": "794eb74a-947d-4c2a-bdca-6285bc4e6dc8",
+        "headline": "Writing reveals whether reading became understanding",
+        "paragraphCount": 3,
+        "sourceCount": 3,
+        "relatedCount": 1
+      },
+      "createdAt": "2026-05-16T03:24:47.974Z",
+      "updatedAt": "2026-05-16T03:24:54.017Z",
+      "startedAt": "2026-05-16T03:24:47.974Z",
+      "completedAt": "2026-05-16T03:24:54.017Z",
+      "nextRunAt": "2026-05-16T03:24:47.974Z"
+    },
+    {
+      "id": "7a001337-c482-4334-be05-46643f0cc5a1",
+      "noteId": "seed-tool-worldview",
+      "type": "enrich_note",
+      "status": "completed",
+      "triggerSource": "manual",
+      "payload": {
+        "focus": "product thinking",
+        "includeWeb": true
+      },
+      "priority": "user_initiated",
+      "earliestRunAt": "2026-05-16T03:24:33.139Z",
+      "retryCount": 0,
+      "maxRetries": 3,
+      "runCount": 1,
+      "maxRuns": 1,
+      "lastError": null,
+      "output": {
+        "enrichmentId": "258ef48b-0b84-433b-a1bc-542d14bcac44",
+        "headline": "Every tool teaches you how to think",
+        "paragraphCount": 3,
+        "sourceCount": 3,
+        "relatedCount": 0
+      },
+      "createdAt": "2026-05-16T03:24:33.139Z",
+      "updatedAt": "2026-05-16T03:24:44.917Z",
+      "startedAt": "2026-05-16T03:24:33.139Z",
+      "completedAt": "2026-05-16T03:24:44.917Z",
+      "nextRunAt": "2026-05-16T03:24:33.139Z"
+    },
+    {
+      "id": "5229ac69-c7b8-4803-ad46-587fe2e6168d",
+      "noteId": "seed-taste-pattern-recognition",
+      "type": "enrich_note",
+      "status": "completed",
+      "triggerSource": "manual",
+      "payload": {
+        "focus": "product thinking",
+        "includeWeb": true
+      },
+      "priority": "user_initiated",
+      "earliestRunAt": "2026-05-16T03:20:43.578Z",
+      "retryCount": 0,
+      "maxRetries": 3,
+      "runCount": 1,
+      "maxRuns": 1,
+      "lastError": null,
+      "output": {
+        "enrichmentId": "7a42aa28-715f-4c84-9a4d-76b5e9a3ec1e",
+        "headline": "Taste is memory for structure",
+        "paragraphCount": 3,
+        "sourceCount": 3,
+        "relatedCount": 0
+      },
+      "createdAt": "2026-05-16T03:20:43.578Z",
+      "updatedAt": "2026-05-16T03:20:53.805Z",
+      "startedAt": "2026-05-16T03:20:43.578Z",
+      "completedAt": "2026-05-16T03:20:53.805Z",
+      "nextRunAt": "2026-05-16T03:20:43.578Z"
+    },
+    {
+      "id": "73cd62a1-b8d8-49f6-99c3-2d248e8be529",
+      "noteId": "seed-taste-pattern-recognition",
+      "type": "enrich_note",
+      "status": "completed",
+      "triggerSource": "manual",
+      "payload": {
+        "focus": "product thinking",
+        "includeWeb": true
+      },
+      "priority": "user_initiated",
+      "earliestRunAt": "2026-05-16T03:19:57.117Z",
+      "retryCount": 0,
+      "maxRetries": 3,
+      "runCount": 1,
+      "maxRuns": 1,
+      "lastError": null,
+      "output": {
+        "enrichmentId": "987729f3-7961-4a97-9ba5-3a285f470d65",
+        "headline": "Taste is memory for structure",
+        "paragraphCount": 3,
+        "sourceCount": 3,
+        "relatedCount": 0
+      },
+      "createdAt": "2026-05-16T03:19:57.117Z",
+      "updatedAt": "2026-05-16T03:20:05.112Z",
+      "startedAt": "2026-05-16T03:19:57.117Z",
+      "completedAt": "2026-05-16T03:20:05.112Z",
+      "nextRunAt": "2026-05-16T03:19:57.117Z"
+    },
+    {
+      "id": "789d0a2a-9e7e-4dc5-b6fa-c3bfd0664a52",
+      "noteId": "seed-reading-compression",
+      "type": "enrich_note",
+      "status": "completed",
+      "triggerSource": "manual",
+      "payload": {
+        "focus": "",
+        "includeWeb": true
+      },
+      "priority": "user_initiated",
+      "earliestRunAt": "2026-05-16T03:18:51.720Z",
+      "retryCount": 0,
+      "maxRetries": 3,
+      "runCount": 1,
+      "maxRuns": 1,
+      "lastError": null,
+      "output": {
+        "enrichmentId": "af80e6fd-9a6c-412b-989e-aafe179c5896",
+        "headline": "Writing reveals whether reading became understanding",
+        "paragraphCount": 3,
+        "sourceCount": 3,
+        "relatedCount": 1
+      },
+      "createdAt": "2026-05-16T03:18:51.720Z",
+      "updatedAt": "2026-05-16T03:18:58.845Z",
+      "startedAt": "2026-05-16T03:18:51.720Z",
+      "completedAt": "2026-05-16T03:18:58.845Z",
+      "nextRunAt": "2026-05-16T03:18:51.720Z"
+    },
+    {
+      "id": "1d64a9e2-b16b-452e-9d4c-b4392c43f3dc",
+      "noteId": "seed-reading-compression",
+      "type": "enrich_note",
+      "status": "completed",
+      "triggerSource": "manual",
+      "payload": {
+        "focus": "",
+        "includeWeb": true
+      },
+      "priority": "user_initiated",
+      "earliestRunAt": "2026-05-16T03:18:15.486Z",
+      "retryCount": 0,
+      "maxRetries": 3,
+      "runCount": 1,
+      "maxRuns": 1,
+      "lastError": null,
+      "output": {
+        "enrichmentId": "4769541e-3999-4352-a5c3-6b8155ae89e9",
+        "headline": "Writing reveals whether reading became understanding.",
+        "paragraphCount": 2,
+        "sourceCount": 3,
+        "relatedCount": 1
+      },
+      "createdAt": "2026-05-16T03:18:15.486Z",
+      "updatedAt": "2026-05-16T03:18:23.738Z",
+      "startedAt": "2026-05-16T03:18:15.486Z",
+      "completedAt": "2026-05-16T03:18:23.738Z",
+      "nextRunAt": "2026-05-16T03:18:15.486Z"
+    },
+    {
+      "id": "142dc882-6e2d-4bbf-8505-0480b79ad247",
+      "noteId": "seed-tool-worldview",
+      "type": "enrich_note",
+      "status": "completed",
+      "triggerSource": "manual",
+      "payload": {
+        "focus": "product thinking",
+        "includeWeb": true
+      },
+      "priority": "user_initiated",
+      "earliestRunAt": "2026-05-16T03:14:30.034Z",
+      "retryCount": 0,
+      "maxRetries": 3,
+      "runCount": 1,
+      "maxRuns": 1,
+      "lastError": null,
+      "output": {
+        "enrichmentId": "0e11a71c-9a52-40c4-86ff-26733bd0eb40",
+        "headline": "Every tool teaches you how to think.",
+        "paragraphCount": 2,
+        "sourceCount": 3,
+        "relatedCount": 0
+      },
+      "createdAt": "2026-05-16T03:14:30.034Z",
+      "updatedAt": "2026-05-16T03:14:30.346Z",
+      "startedAt": "2026-05-16T03:14:30.034Z",
+      "completedAt": "2026-05-16T03:14:30.346Z",
+      "nextRunAt": "2026-05-16T03:14:30.034Z"
+    },
+    {
+      "id": "adebdb8d-c7e7-4841-841c-c5694fe3a25d",
+      "noteId": "seed-taste-pattern-recognition",
+      "type": "enrich_note",
+      "status": "completed",
+      "triggerSource": "manual",
+      "payload": {
+        "focus": "product thinking",
+        "includeWeb": true
+      },
+      "priority": "user_initiated",
+      "earliestRunAt": "2026-05-16T03:14:13.036Z",
+      "retryCount": 0,
+      "maxRetries": 3,
+      "runCount": 1,
+      "maxRuns": 1,
+      "lastError": null,
+      "output": {
+        "enrichmentId": "3bfcc887-eb71-4095-8ba3-f7069d89afb3",
+        "headline": "Taste is memory for structure.",
+        "paragraphCount": 2,
+        "sourceCount": 3,
+        "relatedCount": 0
+      },
+      "createdAt": "2026-05-16T03:14:13.037Z",
+      "updatedAt": "2026-05-16T03:14:13.553Z",
+      "startedAt": "2026-05-16T03:14:13.036Z",
+      "completedAt": "2026-05-16T03:14:13.553Z",
+      "nextRunAt": "2026-05-16T03:14:13.036Z"
+    },
+    {
+      "id": "b2e13e26-a346-4cf3-a698-4b1ceb2eb0e2",
+      "noteId": "seed-tool-worldview",
+      "type": "enrich_note",
+      "status": "completed",
+      "triggerSource": "manual",
+      "payload": {
+        "focus": "product thinking",
+        "includeWeb": true
+      },
+      "priority": "user_initiated",
+      "earliestRunAt": "2026-05-16T03:10:01.415Z",
+      "retryCount": 0,
+      "maxRetries": 3,
+      "runCount": 1,
+      "maxRuns": 1,
+      "lastError": null,
+      "output": {
+        "enrichmentId": "399d19bd-4d58-41de-8a89-ac00818458b7",
+        "headline": "Every tool teaches you how to think.",
+        "paragraphCount": 2,
+        "sourceCount": 3,
+        "relatedCount": 0
+      },
+      "createdAt": "2026-05-16T03:10:01.415Z",
+      "updatedAt": "2026-05-16T03:10:01.737Z",
+      "startedAt": "2026-05-16T03:10:01.415Z",
+      "completedAt": "2026-05-16T03:10:01.737Z",
+      "nextRunAt": "2026-05-16T03:10:01.415Z"
+    },
+    {
+      "id": "23918c5d-6221-4c5b-8168-f8ba128ad136",
+      "noteId": "seed-reading-compression",
+      "type": "enrich_note",
+      "status": "completed",
+      "triggerSource": "manual",
+      "payload": {
+        "focus": "product thinking",
+        "includeWeb": true
+      },
+      "priority": "user_initiated",
+      "earliestRunAt": "2026-05-16T03:09:45.675Z",
+      "retryCount": 0,
+      "maxRetries": 3,
+      "runCount": 1,
+      "maxRuns": 1,
+      "lastError": null,
+      "output": {
+        "enrichmentId": "d334e251-94a3-4033-8cdf-044fd6972633",
+        "headline": "Writing reveals whether reading became understanding.",
+        "paragraphCount": 2,
+        "sourceCount": 3,
+        "relatedCount": 0
+      },
+      "createdAt": "2026-05-16T03:09:45.675Z",
+      "updatedAt": "2026-05-16T03:09:46.155Z",
+      "startedAt": "2026-05-16T03:09:45.675Z",
+      "completedAt": "2026-05-16T03:09:46.155Z",
+      "nextRunAt": "2026-05-16T03:09:45.675Z"
+    },
+    {
+      "id": "dfa58760-a117-48cd-8ba5-4bf233f1e096",
+      "noteId": "seed-tool-worldview",
+      "type": "enrich_note",
+      "status": "completed",
+      "triggerSource": "manual",
+      "payload": {
+        "focus": "product thinking",
+        "includeWeb": true
+      },
+      "priority": "user_initiated",
+      "earliestRunAt": "2026-05-16T03:06:11.930Z",
+      "retryCount": 0,
+      "maxRetries": 3,
+      "runCount": 1,
+      "maxRuns": 1,
+      "lastError": null,
+      "output": {
+        "enrichmentId": "d30fac63-59a9-4bce-800f-2f35b4f80536",
+        "headline": "Every tool teaches you how to think.",
+        "paragraphCount": 2,
+        "sourceCount": 3,
+        "relatedCount": 0
+      },
+      "createdAt": "2026-05-16T03:06:11.930Z",
+      "updatedAt": "2026-05-16T03:06:12.478Z",
+      "startedAt": "2026-05-16T03:06:11.930Z",
+      "completedAt": "2026-05-16T03:06:12.478Z",
+      "nextRunAt": "2026-05-16T03:06:11.930Z"
+    },
+    {
+      "id": "1e2509ef-3858-4073-a0e2-6ea0fa2d9726",
+      "noteId": "seed-reading-compression",
+      "type": "enrich_note",
+      "status": "completed",
+      "triggerSource": "manual",
+      "payload": {
+        "focus": "product thinking",
+        "includeWeb": true
+      },
+      "priority": "user_initiated",
+      "earliestRunAt": "2026-05-16T03:05:52.265Z",
+      "retryCount": 0,
+      "maxRetries": 3,
+      "runCount": 1,
+      "maxRuns": 1,
+      "lastError": null,
+      "output": {
+        "enrichmentId": "bfeaeebd-8199-44a8-968b-c577df81605f",
+        "headline": "Writing reveals whether reading became understanding.",
+        "paragraphCount": 2,
+        "sourceCount": 3,
+        "relatedCount": 0
+      },
+      "createdAt": "2026-05-16T03:05:52.265Z",
+      "updatedAt": "2026-05-16T03:05:52.696Z",
+      "startedAt": "2026-05-16T03:05:52.265Z",
+      "completedAt": "2026-05-16T03:05:52.696Z",
+      "nextRunAt": "2026-05-16T03:05:52.265Z"
+    },
+    {
+      "id": "d43053f4-2d28-4b28-a3cb-46ecabd6410c",
+      "noteId": "seed-taste-pattern-recognition",
+      "type": "enrich_note",
+      "status": "completed",
+      "triggerSource": "manual",
+      "payload": {
+        "focus": "product thinking",
+        "includeWeb": true
+      },
+      "priority": "user_initiated",
+      "earliestRunAt": "2026-05-16T02:57:49.446Z",
+      "retryCount": 0,
+      "maxRetries": 3,
+      "runCount": 1,
+      "maxRuns": 1,
+      "lastError": null,
+      "output": {
+        "enrichmentId": "ee6105b7-bffc-4b00-b024-b089ea2b0111",
+        "headline": "Taste is memory for structure.",
+        "paragraphCount": 2,
+        "sourceCount": 3,
+        "relatedCount": 0
+      },
+      "createdAt": "2026-05-16T02:57:49.447Z",
+      "updatedAt": "2026-05-16T02:57:51.126Z",
+      "startedAt": "2026-05-16T02:57:49.446Z",
+      "completedAt": "2026-05-16T02:57:51.126Z",
+      "nextRunAt": "2026-05-16T02:57:49.446Z"
+    },
+    {
       "id": "9da7b997-daa6-410c-8eeb-3e2000723c83",
       "noteId": "b729595d-c29b-4aee-bb7b-c268d8aa0125",
       "type": "enrich_note",
@@ -2446,8 +4614,12 @@
         "focus": "product thinking",
         "includeWeb": true
       },
+      "priority": "background",
+      "earliestRunAt": "2026-04-23T02:03:43.244Z",
       "retryCount": 0,
       "maxRetries": 3,
+      "runCount": 0,
+      "maxRuns": 1,
       "lastError": null,
       "output": {
         "enrichmentId": "e6ddf5ee-14cc-431e-bedc-590474e3dd0e",
@@ -2470,8 +4642,12 @@
         "focus": "product thinking",
         "includeWeb": true
       },
+      "priority": "background",
+      "earliestRunAt": "2026-04-22T03:47:13.277Z",
       "retryCount": 0,
       "maxRetries": 3,
+      "runCount": 0,
+      "maxRuns": 1,
       "lastError": null,
       "output": {
         "enrichmentId": "0ee0b492-34d7-4f9d-a8d3-e8486ee56d8a",
@@ -2493,8 +4669,12 @@
       "payload": {
         "includeWeb": true
       },
+      "priority": "background",
+      "earliestRunAt": "2026-04-22T03:46:55.095Z",
       "retryCount": 0,
       "maxRetries": 3,
+      "runCount": 0,
+      "maxRuns": 1,
       "lastError": null,
       "output": {
         "enrichmentId": "93ac1902-437b-4acb-9c10-290dd20a588b",
@@ -2516,8 +4696,12 @@
       "payload": {
         "includeWeb": true
       },
+      "priority": "background",
+      "earliestRunAt": "2026-04-22T03:46:22.569Z",
       "retryCount": 0,
       "maxRetries": 3,
+      "runCount": 0,
+      "maxRuns": 1,
       "lastError": null,
       "output": {
         "enrichmentId": "7ffd658a-1c3f-43d2-a3cd-9a776643e66a",
@@ -2539,8 +4723,12 @@
       "payload": {
         "includeWeb": true
       },
+      "priority": "background",
+      "earliestRunAt": "2026-04-22T03:43:56.575Z",
       "retryCount": 0,
       "maxRetries": 3,
+      "runCount": 0,
+      "maxRuns": 1,
       "lastError": null,
       "output": {
         "enrichmentId": "64040247-e4c8-4e68-9230-246a92417c80",
@@ -2562,8 +4750,12 @@
       "payload": {
         "includeWeb": true
       },
+      "priority": "background",
+      "earliestRunAt": "2026-04-22T03:43:00.639Z",
       "retryCount": 0,
       "maxRetries": 3,
+      "runCount": 0,
+      "maxRuns": 1,
       "lastError": null,
       "output": {
         "enrichmentId": "ff94709e-85a6-46ff-820b-aba1e41e9d17",
@@ -2585,8 +4777,12 @@
       "payload": {
         "includeWeb": true
       },
+      "priority": "background",
+      "earliestRunAt": "2026-04-22T03:42:07.591Z",
       "retryCount": 0,
       "maxRetries": 3,
+      "runCount": 0,
+      "maxRuns": 1,
       "lastError": null,
       "output": {
         "enrichmentId": "d75b8f30-f595-457d-9963-520a7fb85873",
@@ -2608,8 +4804,12 @@
       "payload": {
         "includeWeb": true
       },
+      "priority": "background",
+      "earliestRunAt": "2026-04-22T03:39:29.152Z",
       "retryCount": 0,
       "maxRetries": 3,
+      "runCount": 0,
+      "maxRuns": 1,
       "lastError": null,
       "output": {
         "enrichmentId": "66da5967-6b71-4f39-a6eb-01f1a0455d6c",
@@ -2631,8 +4831,12 @@
       "payload": {
         "includeWeb": true
       },
+      "priority": "background",
+      "earliestRunAt": "2026-04-22T03:39:20.841Z",
       "retryCount": 0,
       "maxRetries": 3,
+      "runCount": 0,
+      "maxRuns": 1,
       "lastError": null,
       "output": {
         "enrichmentId": "ae649316-0f55-4ce1-ac2b-016afd6a9e04",
@@ -2654,8 +4858,12 @@
       "payload": {
         "includeWeb": true
       },
+      "priority": "background",
+      "earliestRunAt": "2026-04-22T03:38:09.304Z",
       "retryCount": 0,
       "maxRetries": 3,
+      "runCount": 0,
+      "maxRuns": 1,
       "lastError": null,
       "output": {
         "enrichmentId": "55d1643f-060a-4858-9a4f-346fe47a263d",
@@ -2677,8 +4885,12 @@
       "payload": {
         "includeWeb": true
       },
+      "priority": "background",
+      "earliestRunAt": "2026-04-22T03:35:19.721Z",
       "retryCount": 0,
       "maxRetries": 3,
+      "runCount": 0,
+      "maxRuns": 1,
       "lastError": null,
       "output": {
         "enrichmentId": "fa1e5585-2c28-4169-b9e5-2f5c72a21135",
@@ -2700,8 +4912,12 @@
       "payload": {
         "includeWeb": true
       },
+      "priority": "background",
+      "earliestRunAt": "2026-04-22T03:33:55.735Z",
       "retryCount": 0,
       "maxRetries": 3,
+      "runCount": 0,
+      "maxRuns": 1,
       "lastError": null,
       "output": {
         "enrichmentId": "b0d0a7b1-0fc1-485f-87f4-9e46d2c04029",
@@ -2723,8 +4939,12 @@
       "payload": {
         "includeWeb": true
       },
+      "priority": "background",
+      "earliestRunAt": "2026-04-22T03:30:53.476Z",
       "retryCount": 0,
       "maxRetries": 3,
+      "runCount": 0,
+      "maxRuns": 1,
       "lastError": null,
       "output": {
         "enrichmentId": "27d68bf9-721e-404d-8e67-670e2ec466c2",
@@ -2746,8 +4966,12 @@
       "payload": {
         "includeWeb": true
       },
+      "priority": "background",
+      "earliestRunAt": "2026-04-22T03:30:31.765Z",
       "retryCount": 0,
       "maxRetries": 3,
+      "runCount": 0,
+      "maxRuns": 1,
       "lastError": null,
       "output": {
         "enrichmentId": "dd8e42ac-5e18-4db5-8d21-2ed56bb4a49d",
@@ -2769,8 +4993,12 @@
       "payload": {
         "includeWeb": true
       },
+      "priority": "background",
+      "earliestRunAt": "2026-04-22T03:22:48.457Z",
       "retryCount": 0,
       "maxRetries": 3,
+      "runCount": 0,
+      "maxRuns": 1,
       "lastError": null,
       "output": {
         "enrichmentId": "8072c3b3-fa3c-45a0-94f8-143e7332b583",
@@ -2792,8 +5020,12 @@
       "payload": {
         "includeWeb": true
       },
+      "priority": "background",
+      "earliestRunAt": "2026-04-22T03:22:41.267Z",
       "retryCount": 0,
       "maxRetries": 3,
+      "runCount": 0,
+      "maxRuns": 1,
       "lastError": null,
       "output": {
         "enrichmentId": "8f1484ee-fa42-449d-b191-44dfd1145afa",
@@ -2810,6 +5042,6 @@
   "threads": [],
   "messages": [],
   "analytics": {
-    "captureCount": 14
+    "captureCount": 16
   }
 }

@@ -161,54 +161,6 @@ actor ThinknoteLocalStore {
         return makeAPINote(from: note)
     }
 
-    func requestImmediateEnrichment(noteID: String, triggerSource: String = "manual") throws -> APINote {
-        let context = ModelContext(container)
-        guard let note = try fetchNoteRecord(noteID: noteID, in: context) else {
-            throw LocalStoreError.noteNotFound(noteID)
-        }
-
-        if hasPendingUserFollowUp(for: note) {
-            try answerPendingFollowUp(for: note, in: context)
-            try context.save()
-            return makeAPINote(from: note)
-        }
-
-        let now = Date()
-        let job = activeEnrichmentJob(for: note) ?? scheduleEnrichmentJob(
-            for: note,
-            priority: .high,
-            triggerSource: triggerSource,
-            earliestRunAt: now,
-            maxRunCount: 1,
-            createdAt: now,
-            in: context
-        )
-
-        if job.runCount == 0 {
-            appendTimelineEvent(
-                type: .jobQueued,
-                summary: "Response requested",
-                note: note,
-                createdAt: now,
-                payload: ["jobId": job.id, "triggerSource": triggerSource],
-                in: context
-            )
-        }
-
-        reschedule(
-            job,
-            priority: .high,
-            triggerSource: triggerSource,
-            earliestRunAt: now,
-            updatedAt: now
-        )
-
-        _ = try processEligibleJobs(in: context, now: now, noteID: noteID, limit: 1)
-
-        try context.save()
-        return makeAPINote(from: note)
-    }
-
     func processEligibleJobs(now: Date = .now, limit: Int = 3) throws -> [APINote] {
         let context = ModelContext(container)
         let updatedNotes = try processEligibleJobs(in: context, now: now, noteID: nil, limit: limit)

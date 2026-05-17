@@ -29,7 +29,9 @@ const fallbackCorpus = [
 ];
 
 export function createRetrievalClient({ config, logger, fetchImpl = fetch }) {
-    const providerName = config.env.SEARCH_API_URL ? "remote_search_api" : "embedded_corpus";
+    const usesRemoteSearch = Boolean(config.env.SEARCH_API_URL);
+    const usesEmbeddedCorpus = config.searchProvider === "embedded";
+    const providerName = usesRemoteSearch ? "remote_search_api" : usesEmbeddedCorpus ? "embedded_corpus" : "none";
 
     return {
         providerName,
@@ -38,9 +40,11 @@ export function createRetrievalClient({ config, logger, fetchImpl = fetch }) {
             const startedAt = Date.now();
 
             try {
-                const results = config.env.SEARCH_API_URL
+                const results = usesRemoteSearch
                     ? await fetchRemoteResults({ config, query, limit, fetchImpl })
-                    : searchFallbackCorpus(query, limit);
+                    : usesEmbeddedCorpus
+                      ? searchFallbackCorpus(query, limit)
+                      : [];
 
                 const normalized = results.map((result, index) => ({
                     id: `src-${index + 1}-${slugify(result.title)}`,
@@ -66,20 +70,7 @@ export function createRetrievalClient({ config, logger, fetchImpl = fetch }) {
                     provider: providerName,
                     detail: error instanceof Error ? error.message : String(error)
                 });
-
-                const results = searchFallbackCorpus(query, limit).map((result, index) => ({
-                    id: `src-fallback-${index + 1}-${slugify(result.title)}`,
-                    title: result.title,
-                    url: result.url,
-                    snippet: result.snippet,
-                    publisher: result.publisher || hostFromUrl(result.url),
-                    query,
-                    score: Number(result.score || Math.max(0, 1 - index * 0.1).toFixed(2)),
-                    retrievedAt: new Date().toISOString(),
-                    content: result.content || result.snippet
-                }));
-
-                return { query, results };
+                throw error;
             }
         }
     };

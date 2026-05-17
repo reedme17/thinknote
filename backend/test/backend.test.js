@@ -350,20 +350,84 @@ test("cerebras provider uses chat completions API for enrichment", async () => {
     }
 });
 
+test("unconfigured provider surfaces an error instead of returning mock enrichment", async () => {
+    const app = await createApp({ env: { AI_PROVIDER: "auto" } });
+    try {
+        await assert.rejects(
+            () =>
+                app.services.ai.generateEnrichment({
+                    note: { id: "n1", title: "Original", rawText: "Original raw text", text: "Original raw text" },
+                    focus: "",
+                    relatedNotes: []
+                }),
+            /No AI provider is configured/
+        );
+    } finally {
+        await app.close();
+    }
+});
+
+test("waited enrichment returns an error when the AI provider fails", async () => {
+    const app = await createApp(
+        {
+            env: {
+                AI_PROVIDER: "openai",
+                OPENAI_API_KEY: "test-openai-key",
+                SEARCH_PROVIDER: "none"
+            },
+            jobMaxRetries: 0
+        },
+        async () => ({
+            ok: false,
+            status: 503,
+            async text() {
+                return "provider unavailable";
+            }
+        })
+    );
+
+    try {
+        const createResponse = await request(app, "/api/notes", {
+            method: "POST",
+            body: {
+                text: "A note that should fail honestly."
+            }
+        });
+
+        const enrichResponse = await request(app, `/api/notes/${createResponse.json.note.id}/enrich`, {
+            method: "POST",
+            body: { wait: true }
+        });
+
+        assert.equal(enrichResponse.status, 502);
+        assert.match(enrichResponse.json.error, /AI response unavailable/i);
+    } finally {
+        await app.close();
+    }
+});
+
 async function createApp(overrides = {}, fetchImpl = mockFetch) {
     const dataDir = await mkdtemp(path.join(os.tmpdir(), "thinknote-backend-test-"));
+    const overrideEnv = overrides.env || {};
+    const { env: _, ...restOverrides } = overrides;
     const config = {
         backendRoot: dataDir,
         dataDir,
         storePath: path.join(dataDir, "store.json"),
         port: 0,
-        env: {},
+        env: {
+            AI_PROVIDER: "mock",
+            SEARCH_PROVIDER: "embedded",
+            ...overrideEnv
+        },
+        aiProvider: String(overrideEnv.AI_PROVIDER || "mock").trim().toLowerCase(),
+        searchProvider: String(overrideEnv.SEARCH_PROVIDER || "embedded").trim().toLowerCase(),
         jobPollIntervalMs: 1000000,
         jobMaxRetries: 2,
         autoEnrichOnCreate: false,
         autoEnrichDelayHours: 24,
         seedDefaultNotes: false,
-        ...overrides
+        ...restOverrides
     };
 
     const app = await createThinknoteServer({ config, fetchImpl });

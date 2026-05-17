@@ -103,33 +103,27 @@ final class ThinknoteRepository: @unchecked Sendable {
             throw LocalStoreError.noteNotFound(noteID)
         }
 
-        do {
-            try await remoteService.upsert(note: localNote)
+        try await remoteService.upsert(note: localNote)
 
-            if try await localStore.hasPendingFollowUp(noteID: noteID),
-               let thread = try await localStore.fetchThread(noteID: noteID),
-               let pendingMessage = thread.messages.last(where: { $0.role == "user" })?.text {
-                let reply = try await remoteService.requestChatReply(for: localNote, message: pendingMessage)
-                let updated = try await localStore.applyRemoteAssistantReply(
-                    noteID: noteID,
-                    replyText: reply.assistantMessage?.text ?? reply.chat.reply,
-                    provider: reply.assistantMessage?.provider ?? reply.chat.provider,
-                    sources: reply.assistantMessage?.sources ?? [],
-                    createdAt: reply.assistantMessage?.createdAt ?? reply.chat.createdAt
-                )
-                await remoteSync.enqueue(.threadUpdated(noteID: noteID, threadID: thread.id))
-                return updated
-            }
-
-            let remoteNote = try await remoteService.requestEnrichment(for: localNote, triggerSource: triggerSource)
-            let merged = try await localStore.mergeRemoteNote(noteID: noteID, remoteNote: remoteNote, triggerSource: triggerSource)
-            await remoteSync.enqueue(.aiJobUpdated(noteID: noteID, jobType: .enrichNote))
-            return merged
-        } catch {
-            let note = try await localStore.requestImmediateEnrichment(noteID: noteID, triggerSource: triggerSource)
-            await remoteSync.enqueue(.aiJobUpdated(noteID: noteID, jobType: .enrichNote))
-            return note
+        if try await localStore.hasPendingFollowUp(noteID: noteID),
+           let thread = try await localStore.fetchThread(noteID: noteID),
+           let pendingMessage = thread.messages.last(where: { $0.role == "user" })?.text {
+            let reply = try await remoteService.requestChatReply(for: localNote, message: pendingMessage)
+            let updated = try await localStore.applyRemoteAssistantReply(
+                noteID: noteID,
+                replyText: reply.assistantMessage?.text ?? reply.chat.reply,
+                provider: reply.assistantMessage?.provider ?? reply.chat.provider,
+                sources: reply.assistantMessage?.sources ?? [],
+                createdAt: reply.assistantMessage?.createdAt ?? reply.chat.createdAt
+            )
+            await remoteSync.enqueue(.threadUpdated(noteID: noteID, threadID: thread.id))
+            return updated
         }
+
+        let remoteNote = try await remoteService.requestEnrichment(for: localNote, triggerSource: triggerSource)
+        let merged = try await localStore.mergeRemoteNote(noteID: noteID, remoteNote: remoteNote, triggerSource: triggerSource)
+        await remoteSync.enqueue(.aiJobUpdated(noteID: noteID, jobType: .enrichNote))
+        return merged
     }
 
     func sendFollowUp(noteID: String, message: String) async throws -> APINote {
@@ -151,17 +145,13 @@ final class ThinknoteRepository: @unchecked Sendable {
         }
 
         var updatedNotes: [APINote] = []
-        do {
-            for noteID in eligibleNoteIDs {
-                guard let localNote = try await localStore.fetchNote(noteID: noteID) else { continue }
-                try await remoteService.upsert(note: localNote)
-                let remoteNote = try await remoteService.requestEnrichment(for: localNote, triggerSource: "background")
-                let merged = try await localStore.mergeRemoteNote(noteID: noteID, remoteNote: remoteNote, triggerSource: "background")
-                updatedNotes.append(merged)
-                await remoteSync.enqueue(.aiJobUpdated(noteID: noteID, jobType: .enrichNote))
-            }
-        } catch {
-            return try await localStore.processEligibleJobs(now: now, limit: limit)
+        for noteID in eligibleNoteIDs {
+            guard let localNote = try await localStore.fetchNote(noteID: noteID) else { continue }
+            try await remoteService.upsert(note: localNote)
+            let remoteNote = try await remoteService.requestEnrichment(for: localNote, triggerSource: "background")
+            let merged = try await localStore.mergeRemoteNote(noteID: noteID, remoteNote: remoteNote, triggerSource: "background")
+            await remoteSync.enqueue(.aiJobUpdated(noteID: noteID, jobType: .enrichNote))
+            updatedNotes.append(merged)
         }
         return updatedNotes
     }

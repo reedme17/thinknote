@@ -9,50 +9,44 @@ export function createAIOrchestrator({ config, logger, retrieval, fetchImpl = fe
         async generateEnrichment({ note, focus = "", includeWeb = true, relatedNotes = [] }) {
             const retrievalBundle = includeWeb ? await retrieval.retrieve({ note, focus, limit: 3 }) : { query: "", results: [] };
 
-            if (llmConfig.provider !== "mock") {
-                try {
-                    return await generateEnrichmentWithLLM({
-                        note,
-                        focus,
-                        relatedNotes,
-                        retrievalBundle,
-                        llmConfig,
-                        fetchImpl
-                    });
-                } catch (error) {
-                    logger.warn("llm_enrichment_fallback", {
-                        provider: llmConfig.provider,
-                        detail: error instanceof Error ? error.message : String(error)
-                    });
-                }
+            if (llmConfig.provider === "mock") {
+                return generateMockEnrichment({ note, focus, relatedNotes, retrievalBundle });
             }
 
-            return generateMockEnrichment({ note, focus, relatedNotes, retrievalBundle });
+            if (llmConfig.provider === "unconfigured") {
+                throw new Error(llmConfig.detail);
+            }
+
+            return generateEnrichmentWithLLM({
+                note,
+                focus,
+                relatedNotes,
+                retrievalBundle,
+                llmConfig,
+                fetchImpl
+            });
         },
         async generateChatReply({ note, message, threadMessages = [], relatedNotes = [] }) {
-            if (llmConfig.provider !== "mock") {
-                try {
-                    return await generateChatReplyWithLLM({
-                        note,
-                        message,
-                        threadMessages,
-                        relatedNotes,
-                        llmConfig,
-                        fetchImpl
-                    });
-                } catch (error) {
-                    logger.warn("llm_chat_fallback", {
-                        provider: llmConfig.provider,
-                        detail: error instanceof Error ? error.message : String(error)
-                    });
-                }
+            if (llmConfig.provider === "mock") {
+                return {
+                    provider: "mock",
+                    text: buildMockChatReply({ note, message, threadMessages, relatedNotes }),
+                    sources: []
+                };
             }
 
-            return {
-                provider: "mock",
-                text: buildMockChatReply({ note, message, threadMessages, relatedNotes }),
-                sources: []
-            };
+            if (llmConfig.provider === "unconfigured") {
+                throw new Error(llmConfig.detail);
+            }
+
+            return generateChatReplyWithLLM({
+                note,
+                message,
+                threadMessages,
+                relatedNotes,
+                llmConfig,
+                fetchImpl
+            });
         }
     };
 }
@@ -210,14 +204,23 @@ function resolveLLMConfig(config) {
     }
 
     if (configuredProvider === "openai") {
-        return buildOpenAIConfig(config) || { provider: "mock" };
+        return buildOpenAIConfig(config) || {
+            provider: "unconfigured",
+            detail: "OpenAI is selected but OPENAI_API_KEY is missing."
+        };
     }
 
     if (configuredProvider === "cerebras") {
-        return buildCerebrasConfig(config) || { provider: "mock" };
+        return buildCerebrasConfig(config) || {
+            provider: "unconfigured",
+            detail: "Cerebras is selected but CEREBRAS_API_KEY is missing."
+        };
     }
 
-    return buildOpenAIConfig(config) || buildCerebrasConfig(config) || { provider: "mock" };
+    return buildOpenAIConfig(config) || buildCerebrasConfig(config) || {
+        provider: "unconfigured",
+        detail: "No AI provider is configured. Set AI_PROVIDER=mock for development or configure OpenAI/Cerebras keys."
+    };
 }
 
 function buildOpenAIConfig(config) {

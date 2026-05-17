@@ -21,7 +21,8 @@ export function loadConfig() {
         autoEnrichOnCreate: env.AUTO_ENRICH_ON_CREATE === "true",
         autoEnrichDelayHours: Number(env.AUTO_ENRICH_DELAY_HOURS || 24),
         seedDefaultNotes: env.SEED_DEFAULT_NOTES !== "false",
-        aiProvider: normalizeAIProvider(env.AI_PROVIDER)
+        aiProvider: normalizeAIProvider(env.AI_PROVIDER),
+        searchProvider: normalizeSearchProvider(env.SEARCH_PROVIDER)
     };
 }
 
@@ -31,6 +32,14 @@ function normalizeAIProvider(value) {
         return normalized;
     }
     return "auto";
+}
+
+function normalizeSearchProvider(value) {
+    const normalized = String(value || "none").trim().toLowerCase();
+    if (["none", "embedded", "remote"].includes(normalized)) {
+        return normalized;
+    }
+    return "none";
 }
 
 function loadEnv(filePath) {

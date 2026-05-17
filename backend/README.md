@@ -16,8 +16,11 @@ It provides:
 ## Run
 
 1. Copy `.env.example` to `.env`
-2. Add `OPENAI_API_KEY` if you want real model responses
-3. Start the server
+2. Choose an AI mode:
+   - `AI_PROVIDER=mock` for local product development
+   - `AI_PROVIDER=openai` or `AI_PROVIDER=cerebras` for real responses
+3. Add provider API keys if you want real model responses
+4. Start the server
 
 ```bash
 cd backend
@@ -56,7 +59,22 @@ The server runs on `http://localhost:8787` by default.
   - timeline events
   - revision history
 - If `SEARCH_API_URL` is configured, the backend will call that retrieval API using `{ query, limit }`.
-- If no search API is configured, the backend falls back to an embedded corpus so the product loop still works locally.
+- If `SEARCH_PROVIDER=embedded`, the backend uses an embedded corpus for local-only development.
+- If `SEARCH_PROVIDER=none`, the backend returns no retrieval sources unless a remote search API is configured.
+
+## Configuration
+
+Important variables in `.env`:
+
+- `AI_PROVIDER=mock|openai|cerebras|auto`
+- `SEARCH_PROVIDER=none|embedded|remote`
+- `SEARCH_API_URL=...` when using remote retrieval
+- `OPENAI_API_KEY=...` or `CEREBRAS_API_KEY=...`
+
+Production-style behavior:
+
+- Do not rely on silent fallback. If the configured AI provider fails, enrichment/chat requests fail and the client should tell the user.
+- Embedded search is opt-in and meant for local development only.
 
 ## Search API Contract
 

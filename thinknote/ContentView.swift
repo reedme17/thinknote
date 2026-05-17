@@ -45,6 +45,7 @@ private enum AppFont {
 struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var viewModel: ContentViewModel
+    @State private var isAssistantPresented = false
     private let shouldBootstrap: Bool
     @Namespace private var noteTransitionNamespace
     @Namespace private var newThoughtNamespace
@@ -61,15 +62,24 @@ struct ContentView: View {
 
     var body: some View {
         ZStack {
-//            Color(red: 0.975, green: 0.975, blue: 0.97)
-//                .ignoresSafeArea()
-
             HomeScreen(
-                viewModel: viewModel,
+                state: homeState,
                 transitionNamespace: noteTransitionNamespace,
-                expandedNoteID: activeDetailNote?.id,
-                newThoughtNamespace: newThoughtNamespace
+                newThoughtNamespace: newThoughtNamespace,
+                onOpenNote: { noteID in
+                    viewModel.openNote(noteID: noteID)
+                },
+                onOpenNewNote: {
+                    viewModel.openNewNote()
+                },
+                onPersistManualOrder: { noteIDs in
+                    await viewModel.persistManualOrder(noteIDs)
+                },
+                onShowAssistant: {
+                    isAssistantPresented = true
+                }
             )
+            .equatable()
             .blur(radius: viewModel.screen == .newNote ? 12 : 0)
             .overlay {
                 if viewModel.screen == .newNote {
@@ -94,25 +104,62 @@ struct ContentView: View {
                 .zIndex(2)
             }
 
-            if let message = viewModel.errorMessage {
+            if let error = viewModel.activeError {
                 VStack {
                     Spacer()
 
-                    Text(message)
-                        .font(AppFont.meta(13))
-                        .foregroundStyle(.black)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 10)
-                        .background(Color.white.opacity(0.92), in: Capsule())
-                        .overlay {
-                            Capsule()
-                                .stroke(Color.black.opacity(0.1), lineWidth: 1)
+                    HStack(alignment: .center, spacing: 14) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(error.title)
+                                .font(AppFont.meta(11))
+                                .tracking(1.2)
+                                .textCase(.uppercase)
+                                .foregroundStyle(.black.opacity(0.68))
+
+                            Text(error.message)
+                                .font(AppFont.body(15))
+                                .foregroundStyle(.black.opacity(0.82))
                         }
-                        .padding(.bottom, 20)
+
+                        Spacer(minLength: 0)
+
+                        if let actionTitle = error.actionTitle, error.action != nil {
+                            Button(actionTitle) {
+                                Task { await viewModel.performErrorAction() }
+                            }
+                            .font(AppFont.meta(11))
+                            .tracking(1.2)
+                            .foregroundStyle(noteAccentColor)
+                            .buttonStyle(.plain)
+                        }
+
+                        Button("close") {
+                            viewModel.dismissError()
+                        }
+                        .font(AppFont.meta(11))
+                        .tracking(1.2)
+                        .foregroundStyle(.black.opacity(0.5))
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 14)
+                    .background(Color.white.opacity(0.94), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .stroke(noteBorderColor.opacity(0.92), lineWidth: 1)
+                    }
+                    .shadow(color: .black.opacity(0.06), radius: 14, x: 0, y: 8)
+                    .padding(.horizontal, 18)
+                    .padding(.bottom, 20)
                 }
                 .transition(.move(edge: .bottom).combined(with: .opacity))
                 .zIndex(3)
             }
+        }
+        .sheet(isPresented: $isAssistantPresented) {
+            AssistantSheet(viewModel: viewModel)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
         }
         .task {
             guard shouldBootstrap else { return }
@@ -124,6 +171,15 @@ struct ContentView: View {
                 await viewModel.refreshForForeground()
             }
         }
+    }
+
+    private var homeState: HomeScreenState {
+        HomeScreenState(
+            notes: viewModel.notes,
+            isPresentingNewNote: viewModel.screen == .newNote,
+            expandedNoteID: activeDetailNote?.id,
+            addMorphTargetNoteID: viewModel.addMorphTargetNoteID
+        )
     }
 
     private var activeDetailNote: APINote? {
@@ -138,11 +194,25 @@ struct ContentView: View {
     }
 }
 
-private struct HomeScreen: View {
-    @ObservedObject var viewModel: ContentViewModel
-    let transitionNamespace: Namespace.ID
+private struct HomeScreenState: Equatable {
+    let notes: [APINote]
+    let isPresentingNewNote: Bool
     let expandedNoteID: String?
+    let addMorphTargetNoteID: String?
+
+    var isFeedVisible: Bool {
+        expandedNoteID == nil && !isPresentingNewNote
+    }
+}
+
+private struct HomeScreen: View {
+    let state: HomeScreenState
+    let transitionNamespace: Namespace.ID
     let newThoughtNamespace: Namespace.ID
+    let onOpenNote: (String) -> Void
+    let onOpenNewNote: () -> Void
+    let onPersistManualOrder: ([String]) async -> Void
+    let onShowAssistant: () -> Void
     @State private var orderedNoteIDs: [String] = []
     @State private var affinityGroup: AffinityGroup?
     @State private var activeDragNoteID: String?
@@ -153,6 +223,7 @@ private struct HomeScreen: View {
     @State private var jiggleProgress: CGFloat = 0
     @State private var homeContentHeight: CGFloat = 0
     @State private var homeDragOffset: CGFloat = 0
+    @State private var frozenAnimationDate = Date()
 
     var body: some View {
         GeometryReader { geometry in
@@ -169,7 +240,19 @@ private struct HomeScreen: View {
                         homeHeader
                             .padding(.bottom, 18)
 
-                        homeLayout(containerWidth: max(geometry.size.width - 36, 0))
+                        if state.isFeedVisible {
+                            TimelineView(.animation(minimumInterval: 1.0 / 24.0)) { timeline in
+                                homeLayout(
+                                    containerWidth: max(geometry.size.width - 36, 0),
+                                    animationDate: timeline.date
+                                )
+                            }
+                        } else {
+                            homeLayout(
+                                containerWidth: max(geometry.size.width - 36, 0),
+                                animationDate: frozenAnimationDate
+                            )
+                        }
                     }
                     .frame(maxWidth: .infinity, minHeight: homeMinContentHeight, alignment: .topLeading)
                     .padding(.horizontal, 18)
@@ -200,7 +283,7 @@ private struct HomeScreen: View {
                 .onAppear {
                     synchronizeOrderingIfNeeded()
                 }
-                .onChange(of: viewModel.notes.map(\.id)) { _, _ in
+                .onChange(of: state.notes.map(\.id)) { _, _ in
                     synchronizeOrderingIfNeeded()
                 }
                 .onPreferenceChange(NoteFramePreferenceKey.self) { frames in
@@ -209,6 +292,11 @@ private struct HomeScreen: View {
                 .onPreferenceChange(HomeContentHeightPreferenceKey.self) { height in
                     homeContentHeight = height
                 }
+                .onChange(of: state.isFeedVisible) { _, isVisible in
+                    if !isVisible {
+                        frozenAnimationDate = Date()
+                    }
+                }
                 .onTapGesture {
                     if isReorderMode {
                         cancelDragging()
@@ -216,7 +304,7 @@ private struct HomeScreen: View {
                 }
 
                 Button {
-                    viewModel.showAssistant = true
+                    onShowAssistant()
                 } label: {
                     Text("AI")
                         .font(AppFont.heading(16, weight: .semibold))
@@ -236,16 +324,11 @@ private struct HomeScreen: View {
                 }
             }
         }
-        .sheet(isPresented: $viewModel.showAssistant) {
-            AssistantSheet(viewModel: viewModel)
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
-        }
     }
 
     private var homeHeader: some View {
         HStack(alignment: .center, spacing: 12) {
-            Text("garden · \(viewModel.notes.count) thoughts")
+            Text("garden · \(state.notes.count) thoughts")
                 .font(AppFont.meta(11))
                 .tracking(1.8)
                 .textCase(.uppercase)
@@ -253,7 +336,7 @@ private struct HomeScreen: View {
 
             Spacer(minLength: 0)
 
-            if viewModel.screen != .newNote {
+            if !state.isPresentingNewNote {
                 HStack(spacing: 6) {
                     Circle()
                         .fill(noteAccentColor)
@@ -270,7 +353,7 @@ private struct HomeScreen: View {
         }
     }
 
-    private func homeLayout(containerWidth: CGFloat) -> some View {
+    private func homeLayout(containerWidth: CGFloat, animationDate: Date) -> some View {
         let columns = buildColumns()
         let spacing: CGFloat = 16
         let columnWidth = max((containerWidth - spacing) / 2, 0)
@@ -278,14 +361,14 @@ private struct HomeScreen: View {
         return HStack(alignment: .top, spacing: spacing) {
             VStack(spacing: 16) {
                 ForEach(Array(columns.left.enumerated()), id: \.element.id) { index, item in
-                    itemView(item, indexSeed: index * 2)
+                    itemView(item, indexSeed: index * 2, animationDate: animationDate)
                 }
             }
             .frame(width: columnWidth, alignment: .top)
 
             VStack(spacing: 16) {
                 ForEach(Array(columns.right.enumerated()), id: \.element.id) { index, item in
-                    itemView(item, indexSeed: index * 2 + 1)
+                    itemView(item, indexSeed: index * 2 + 1, animationDate: animationDate)
                 }
             }
             .frame(width: columnWidth, alignment: .top)
@@ -301,23 +384,23 @@ private struct HomeScreen: View {
     private func handleTap(on noteID: String) {
         debugNoteLog("handleTap", noteID, "isReorderMode:", isReorderMode)
         withAnimation(noteTransitionAnimation) {
-            viewModel.openNote(noteID: noteID)
+            onOpenNote(noteID)
         }
     }
 
     private var displayNotes: [APINote] {
-        viewModel.notes
+        state.notes
     }
 
     private var growingSeedCount: Int {
-        viewModel.notes.filter { ["queued", "retrying", "running"].contains($0.status) }.count
+        state.notes.filter { ["queued", "retrying", "running"].contains($0.status) }.count
     }
 
     @ViewBuilder
-    private func itemView(_ item: HomeItem, indexSeed: Int) -> some View {
+    private func itemView(_ item: HomeItem, indexSeed: Int, animationDate: Date) -> some View {
         switch item.kind {
         case .note(let note):
-            noteCard(note, index: indexSeed)
+            noteCard(note, index: indexSeed, animationDate: animationDate)
         case .group(let front, let back):
             RelatedNoteCluster(
                 front: front,
@@ -330,7 +413,8 @@ private struct HomeScreen: View {
                 phaseSeed: phaseSeed,
                 jiggleProgress: jiggleProgress,
                 transitionNamespace: transitionNamespace,
-                expandedNoteID: expandedNoteID
+                expandedNoteID: state.expandedNoteID,
+                animationDate: animationDate
             ) { noteID in
                 handleTap(on: noteID)
             } onDragChanged: { noteID, translation in
@@ -345,19 +429,19 @@ private struct HomeScreen: View {
         case .seed:
             EmptyNoteCard(
                 transitionNamespace: newThoughtNamespace,
-                isExpanded: viewModel.screen == .newNote,
-                isAddMorphActive: viewModel.addMorphTargetNoteID != nil,
+                isExpanded: state.isPresentingNewNote,
+                isAddMorphActive: state.addMorphTargetNoteID != nil,
                 isVisible: !isReorderMode
             ) {
                 withAnimation(noteTransitionAnimation) {
-                    viewModel.openNewNote()
+                    onOpenNewNote()
                 }
             }
         }
     }
 
-    private func noteCard(_ note: APINote, index: Int) -> some View {
-        let isAddMorphTarget = viewModel.addMorphTargetNoteID == note.id
+    private func noteCard(_ note: APINote, index: Int, animationDate: Date) -> some View {
+        let isAddMorphTarget = state.addMorphTargetNoteID == note.id
 
         return NoteCard(
             note: note,
@@ -367,8 +451,9 @@ private struct HomeScreen: View {
             phaseSeed: phaseSeed(for: note.id),
             jiggleProgress: jiggleProgress,
             transitionNamespace: transitionNamespace,
-            isExpanded: expandedNoteID == note.id,
-            isTransitionSource: expandedNoteID == note.id
+            isExpanded: state.expandedNoteID == note.id,
+            isTransitionSource: state.expandedNoteID == note.id,
+            animationDate: animationDate
         )
         .opacity(isAddMorphTarget ? 0.001 : 1)
         .overlay {
@@ -389,7 +474,7 @@ private struct HomeScreen: View {
             }
         )
         .onTapGesture {
-            debugNoteLog("tap note", note.id, "expanded:", expandedNoteID == note.id)
+            debugNoteLog("tap note", note.id, "expanded:", state.expandedNoteID == note.id)
             if isReorderMode {
                 cancelDragging()
             } else {
@@ -407,9 +492,13 @@ private struct HomeScreen: View {
             return
         }
 
-        let existing = Set(orderedNoteIDs)
-        let missing = ids.filter { !existing.contains($0) }
-        orderedNoteIDs = deduplicated(orderedNoteIDs.filter(ids.contains) + missing)
+        if !isReorderMode && activeDragNoteID == nil {
+            orderedNoteIDs = ids
+        } else {
+            let existing = Set(orderedNoteIDs)
+            let missing = ids.filter { !existing.contains($0) }
+            orderedNoteIDs = deduplicated(orderedNoteIDs.filter(ids.contains) + missing)
+        }
 
         if let group = affinityGroup {
             let visible = Set(ids)
@@ -518,7 +607,7 @@ private struct HomeScreen: View {
         }
 
         Task {
-            await viewModel.persistManualOrder(orderedNoteIDs)
+            await onPersistManualOrder(orderedNoteIDs)
         }
         cancelDragging()
     }
@@ -641,6 +730,12 @@ private struct HomeScreen: View {
                 }
         )
         .transition(.move(edge: .bottom).combined(with: .opacity))
+    }
+}
+
+extension HomeScreen: Equatable {
+    static func == (lhs: HomeScreen, rhs: HomeScreen) -> Bool {
+        lhs.state == rhs.state
     }
 }
 
@@ -849,6 +944,10 @@ private struct NoteFullPageScreen: View {
     @ObservedObject var viewModel: ContentViewModel
     let note: APINote
     let transitionNamespace: Namespace.ID
+    @State private var followUpDraft = ""
+    @State private var currentThread: APIConversationThread?
+    @State private var isEnriching = false
+    @State private var isSendingFollowUp = false
     @State private var showChrome = false
     @State private var showPrimaryContent = false
     @State private var showGrowthContent = false
@@ -927,6 +1026,7 @@ private struct NoteFullPageScreen: View {
                 detailTopContentOffsetY = 0
                 detailAnchorPositions = [:]
                 detailAnchorBaselines = [:]
+                followUpDraft = ""
                 startOpenSequence()
             }
             .onChange(of: note.id) { _, _ in
@@ -935,7 +1035,11 @@ private struct NoteFullPageScreen: View {
                 detailAnchorPositions = [:]
                 detailAnchorBaselines = [:]
                 dragOffset = 0
+                followUpDraft = ""
                 startOpenSequence()
+            }
+            .task(id: note.id) {
+                currentThread = await viewModel.fetchConversationThread(noteID: note.id)
             }
             .background(
                 GeometryReader { bg in
@@ -1106,11 +1210,11 @@ private struct NoteFullPageScreen: View {
         HStack {
             Spacer()
 
-            if viewModel.isEnriching {
+            if isEnriching {
                 ExploringLoadingLabel()
             } else {
                 Button {
-                    Task { await viewModel.requestResponse(for: note.id) }
+                    Task { await requestResponse() }
                 } label: {
                     Text("continue this thought")
                         .font(AppFont.meta(11))
@@ -1245,7 +1349,7 @@ private struct NoteFullPageScreen: View {
             let provider = note.enrichments.first?.provider.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines) ?? ""
             return provider.isEmpty ? nil : provider
         case TimelineEventKind.chatUpdated.rawValue:
-            let provider = viewModel.currentThread?.messages
+            let provider = currentThread?.messages
                 .last(where: { $0.role == MessageRole.assistant.rawValue })?
                 .provider
                 .trimmingCharacters(in: CharacterSet.whitespacesAndNewlines) ?? ""
@@ -1285,47 +1389,48 @@ private struct NoteFullPageScreen: View {
         VStack(spacing: 12) {
             if shouldShowRequestResponseOnlyCTA {
                 Group {
-                    if viewModel.isEnriching {
+                    if isEnriching {
                         ExploringLoadingLabel()
                     } else {
-                        Button {
-                            Task { await viewModel.requestResponse(for: note.id) }
-                        } label: {
-                            Text("request response")
-                                .font(AppFont.meta(11))
-                                .tracking(1.2)
-                                .foregroundStyle(noteAccentColor)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 10)
-                                .background(Color.white.opacity(0.92), in: Capsule())
-                                .overlay {
-                                    Capsule()
-                                        .stroke(noteAccentColor.opacity(0.16), lineWidth: 1)
-                                }
+                        VStack(spacing: 10) {
+                            Button {
+                                Task { await requestResponse() }
+                            } label: {
+                                Text("request response")
+                                    .font(AppFont.meta(11))
+                                    .tracking(1.2)
+                                    .foregroundStyle(noteAccentColor)
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 10)
+                                    .background(Color.white.opacity(0.92), in: Capsule())
+                                    .overlay {
+                                        Capsule()
+                                            .stroke(noteAccentColor.opacity(0.16), lineWidth: 1)
+                                    }
+                            }
+
+                            if note.status == "failed" {
+                                Text("AI couldn’t respond last time. Try again.")
+                                    .font(AppFont.meta(10))
+                                    .tracking(1.0)
+                                    .foregroundStyle(.black.opacity(0.46))
+                                    .multilineTextAlignment(.center)
+                            }
                         }
                     }
                 }
                 .frame(maxWidth: .infinity)
-                .background {
-                    GeometryReader { proxy in
-                        Color.clear
-                            .preference(
-                                key: DetailBottomBarInputTopPreferenceKey.self,
-                                value: proxy.frame(in: .named("detail-bottom-bar")).minY
-                            )
-                    }
-                }
             } else {
                 HStack(alignment: .center, spacing: 12) {
                     ZStack(alignment: .leading) {
-                        if viewModel.followUpDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        if followUpDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                             Text("Ask about this")
                                 .font(AppFont.meta(11))
                                 .tracking(1.2)
                                 .foregroundStyle(.black.opacity(0.34))
                         }
 
-                        TextField("", text: $viewModel.followUpDraft, axis: .vertical)
+                        TextField("", text: $followUpDraft, axis: .vertical)
                             .textFieldStyle(.plain)
                             .font(AppFont.meta(11))
                             .tracking(1.2)
@@ -1333,17 +1438,17 @@ private struct NoteFullPageScreen: View {
                             .lineLimit(1...4)
                     }
 
-                    if !viewModel.followUpDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    if !followUpDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                         Button("send") {
-                            Task { await viewModel.sendFollowUp() }
+                            Task { await sendFollowUp() }
                         }
                         .font(AppFont.meta(11))
                         .tracking(1.2)
                         .foregroundStyle(noteAccentColor)
                         .buttonStyle(.plain)
                         .disabled(
-                            viewModel.isEnriching ||
-                            viewModel.isSendingFollowUp
+                            isEnriching ||
+                            isSendingFollowUp
                         )
                     }
                 }
@@ -1358,15 +1463,6 @@ private struct NoteFullPageScreen: View {
                         .stroke(noteBorderColor.opacity(0.92), lineWidth: 1)
                 }
                 .shadow(color: .black.opacity(0.035), radius: 10, x: 0, y: 6)
-                .background {
-                    GeometryReader { proxy in
-                        Color.clear
-                            .preference(
-                                key: DetailBottomBarInputTopPreferenceKey.self,
-                                value: proxy.frame(in: .named("detail-bottom-bar")).minY
-                            )
-                    }
-                }
             }
         }
         .padding(.horizontal, 18)
@@ -1388,10 +1484,6 @@ private struct NoteFullPageScreen: View {
         .offset(y: showChrome ? 0 : 10)
     }
 
-    private var primaryDetailActionTitle: String {
-        viewModel.followUpDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Request response" : "Send follow-up"
-    }
-
     private var shouldShowDeferredGrowthCTA: Bool {
         note.enrichments.isEmpty &&
         note.latestChatReply == nil &&
@@ -1399,7 +1491,7 @@ private struct NoteFullPageScreen: View {
     }
 
     private var isAwaitingAssistantReply: Bool {
-        guard let currentThread = viewModel.currentThread else { return false }
+        guard let currentThread else { return false }
         return currentThread.messages.last?.role == MessageRole.user.rawValue
     }
 
@@ -1408,7 +1500,7 @@ private struct NoteFullPageScreen: View {
     }
 
     private var pendingFollowUpText: String? {
-        guard let currentThread = viewModel.currentThread,
+        guard let currentThread,
               let lastMessage = currentThread.messages.last,
               lastMessage.role == MessageRole.user.rawValue else {
             return nil
@@ -1444,7 +1536,7 @@ private struct NoteFullPageScreen: View {
     }
 
     private var visibleProviderLabel: String? {
-        if let provider = viewModel.currentThread?.messages
+        if let provider = currentThread?.messages
             .last(where: { $0.role == MessageRole.assistant.rawValue })?
             .provider
             .trimmingCharacters(in: CharacterSet.whitespacesAndNewlines),
@@ -1455,6 +1547,28 @@ private struct NoteFullPageScreen: View {
         let provider = note.enrichments.first?.provider
             .trimmingCharacters(in: CharacterSet.whitespacesAndNewlines) ?? ""
         return provider.isEmpty ? nil : provider
+    }
+
+    private func requestResponse() async {
+        guard !isEnriching else { return }
+        isEnriching = true
+        defer { isEnriching = false }
+
+        guard await viewModel.requestResponse(for: note.id) else { return }
+        currentThread = await viewModel.fetchConversationThread(noteID: note.id)
+    }
+
+    private func sendFollowUp() async {
+        guard !isSendingFollowUp else { return }
+        let message = followUpDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !message.isEmpty else { return }
+
+        isSendingFollowUp = true
+        defer { isSendingFollowUp = false }
+
+        guard await viewModel.sendFollowUp(noteID: note.id, message: message) else { return }
+        followUpDraft = ""
+        currentThread = await viewModel.fetchConversationThread(noteID: note.id)
     }
 
     private var noteTimestamp: String {
@@ -1587,6 +1701,8 @@ private struct ExploringLoadingLabel: View {
 
 private struct AssistantSheet: View {
     @ObservedObject var viewModel: ContentViewModel
+    @Environment(\.dismiss) private var dismiss
+    @State private var assistantDraft = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -1595,7 +1711,7 @@ private struct AssistantSheet: View {
                     .font(AppFont.heading(22, weight: .semibold))
                 Spacer()
                 Button("Done") {
-                    viewModel.showAssistant = false
+                    dismiss()
                 }
                 .foregroundStyle(.black)
             }
@@ -1612,16 +1728,19 @@ private struct AssistantSheet: View {
                             .font(AppFont.body(18))
                     }
 
-                    TextField("Ask about this idea...", text: $viewModel.assistantDraft, axis: .vertical)
+                    TextField("Ask about this idea...", text: $assistantDraft, axis: .vertical)
                         .textFieldStyle(.roundedBorder)
 
                     Button("Save as note") {
                         Task {
-                            await viewModel.createNoteFromAssistant()
+                            let text = assistantDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+                            guard await viewModel.createNoteFromAssistant(text: text) else { return }
+                            assistantDraft = ""
+                            dismiss()
                         }
                     }
                     .buttonStyle(.bordered)
-                    .disabled(viewModel.assistantDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(assistantDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
         }
@@ -1640,141 +1759,140 @@ private struct NoteCard: View {
     let transitionNamespace: Namespace.ID
     let isExpanded: Bool
     let isTransitionSource: Bool
+    let animationDate: Date
     @State private var showCardContent = true
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 24.0)) { timeline in
-            let jiggle = jiggleState(at: timeline.date)
-            let edgePhase = livingEdgePhase(at: timeline.date)
-            let edgeAmplitude = livingEdgeAmplitude
-            let cometProgress = runningStrokeProgress(at: timeline.date)
+        let jiggle = jiggleState(at: animationDate)
+        let edgePhase = livingEdgePhase(at: animationDate)
+        let edgeAmplitude = livingEdgeAmplitude
+        let cometProgress = runningStrokeProgress(at: animationDate)
 
-            VStack(alignment: .leading, spacing: 14) {
-                summaryText
+        VStack(alignment: .leading, spacing: 14) {
+            summaryText
 
-                HStack(alignment: .center, spacing: 12) {
-                    Text(noteTimestamp)
+            HStack(alignment: .center, spacing: 12) {
+                Text(noteTimestamp)
+                    .font(AppFont.meta(11))
+                    .tracking(1.2)
+                    .textCase(.uppercase)
+                    .foregroundStyle(.black.opacity(0.5))
+
+                Spacer()
+
+                if let statusText = statusText {
+                    Text(statusText)
                         .font(AppFont.meta(11))
                         .tracking(1.2)
                         .textCase(.uppercase)
-                        .foregroundStyle(.black.opacity(0.5))
-
-                    Spacer()
-
-                    if let statusText = statusText {
-                        Text(statusText)
-                            .font(AppFont.meta(11))
-                            .tracking(1.2)
-                            .textCase(.uppercase)
-                            .foregroundStyle(hasAIResponse ? noteAccentColor : .black.opacity(0.62))
-                    }
+                        .foregroundStyle(hasAIResponse ? noteAccentColor : .black.opacity(0.62))
                 }
             }
-            .opacity(showCardContent ? 1 : 0)
-            .padding(.horizontal, 18)
-            .padding(.vertical, 18)
-            .frame(maxWidth: .infinity, alignment: .topLeading)
-            .background {
-                ZStack {
-                    if !isExpanded {
-                        LivingCellCardShape(phase: edgePhase, amplitude: edgeAmplitude)
-                            .fill(Color.white.opacity(0.93))
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .matchedGeometryEffect(id: "note-surface-\(note.id)", in: transitionNamespace)
-
-                        LivingCellCardShape(phase: edgePhase, amplitude: edgeAmplitude)
-                            .stroke(
-                                .clear,
-                                lineWidth: isReordering ? 1.3 : 1
-                            )
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .matchedGeometryEffect(id: "note-stroke-\(note.id)", in: transitionNamespace)
-                    } else {
-                        RoundedRectangle(cornerRadius: 30, style: .continuous)
-                            .fill(Color.white.opacity(0.001))
-                    }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
-            .overlay {
+        }
+        .opacity(showCardContent ? 1 : 0)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 18)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .background {
+            ZStack {
                 if !isExpanded {
-                    ZStack {
-                        LivingCellCardShape(phase: edgePhase, amplitude: edgeAmplitude)
-                            .fill(
-                                LinearGradient(
-                                    colors: [
-                                        hasAIResponse ? noteAccentColor.opacity(0.055) : .clear,
-                                        hasAIResponse ? noteAccentColor.opacity(0.016) : .clear,
-                                        .clear
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
+                    LivingCellCardShape(phase: edgePhase, amplitude: edgeAmplitude)
+                        .fill(Color.white.opacity(0.93))
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .matchedGeometryEffect(id: "note-surface-\(note.id)", in: transitionNamespace)
 
-                        BilayerCardOutline(
+                    LivingCellCardShape(phase: edgePhase, amplitude: edgeAmplitude)
+                        .stroke(
+                            .clear,
+                            lineWidth: isReordering ? 1.3 : 1
+                        )
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .matchedGeometryEffect(id: "note-stroke-\(note.id)", in: transitionNamespace)
+                } else {
+                    RoundedRectangle(cornerRadius: 30, style: .continuous)
+                        .fill(Color.white.opacity(0.001))
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .overlay {
+            if !isExpanded {
+                ZStack {
+                    LivingCellCardShape(phase: edgePhase, amplitude: edgeAmplitude)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    hasAIResponse ? noteAccentColor.opacity(0.055) : .clear,
+                                    hasAIResponse ? noteAccentColor.opacity(0.016) : .clear,
+                                    .clear
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+
+                    BilayerCardOutline(
+                        phase: edgePhase,
+                        amplitude: edgeAmplitude,
+                        innerColor: noteAccentColor,
+                        innerOpacity: hasAIResponse ? 0.17 : 0.09
+                    )
+
+                    if isActivelyGrowing {
+                        RunningStrokeIndicator(
                             phase: edgePhase,
                             amplitude: edgeAmplitude,
-                            innerColor: noteAccentColor,
-                            innerOpacity: hasAIResponse ? 0.17 : 0.09
+                            progress: cometProgress,
+                            color: noteAccentColor
                         )
-
-                        if isActivelyGrowing {
-                            RunningStrokeIndicator(
-                                phase: edgePhase,
-                                amplitude: edgeAmplitude,
-                                progress: cometProgress,
-                                color: noteAccentColor
-                            )
-                        }
                     }
-                    .padding(1.5)
+                }
+                .padding(1.5)
+                .opacity(showCardContent ? 1 : 0)
+                .animation(.easeOut(duration: 0.22), value: showCardContent)
+            }
+        }
+        .overlay(alignment: .bottomTrailing) {
+            if let statusDot = statusDot {
+                Circle()
+                    .fill(noteAccentColor)
+                    .frame(
+                        width: statusDotDiameter(for: statusDot),
+                        height: statusDotDiameter(for: statusDot)
+                    )
+                    .padding(.trailing, 18)
+                    .padding(.bottom, 18)
                     .opacity(showCardContent ? 1 : 0)
                     .animation(.easeOut(duration: 0.22), value: showCardContent)
-                }
             }
-            .overlay(alignment: .bottomTrailing) {
-                if let statusDot = statusDot {
-                    Circle()
-                        .fill(noteAccentColor)
-                        .frame(
-                            width: statusDotDiameter(for: statusDot),
-                            height: statusDotDiameter(for: statusDot)
-                        )
-                        .padding(.trailing, 18)
-                        .padding(.bottom, 18)
-                        .opacity(showCardContent ? 1 : 0)
-                        .animation(.easeOut(duration: 0.22), value: showCardContent)
-                }
-            }
-            .contentShape(LivingCellCardShape(phase: edgePhase, amplitude: edgeAmplitude))
-            .rotationEffect(.degrees(rotation + jiggle.rotation))
-            .offset(x: jiggle.offset.width, y: jiggle.offset.height)
-            .scaleEffect(isReordering ? 1.02 : 1.0)
-            .compositingGroup()
-            .shadow(
-                color: Color.black.opacity(isReordering ? 0.167 : 0.153),
-                radius: isReordering ? 10 : 8.33,
-                x: 0,
-                y: isReordering ? 6 : 5
-            )
-            .shadow(
-                color: noteAccentColor.opacity(hasAIResponse ? 0.07 : 0.047),
-                radius: isReordering ? 6 : 5,
-                x: 0,
-                y: isReordering ? 3 : 2.33
-            )
-            .opacity(isExpanded ? 0.001 : 1)
-            .animation(.easeInOut(duration: 0.18), value: isReordering)
-            .onChange(of: isExpanded) { wasExpanded, nowExpanded in
-                if nowExpanded {
-                    showCardContent = false
-                } else if wasExpanded {
-                    Task {
-                        try? await Task.sleep(nanoseconds: UInt64(noteMorphDuration * 0.55 * 1_000_000_000))
-                        withAnimation(.easeOut(duration: 0.22)) {
-                            showCardContent = true
-                        }
+        }
+        .contentShape(LivingCellCardShape(phase: edgePhase, amplitude: edgeAmplitude))
+        .rotationEffect(.degrees(rotation + jiggle.rotation))
+        .offset(x: jiggle.offset.width, y: jiggle.offset.height)
+        .scaleEffect(isReordering ? 1.02 : 1.0)
+        .compositingGroup()
+        .shadow(
+            color: Color.black.opacity(isReordering ? 0.167 : 0.153),
+            radius: isReordering ? 10 : 8.33,
+            x: 0,
+            y: isReordering ? 6 : 5
+        )
+        .shadow(
+            color: noteAccentColor.opacity(hasAIResponse ? 0.07 : 0.047),
+            radius: isReordering ? 6 : 5,
+            x: 0,
+            y: isReordering ? 3 : 2.33
+        )
+        .opacity(isExpanded ? 0.001 : 1)
+        .animation(.easeInOut(duration: 0.18), value: isReordering)
+        .onChange(of: isExpanded) { wasExpanded, nowExpanded in
+            if nowExpanded {
+                showCardContent = false
+            } else if wasExpanded {
+                Task {
+                    try? await Task.sleep(nanoseconds: UInt64(noteMorphDuration * 0.55 * 1_000_000_000))
+                    withAnimation(.easeOut(duration: 0.22)) {
+                        showCardContent = true
                     }
                 }
             }
@@ -1798,6 +1916,9 @@ private struct NoteCard: View {
         }
         if note.status == "captured" {
             return "noted"
+        }
+        if note.status == "failed" {
+            return "AI unavailable"
         }
         return note.status
     }
@@ -2258,6 +2379,7 @@ private struct RelatedNoteCluster: View {
     let jiggleProgress: CGFloat
     let transitionNamespace: Namespace.ID
     let expandedNoteID: String?
+    let animationDate: Date
     let onSelect: (String) -> Void
     let onDragChanged: (String, CGSize) -> Void
     let onDragEnded: (String, CGSize) -> Void
@@ -2273,7 +2395,8 @@ private struct RelatedNoteCluster: View {
                 jiggleProgress: jiggleProgress,
                 transitionNamespace: transitionNamespace,
                 isExpanded: expandedNoteID == back.id,
-                isTransitionSource: expandedNoteID == back.id
+                isTransitionSource: expandedNoteID == back.id,
+                animationDate: animationDate
             )
                 .padding(.top, 56)
                 .padding(.leading, 8)
@@ -2307,7 +2430,8 @@ private struct RelatedNoteCluster: View {
                 jiggleProgress: jiggleProgress,
                 transitionNamespace: transitionNamespace,
                 isExpanded: expandedNoteID == front.id,
-                isTransitionSource: expandedNoteID == front.id
+                isTransitionSource: expandedNoteID == front.id,
+                animationDate: animationDate
             )
                 .padding(.trailing, 8)
                 .contentShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
@@ -2429,22 +2553,6 @@ private struct DetailAnchorPreferenceKey: PreferenceKey {
 
     static func reduce(value: inout [String: CGFloat], nextValue: () -> [String: CGFloat]) {
         value.merge(nextValue(), uniquingKeysWith: { _, new in new })
-    }
-}
-
-private struct DetailBottomBarHeightPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
-    }
-}
-
-private struct DetailBottomBarInputTopPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 14
-
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
     }
 }
 

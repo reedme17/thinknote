@@ -250,17 +250,27 @@ enum AppScreen: Hashable {
     case detail(String)
 }
 
+enum ErrorRecoveryAction: Equatable {
+    case retryEnrichment(noteID: String)
+    case retryDeferredGrowth
+}
+
+struct ErrorBannerState: Identifiable, Equatable {
+    let id = UUID()
+    let title: String
+    let message: String
+    let actionTitle: String?
+    let action: ErrorRecoveryAction?
+}
+
 @MainActor
 final class ContentViewModel: ObservableObject {
     @Published var notes: [APINote] = []
     @Published var screen: AppScreen = .home
-    @Published var errorMessage: String?
-    @Published var showAssistant = false
+    @Published var activeError: ErrorBannerState?
 
     @Published var selectedNoteID: String?
     @Published var showTimeline = false
-    @Published var followUpDraft = ""
-    @Published var assistantDraft = ""
 
     @Published var draftNoteID: String?
     @Published var draftText = ""
@@ -269,11 +279,8 @@ final class ContentViewModel: ObservableObject {
     @Published var didAutosaveDraft = false
     @Published var isDraftResponding = false
 
-    @Published var isEnriching = false
-    @Published var isSendingFollowUp = false
     @Published var reorderSourceID: String?
     @Published var addMorphTargetNoteID: String?
-    @Published var currentThread: APIConversationThread?
 
     private let repository: ThinknoteRepository
     private var hasBootstrapped = false
@@ -293,29 +300,45 @@ final class ContentViewModel: ObservableObject {
         draftText.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    func dismissError() {
+        activeError = nil
+    }
+
+    func performErrorAction() async {
+        guard let action = activeError?.action else { return }
+        activeError = nil
+
+        switch action {
+        case .retryEnrichment(let noteID):
+            await requestResponse(for: noteID)
+        case .retryDeferredGrowth:
+            await processDeferredGrowthIfNeeded()
+        }
+    }
+
     func bootstrap() async {
         do {
             notes = try await repository.bootstrap(seedNotes: Self.demoNotes)
             hasBootstrapped = true
             await processDeferredGrowthIfNeeded()
-            errorMessage = nil
+            activeError = nil
         } catch {
             if notes.isEmpty {
                 notes = Self.demoNotes
             }
-            errorMessage = "Local store could not be opened."
+            presentStorageError()
         }
     }
 
     func loadNotes() async {
         do {
             notes = try await repository.loadNotes()
-            errorMessage = nil
+            activeError = nil
         } catch {
             if notes.isEmpty {
                 notes = Self.demoNotes
             }
-            errorMessage = "Local store could not be opened."
+            presentStorageError()
         }
 
         if case .detail(let noteID) = screen, note(for: noteID) == nil {
@@ -351,16 +374,15 @@ final class ContentViewModel: ObservableObject {
     func openNote(noteID: String) {
         debugNoteLog("openNote", "before", screen, "noteID:", noteID)
         selectedNoteID = noteID
-        followUpDraft = ""
         showTimeline = false
         reorderSourceID = nil
         screen = .detail(noteID)
         debugNoteLog("openNote", "after", screen, "selectedNoteID:", selectedNoteID ?? "nil")
+
         Task {
             if let viewedNote = try? await repository.markNoteViewed(noteID: noteID) {
                 replace(note: viewedNote)
             }
-            currentThread = try? await repository.fetchConversationThread(noteID: noteID)
         }
     }
 
@@ -368,7 +390,6 @@ final class ContentViewModel: ObservableObject {
         let noteID = selectedNoteID
         reorderSourceID = nil
         showTimeline = false
-        followUpDraft = ""
         screen = .home
         if let noteID {
             Task {
@@ -413,9 +434,12 @@ final class ContentViewModel: ObservableObject {
             selectedNoteID = note.id
             lastSavedDraftText = text
             didAutosaveDraft = true
-            errorMessage = nil
+            activeError = nil
         } catch {
-            errorMessage = error.localizedDescription
+            presentError(
+                title: "Couldn’t save note",
+                message: "Your draft stayed local, but it couldn’t be saved right now."
+            )
         }
     }
 
@@ -431,39 +455,34 @@ final class ContentViewModel: ObservableObject {
         openNote(noteID: draftNoteID)
     }
 
-    func requestResponse(for noteID: String) async {
-        guard !isEnriching else { return }
-
-        isEnriching = true
-        defer { isEnriching = false }
-
+    @discardableResult
+    func requestResponse(for noteID: String) async -> Bool {
         do {
             let updated = try await repository.requestEnrichment(noteID: noteID)
             replace(note: updated)
-            currentThread = try? await repository.fetchConversationThread(noteID: noteID)
-            errorMessage = nil
+            activeError = nil
+            return true
         } catch {
-            errorMessage = error.localizedDescription
+            presentResponseError(for: noteID, error: error)
+            return false
         }
     }
 
-    func sendFollowUp() async {
-        guard let selectedNoteID else { return }
-
-        let message = followUpDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !message.isEmpty else { return }
-
-        isSendingFollowUp = true
-        defer { isSendingFollowUp = false }
+    @discardableResult
+    func sendFollowUp(noteID: String, message: String) async -> Bool {
+        guard !message.isEmpty else { return false }
 
         do {
-            let updated = try await repository.sendFollowUp(noteID: selectedNoteID, message: message)
+            let updated = try await repository.sendFollowUp(noteID: noteID, message: message)
             replace(note: updated)
-            currentThread = try? await repository.fetchConversationThread(noteID: selectedNoteID)
-            followUpDraft = ""
-            errorMessage = nil
+            activeError = nil
+            return true
         } catch {
-            errorMessage = error.localizedDescription
+            presentError(
+                title: "Message not sent",
+                message: "Your follow-up didn’t go through. Try again."
+            )
+            return false
         }
     }
 
@@ -474,10 +493,12 @@ final class ContentViewModel: ObservableObject {
             if let refreshed = try await repository.loadNote(noteID: selectedNoteID) {
                 replace(note: refreshed)
             }
-            currentThread = try? await repository.fetchConversationThread(noteID: selectedNoteID)
-            errorMessage = nil
+            activeError = nil
         } catch {
-            errorMessage = error.localizedDescription
+            presentError(
+                title: "Couldn’t refresh note",
+                message: "Thinknote couldn’t load the latest version of this note."
+            )
         }
     }
 
@@ -518,31 +539,37 @@ final class ContentViewModel: ObservableObject {
     func persistManualOrder(_ noteIDs: [String]) async {
         do {
             notes = try await repository.reorderNotes(noteIDs: noteIDs)
-            errorMessage = nil
+            activeError = nil
         } catch {
-            errorMessage = error.localizedDescription
+            presentError(
+                title: "Couldn’t reorder thoughts",
+                message: "The new order wasn’t saved. Try again."
+            )
         }
     }
 
-    func createNoteFromAssistant() async {
-        let text = assistantDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty else { return }
+    @discardableResult
+    func createNoteFromAssistant(text: String) async -> Bool {
+        guard !text.isEmpty else { return false }
 
         draftText = text
         draftNoteID = nil
         lastSavedDraftText = ""
         await autosaveDraftIfNeeded()
 
-        assistantDraft = ""
-        showAssistant = false
-
         if let draftNoteID {
             openNote(noteID: draftNoteID)
+            return true
         }
+        return false
     }
 
     func note(for noteID: String) -> APINote? {
         notes.first(where: { $0.id == noteID })
+    }
+
+    func fetchConversationThread(noteID: String) async -> APIConversationThread? {
+        try? await repository.fetchConversationThread(noteID: noteID)
     }
 
     private func createDraft(text: String) async throws -> APINote {
@@ -572,8 +599,60 @@ final class ContentViewModel: ObservableObject {
             _ = try await repository.processEligibleJobs()
             await loadNotes()
         } catch {
-            errorMessage = error.localizedDescription
+            presentError(
+                title: "Background growth paused",
+                message: friendlyMessage(for: error, fallback: "Thinknote couldn’t reach its AI service in the background."),
+                actionTitle: "retry",
+                action: .retryDeferredGrowth
+            )
         }
+    }
+
+    private func presentStorageError() {
+        presentError(
+            title: "Storage unavailable",
+            message: "Thinknote couldn’t open its local store right now."
+        )
+    }
+
+    private func presentResponseError(for noteID: String, error: Error) {
+        presentError(
+            title: friendlyTitle(for: error),
+            message: friendlyMessage(for: error, fallback: "Thinknote couldn’t get a response right now."),
+            actionTitle: "retry",
+            action: .retryEnrichment(noteID: noteID)
+        )
+    }
+
+    private func presentError(
+        title: String,
+        message: String,
+        actionTitle: String? = nil,
+        action: ErrorRecoveryAction? = nil
+    ) {
+        activeError = ErrorBannerState(title: title, message: message, actionTitle: actionTitle, action: action)
+    }
+
+    private func friendlyTitle(for error: Error) -> String {
+        let message = error.localizedDescription.lowercased()
+        if message.contains("timed out") {
+            return "AI took too long"
+        }
+        if message.contains("offline") || message.contains("internet") || message.contains("network") || message.contains("connect") {
+            return "Network issue"
+        }
+        return "AI unavailable"
+    }
+
+    private func friendlyMessage(for error: Error, fallback: String) -> String {
+        let message = error.localizedDescription.lowercased()
+        if message.contains("timed out") {
+            return "The response didn’t finish in time. Try again."
+        }
+        if message.contains("offline") || message.contains("internet") || message.contains("network") || message.contains("connect") {
+            return "Check your connection and try again."
+        }
+        return fallback
     }
 
     static let demoNotes: [APINote] = [
@@ -711,16 +790,102 @@ private func seedDate(hour: Int, minute: Int) -> Date {
     ) ?? now
 }
 
+enum ThinknoteEnvironment: String, Equatable {
+    case local
+    case staging
+    case production
+    case custom
+}
+
+struct ThinknoteRuntimeConfiguration: Equatable {
+    static let environmentVariableKey = "THINKNOTE_ENVIRONMENT"
+    static let baseURLVariableKey = "THINKNOTE_API_BASE_URL"
+
+    private static let defaultLocalBaseURL = URL(string: "http://127.0.0.1:8787")!
+    private static let defaultStagingBaseURL = URL(string: "https://thinknote-8zt0.onrender.com")!
+    private static let defaultProductionBaseURL = URL(string: "https://thinknote-8zt0.onrender.com")!
+
+    let environment: ThinknoteEnvironment
+    let baseURL: URL
+
+    static var current: ThinknoteRuntimeConfiguration {
+        let bundleValues = Bundle.main.infoDictionary ?? [:]
+        let processValues = ProcessInfo.processInfo.environment
+        return resolve(
+            environmentOverride: processValues[environmentVariableKey],
+            baseURLOverride: processValues[baseURLVariableKey],
+            bundleValues: bundleValues,
+            isSimulator: isRunningOnSimulator
+        )
+    }
+
+    static func resolve(
+        environmentOverride: String?,
+        baseURLOverride: String?,
+        bundleValues: [String: Any],
+        isSimulator: Bool
+    ) -> ThinknoteRuntimeConfiguration {
+        if let baseURL = normalizedURL(from: baseURLOverride) {
+            let environment = normalizedEnvironment(from: environmentOverride) ?? .custom
+            return ThinknoteRuntimeConfiguration(environment: environment, baseURL: baseURL)
+        }
+
+        let environment =
+            normalizedEnvironment(from: environmentOverride) ??
+            normalizedEnvironment(from: bundleValues["ThinknoteDefaultEnvironment"] as? String) ??
+            (isSimulator ? .local : .production)
+
+        let baseURL: URL
+        switch environment {
+        case .local:
+            baseURL = normalizedURL(from: bundleValues["ThinknoteLocalAPIBaseURL"] as? String) ?? defaultLocalBaseURL
+        case .staging:
+            baseURL = normalizedURL(from: bundleValues["ThinknoteStagingAPIBaseURL"] as? String) ?? defaultStagingBaseURL
+        case .production:
+            baseURL = normalizedURL(from: bundleValues["ThinknoteProductionAPIBaseURL"] as? String) ?? defaultProductionBaseURL
+        case .custom:
+            baseURL = normalizedURL(from: bundleValues["ThinknoteProductionAPIBaseURL"] as? String) ?? defaultProductionBaseURL
+        }
+
+        return ThinknoteRuntimeConfiguration(environment: environment, baseURL: baseURL)
+    }
+
+    private static func normalizedEnvironment(from value: String?) -> ThinknoteEnvironment? {
+        switch value?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+        case "local", "dev", "development":
+            return .local
+        case "staging", "stage":
+            return .staging
+        case "production", "prod":
+            return .production
+        case "custom":
+            return .custom
+        default:
+            return nil
+        }
+    }
+
+    private static func normalizedURL(from value: String?) -> URL? {
+        guard let raw = value?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else {
+            return nil
+        }
+        return URL(string: raw)
+    }
+
+    #if targetEnvironment(simulator)
+    private static let isRunningOnSimulator = true
+    #else
+    private static let isRunningOnSimulator = false
+    #endif
+}
+
 struct ThinknoteAPIClient {
     private let decoder: JSONDecoder
     private let encoder: JSONEncoder
     private let baseURL: URL
 
-    #if targetEnvironment(simulator)
-    static let defaultBaseURL = URL(string: "http://127.0.0.1:8787")!
-    #else
-    static let defaultBaseURL = URL(string: "https://thinknote-8zt0.onrender.com")!
-    #endif
+    static let runtimeConfiguration = ThinknoteRuntimeConfiguration.current
+    static let defaultBaseURL = runtimeConfiguration.baseURL
 
     init(baseURL: URL = ThinknoteAPIClient.defaultBaseURL) {
         let decoder = JSONDecoder()

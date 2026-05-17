@@ -3,7 +3,122 @@ import SwiftData
 import Testing
 @testable import thinknote
 
+private actor MockRemoteService: ThinknoteRemoteServing {
+    func upsert(note: APINote) async throws {}
+
+    func requestEnrichment(for note: APINote, triggerSource: String) async throws -> APINote {
+        let now = Date()
+        let source = APISource(
+            id: "source-\(note.id)",
+            title: "Test source",
+            url: "https://example.com/\(note.id)",
+            snippet: "Remote enrichment source"
+        )
+        let enrichment = APIEnrichment(
+            id: "enrichment-\(note.id)-\(triggerSource)",
+            createdAt: now,
+            provider: "test-remote",
+            expansion: "Expanded thinking for \(note.title)",
+            relatedIdeas: ["What assumption is doing the work here?"],
+            prompts: ["What would make this claim more concrete?"],
+            links: [],
+            sources: [source]
+        )
+
+        return APINote(
+            id: note.id,
+            title: note.displayHeadline,
+            text: note.text,
+            createdAt: note.createdAt,
+            updatedAt: now,
+            lastViewedAt: note.lastViewedAt,
+            lastEnrichedAt: now,
+            sortIndex: note.sortIndex,
+            status: "enriched",
+            enrichments: [enrichment],
+            links: [],
+            sources: [source],
+            prompts: enrichment.prompts,
+            timeline: [
+                APITimelineEvent(
+                    id: "timeline-\(note.id)-\(triggerSource)",
+                    type: TimelineEventKind.noteEnriched.rawValue,
+                    createdAt: now,
+                    summary: "New growth added",
+                    provider: enrichment.provider,
+                    isNewSinceLastView: true
+                )
+            ],
+            latestChatReply: note.latestChatReply,
+            changesSinceLastViewedCount: 1
+        )
+    }
+
+    func requestChatReply(for note: APINote, message: String) async throws -> RemoteChatResult {
+        let now = Date()
+        let assistantMessage = APIConversationMessage(
+            id: "assistant-\(note.id)",
+            role: MessageRole.assistant.rawValue,
+            text: "Remote reply to: \(message)",
+            provider: "test-remote",
+            createdAt: now,
+            sources: []
+        )
+
+        return RemoteChatResult(
+            chat: APIChat(
+                id: "chat-\(note.id)",
+                noteId: note.id,
+                message: message,
+                reply: assistantMessage.text,
+                provider: assistantMessage.provider,
+                createdAt: now
+            ),
+            note: note,
+            thread: nil,
+            assistantMessage: assistantMessage
+        )
+    }
+}
+
 struct thinknoteTests {
+    private func makeRepository(container: ModelContainer) -> ThinknoteRepository {
+        ThinknoteRepository(
+            localStore: ThinknoteLocalStore(container: container),
+            remoteSync: NoopThinknoteRemoteSync(),
+            remoteService: MockRemoteService()
+        )
+    }
+
+    @Test
+    func runtimeConfigurationUsesExplicitEnvironmentOverride() {
+        let resolved = ThinknoteRuntimeConfiguration.resolve(
+            environmentOverride: "staging",
+            baseURLOverride: nil,
+            bundleValues: [
+                "ThinknoteLocalAPIBaseURL": "http://127.0.0.1:8787",
+                "ThinknoteStagingAPIBaseURL": "https://staging.example.com",
+                "ThinknoteProductionAPIBaseURL": "https://prod.example.com"
+            ],
+            isSimulator: true
+        )
+
+        #expect(resolved.environment == .staging)
+        #expect(resolved.baseURL.absoluteString == "https://staging.example.com")
+    }
+
+    @Test
+    func runtimeConfigurationLetsExplicitBaseURLWin() {
+        let resolved = ThinknoteRuntimeConfiguration.resolve(
+            environmentOverride: "production",
+            baseURLOverride: "https://custom.example.com",
+            bundleValues: [:],
+            isSimulator: false
+        )
+
+        #expect(resolved.environment == .production)
+        #expect(resolved.baseURL.absoluteString == "https://custom.example.com")
+    }
 
     @Test
     func draftRoundTripPersistsRevisionTimelineAndViewState() async throws {
@@ -34,10 +149,7 @@ struct thinknoteTests {
     @Test
     func initialCaptureKeepsHeadlineEqualToUserInput() async throws {
         let container = try ThinknotePersistence.makeContainer(inMemory: true)
-        let repository = ThinknoteRepository(
-            localStore: ThinknoteLocalStore(container: container),
-            remoteSync: NoopThinknoteRemoteSync()
-        )
+        let repository = makeRepository(container: container)
 
         let text = "every tool teaches you a worldview"
         let note = try await repository.saveDraft(noteID: nil, text: text)
@@ -50,10 +162,7 @@ struct thinknoteTests {
     @Test
     func deferredEnrichmentRunsOnlyAfterScheduledTime() async throws {
         let container = try ThinknotePersistence.makeContainer(inMemory: true)
-        let repository = ThinknoteRepository(
-            localStore: ThinknoteLocalStore(container: container),
-            remoteSync: NoopThinknoteRemoteSync()
-        )
+        let repository = makeRepository(container: container)
         let note = try await repository.saveDraft(noteID: nil, text: "taste = pattern recognition at scale")
 
         let createdAt = note.createdAt
@@ -91,10 +200,7 @@ struct thinknoteTests {
     @Test
     func manualRequestPromotesDeferredJobAndRunsImmediately() async throws {
         let container = try ThinknotePersistence.makeContainer(inMemory: true)
-        let repository = ThinknoteRepository(
-            localStore: ThinknoteLocalStore(container: container),
-            remoteSync: NoopThinknoteRemoteSync()
-        )
+        let repository = makeRepository(container: container)
 
         let note = try await repository.saveDraft(noteID: nil, text: "every product needs a memory layer")
         let enriched = try await repository.requestEnrichment(noteID: note.id)
@@ -116,10 +222,7 @@ struct thinknoteTests {
     @Test
     func markingNoteViewedClearsUnreadAiChanges() async throws {
         let container = try ThinknotePersistence.makeContainer(inMemory: true)
-        let repository = ThinknoteRepository(
-            localStore: ThinknoteLocalStore(container: container),
-            remoteSync: NoopThinknoteRemoteSync()
-        )
+        let repository = makeRepository(container: container)
 
         let note = try await repository.saveDraft(noteID: nil, text: "a note can age into a better question")
         _ = try await repository.markNoteViewed(noteID: note.id, viewedAt: note.createdAt)
@@ -138,10 +241,7 @@ struct thinknoteTests {
     @Test
     func reorderPersistsSortIndexAndChangedSinceLastVisitUsesTimeline() async throws {
         let container = try ThinknotePersistence.makeContainer(inMemory: true)
-        let repository = ThinknoteRepository(
-            localStore: ThinknoteLocalStore(container: container),
-            remoteSync: NoopThinknoteRemoteSync()
-        )
+        let repository = makeRepository(container: container)
 
         let first = try await repository.saveDraft(noteID: nil, text: "first fragment")
         let second = try await repository.saveDraft(noteID: nil, text: "second fragment")
@@ -159,10 +259,7 @@ struct thinknoteTests {
     @Test
     func followUpWaitsForExplicitResponseBeforeAssistantReplies() async throws {
         let container = try ThinknotePersistence.makeContainer(inMemory: true)
-        let repository = ThinknoteRepository(
-            localStore: ThinknoteLocalStore(container: container),
-            remoteSync: NoopThinknoteRemoteSync()
-        )
+        let repository = makeRepository(container: container)
 
         let note = try await repository.saveDraft(noteID: nil, text: "every tool teaches you a worldview")
 

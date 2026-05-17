@@ -331,6 +331,23 @@ async function handleEnrichNote({ res, params, body, services, url }) {
         await services.jobs.runDueJobs(now);
         const completedJob = await services.jobs.waitForJob(job.id);
         const refreshed = services.store.getNote(note.id);
+
+        if (!completedJob) {
+            sendJson(res, 504, {
+                error: "AI response timed out.",
+                detail: "The enrichment job did not finish in time."
+            });
+            return;
+        }
+
+        if (completedJob.status === "failed") {
+            sendJson(res, 502, {
+                error: "AI response unavailable.",
+                detail: completedJob.lastError || "The enrichment job failed."
+            });
+            return;
+        }
+
         sendJson(res, 200, {
             note: decorateNote(refreshed, services.store, true),
             job: completedJob

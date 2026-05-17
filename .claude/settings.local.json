@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C /Users/tyan/thinknote status --short thinknote/ContentView.swift thinknote/ThinknoteAPI.swift)",
+      "Bash(git -C /Users/tyan/thinknote status)",
+      "Bash(git -C /Users/tyan/thinknote log --oneline -5)",
+      "Bash(git -C /Users/tyan/thinknote diff --stat thinknote/ContentView.swift thinknote/ThinknoteAPI.swift)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git -C /Users/tyan/thinknote status --short)",
+      "Bash(ipconfig getifaddr *)",
+      "Bash(awk '{print $2}')",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(xcodebuild -scheme thinknote -destination 'platform=iOS Simulator,name=iPhone 16' build)",
+      "Bash(xcodebuild -scheme thinknote -destination 'platform=iOS Simulator,name=iPhone 16 Pro' build)",
+      "Bash(xcrun simctl *)",
+      "Bash(xcodebuild -scheme thinknote -destination 'platform=iOS Simulator,id=3557AD54-34F7-435F-A116-A276B6507431' build)"
+    ]
+  }
+}
