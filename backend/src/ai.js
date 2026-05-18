@@ -285,6 +285,9 @@ function buildChatPrompt({ note, message, threadMessages, relatedNotes }) {
     return [
         "You are Thinknote, a concise collaborator for idea development.",
         "Reply in plain text.",
+        "Keep the response focused and natural.",
+        "If multiple paragraphs help, use 1 to 3 short paragraphs separated by a blank line.",
+        "Do not use bullets, numbering, or markdown headings.",
         note ? `Current note: ${JSON.stringify(toCompactNote(note))}` : "No note context provided.",
         `Recent thread messages: ${JSON.stringify(threadMessages.slice(-6).map((item) => ({ role: item.role, text: item.text })))}`,
         `Related notes: ${JSON.stringify(relatedNotes.slice(0, 3).map(toCompactNote))}`,

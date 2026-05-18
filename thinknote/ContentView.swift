@@ -5,7 +5,9 @@
 //  Created by 严汀 on 4/5/26.
 //
 
+import Combine
 import SwiftUI
+import UIKit
 
 private let noteTransitionAnimation = Animation.timingCurve(0.2, 0.9, 0.1, 1.0, duration: 0.55)
 private let noteMorphDuration: Double = 0.55
@@ -13,9 +15,17 @@ private let detailDismissTopThreshold: CGFloat = 0.5
 private let detailDismissCornerRadiusStart: CGFloat = 42
 private let detailDismissCornerRadiusTravel: CGFloat = 96
 private let detailPrimaryScrollAnchorID = "thought-label"
+private let reorderScrollableDragHoldDuration: Double = 0.2
+private let reorderHoverDwellDuration: TimeInterval = 0.7
+private let reorderHoverJitterTolerance: CGFloat = 14
+private let reorderGapActivationDistance: CGFloat = 42
+private let reorderMinimumTravelDistance: CGFloat = 12
+private let groupingOverlapThreshold: CGFloat = 0.75
+private let ungroupingOverlapThreshold: CGFloat = 0.5
 private let noteAccentColor = Color(red: 0.53, green: 0.66, blue: 0.61)
 private let noteBorderColor = Color(red: 0.88, green: 0.88, blue: 0.86)
 private let noteShadowColor = Color.black.opacity(0.08)
+private let noteSurfaceColor = Color(red: 0.992, green: 0.988, blue: 0.975)
 private let debugDisableNoteSurfaceTransition = false
 private let debugLogNoteTapFlow = false
 let isRunningInPreviews = ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
@@ -25,6 +35,226 @@ func debugNoteLog(_ items: Any...) {
     guard debugLogNoteTapFlow else { return }
     print("[ThinknoteDebug]", items.map { String(describing: $0) }.joined(separator: " "))
 #endif
+}
+
+private func noteDayPeriodLabel(for date: Date, calendar: Calendar = .current) -> String {
+    let hour = calendar.component(.hour, from: date)
+
+    switch hour {
+    case 5..<12:
+        return "morning"
+    case 12..<18:
+        return "afternoon"
+    case 18..<24:
+        return "evening"
+    default:
+        return "midnight"
+    }
+}
+
+private func noteCardTimestampLabel(for date: Date, referenceDate: Date = Date(), calendar: Calendar = .current) -> String {
+    if calendar.isDateInToday(date) {
+        return "today"
+    }
+
+    let dayPeriod = noteDayPeriodLabel(for: date, calendar: calendar)
+
+    if calendar.isDateInYesterday(date) {
+        return "yesterday \(dayPeriod)"
+    }
+
+    let components = calendar.dateComponents([.year, .month, .day], from: date)
+    guard let year = components.year,
+          let month = components.month,
+          let day = components.day else {
+        return "today"
+    }
+
+    if year == calendar.component(.year, from: referenceDate) {
+        return "\(month)/\(day) \(dayPeriod)"
+    }
+
+    return "\(year)/\(month)/\(day) \(dayPeriod)"
+}
+
+private func noteDetailTimestampLabel(for date: Date, referenceDate: Date = Date(), calendar: Calendar = .current) -> String {
+    let shortLabel = noteCardTimestampLabel(for: date, referenceDate: referenceDate, calendar: calendar)
+    let timeLabel = date.formatted(date: .omitted, time: .shortened).lowercased()
+
+    if calendar.isDateInToday(date) || calendar.isDateInYesterday(date) {
+        return "thought \(shortLabel) \(timeLabel)"
+    }
+
+    return "thought on \(shortLabel) \(timeLabel)"
+}
+
+private let noteCardHorizontalPadding: CGFloat = 18
+private let noteCardVerticalPadding: CGFloat = 18
+private let noteCardBodySpacing: CGFloat = 14
+private let noteCardSummaryFontSize: CGFloat = 18
+private let noteCardSummaryLineSpacing: CGFloat = 2
+private let noteCardSummaryMaxLines = 5
+private let noteCardMetaFontSize: CGFloat = 11
+
+private func fallbackHomeColumnWidth() -> CGFloat {
+    max((UIScreen.main.bounds.width - 52) * 0.5, 0)
+}
+
+private func noteCardContentWidth(for columnWidth: CGFloat) -> CGFloat {
+    max(columnWidth - noteCardHorizontalPadding * 2, 0)
+}
+
+private func noteCardSummaryUIFont() -> UIFont {
+    UIFont(name: "DavidLibre-Regular", size: noteCardSummaryFontSize)
+    ?? UIFont.systemFont(ofSize: noteCardSummaryFontSize)
+}
+
+private func noteCardMetaUIFont() -> UIFont {
+    UIFont(name: "GeistMono-Regular", size: noteCardMetaFontSize)
+    ?? UIFont.monospacedSystemFont(ofSize: noteCardMetaFontSize, weight: .regular)
+}
+
+private func measuredHeadlineHeight(for note: APINote, columnWidth: CGFloat = fallbackHomeColumnWidth()) -> CGFloat {
+    let font = noteCardSummaryUIFont()
+    let availableWidth = noteCardContentWidth(for: columnWidth)
+    guard availableWidth > 0 else { return ceil(font.lineHeight) }
+
+    let paragraphStyle = NSMutableParagraphStyle()
+    paragraphStyle.lineBreakMode = .byWordWrapping
+    paragraphStyle.lineSpacing = noteCardSummaryLineSpacing
+
+    let boundingRect = NSAttributedString(
+        string: note.displayHeadline,
+        attributes: [
+            .font: font,
+            .paragraphStyle: paragraphStyle
+        ]
+    )
+    .boundingRect(
+        with: CGSize(width: availableWidth, height: .greatestFiniteMagnitude),
+        options: [.usesLineFragmentOrigin, .usesFontLeading],
+        context: nil
+    )
+
+    let oneLineHeight = ceil(font.lineHeight)
+    let maxHeight = ceil(
+        CGFloat(noteCardSummaryMaxLines) * font.lineHeight
+        + CGFloat(max(noteCardSummaryMaxLines - 1, 0)) * noteCardSummaryLineSpacing
+    )
+
+    return min(max(ceil(boundingRect.height), oneLineHeight), maxHeight)
+}
+
+private func estimatedHomeNoteCardHeight(for note: APINote, columnWidth: CGFloat = fallbackHomeColumnWidth()) -> CGFloat {
+    let summaryHeight = measuredHeadlineHeight(for: note, columnWidth: columnWidth)
+    let metaHeight = ceil(noteCardMetaUIFont().lineHeight)
+    return noteCardVerticalPadding * 2 + summaryHeight + noteCardBodySpacing + metaHeight
+}
+
+private let clusterReadableTopInset: CGFloat = 18
+private let clusterVisibleBottomGap: CGFloat = 0
+private let clusterAlternatingOffset: CGFloat = 8
+
+private func stackedClusterVisibleStep(for note: APINote, columnWidth: CGFloat = fallbackHomeColumnWidth()) -> CGFloat {
+    clusterReadableTopInset
+        + measuredHeadlineHeight(for: note, columnWidth: columnWidth)
+        + clusterVisibleBottomGap
+}
+
+private func stackedClusterTopOffset(notes: [APINote], index: Int, columnWidth: CGFloat = fallbackHomeColumnWidth()) -> CGFloat {
+    guard index > 0 else { return 0 }
+    return notes.prefix(index).reduce(CGFloat.zero) { partial, note in
+        partial + stackedClusterVisibleStep(for: note, columnWidth: columnWidth)
+    }
+}
+
+private func stackedClusterBottomPadding(for notes: [APINote], columnWidth: CGFloat = fallbackHomeColumnWidth()) -> CGFloat {
+    guard !notes.isEmpty else { return 0 }
+    let tallestCard = notes.map { estimatedHomeNoteCardHeight(for: $0, columnWidth: columnWidth) }.max() ?? 0
+    let lowestBottom = notes.enumerated().reduce(CGFloat.zero) { partialResult, item in
+        let (index, note) = item
+        let candidateBottom = stackedClusterTopOffset(notes: notes, index: index, columnWidth: columnWidth)
+            + estimatedHomeNoteCardHeight(for: note, columnWidth: columnWidth)
+        return max(partialResult, candidateBottom)
+    }
+
+    return max(lowestBottom - tallestCard, 0)
+}
+
+private func estimatedStackedClusterHeight(for notes: [APINote], columnWidth: CGFloat = fallbackHomeColumnWidth()) -> CGFloat {
+    guard !notes.isEmpty else { return 0 }
+    let maxHeight = notes.map { estimatedHomeNoteCardHeight(for: $0, columnWidth: columnWidth) }.max() ?? 0
+    return maxHeight + stackedClusterBottomPadding(for: notes, columnWidth: columnWidth)
+}
+
+private func overlapRatio(of sourceFrame: CGRect, covering targetFrame: CGRect) -> CGFloat {
+    let intersection = sourceFrame.intersection(targetFrame)
+    guard !intersection.isNull else { return 0 }
+    let overlapArea = intersection.width * intersection.height
+    let targetArea = max(targetFrame.width * targetFrame.height, 1)
+    return overlapArea / targetArea
+}
+
+private func overlapRatios(between lhs: CGRect, and rhs: CGRect) -> (lhs: CGFloat, rhs: CGFloat) {
+    (
+        lhs: overlapRatio(of: rhs, covering: lhs),
+        rhs: overlapRatio(of: lhs, covering: rhs)
+    )
+}
+
+private func overlapActivationRatio(between lhs: CGRect, and rhs: CGRect) -> CGFloat {
+    let ratios = overlapRatios(between: lhs, and: rhs)
+    return max(ratios.lhs, ratios.rhs)
+}
+
+private struct GlassCapsuleButtonChrome: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .background {
+                ZStack {
+                    Capsule()
+                        .fill(noteSurfaceColor.opacity(0.82))
+
+                    Capsule()
+                        .fill(.ultraThinMaterial)
+                }
+            }
+            .overlay {
+                Capsule()
+                    .stroke(Color.white.opacity(0.62), lineWidth: 1)
+            }
+            .shadow(color: .black.opacity(0.035), radius: 8, x: 0, y: 5)
+    }
+}
+
+private struct GlassCircleButtonChrome: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .background {
+                ZStack {
+                    Circle()
+                        .fill(noteSurfaceColor.opacity(0.82))
+
+                    Circle()
+                        .fill(.ultraThinMaterial)
+                }
+            }
+            .overlay {
+                Circle()
+                    .stroke(Color.white.opacity(0.58), lineWidth: 1)
+            }
+            .shadow(color: .black.opacity(0.04), radius: 10, x: 0, y: 6)
+    }
+}
+
+private extension View {
+    func glassCapsuleButtonChrome() -> some View {
+        modifier(GlassCapsuleButtonChrome())
+    }
+
+    func glassCircleButtonChrome() -> some View {
+        modifier(GlassCircleButtonChrome())
+    }
 }
 
 private enum AppFont {
@@ -214,23 +444,37 @@ private struct HomeScreen: View {
     let onPersistManualOrder: ([String]) async -> Void
     let onShowAssistant: () -> Void
     @State private var orderedNoteIDs: [String] = []
-    @State private var affinityGroup: AffinityGroup?
+    @State private var affinityGroups: [AffinityGroup] = []
     @State private var activeDragNoteID: String?
     @State private var isReorderMode = false
     @State private var dragTranslation: CGSize = .zero
     @State private var noteFrames: [String: CGRect] = [:]
-    @State private var affinityCandidate: AffinityCandidate?
+    @State private var hoverCandidate: HoverCandidate?
+    @State private var activePreviewIntent: HoverIntent?
     @State private var jiggleProgress: CGFloat = 0
     @State private var homeContentHeight: CGFloat = 0
     @State private var homeDragOffset: CGFloat = 0
     @State private var frozenAnimationDate = Date()
+    @State private var dragBaseOrder: [String] = []
+    @State private var dragBaseAffinityGroups: [AffinityGroup] = []
+    @State private var columnLayout = ColumnLayout()
+    @State private var dragBaseColumnLayout = ColumnLayout()
+    @State private var dragStartFrame: CGRect? = nil
+    @State private var isDroppingDraggedNote = false
+    @State private var suppressedNoteOutlineIDs = Set<String>()
+    @State private var suppressedNoteContentIDs = Set<String>()
+    @State private var isSeedDecorationReady = true
+    @State private var isSeedContentReady = true
+    @State private var pendingOutlineRevealTask: Task<Void, Never>?
+    @State private var pendingContentRevealTask: Task<Void, Never>?
+    @State private var pendingSeedRevealTask: Task<Void, Never>?
 
     var body: some View {
         GeometryReader { geometry in
             let homeTopPadding: CGFloat = 20
             let homeBottomPadding: CGFloat = isReorderMode ? 170 : 120
-            let homeMinContentHeight = max(geometry.size.height - homeTopPadding - homeBottomPadding, 0)
-            let allowsHomeRubberBand = homeContentHeight <= geometry.size.height + 1
+            let requiresDragHoldBeforeDragging = true
+            let isScrollLockedForActiveDrag = isReorderMode && activeDragNoteID != nil
 
             ZStack(alignment: .bottomTrailing) {
                 HomeBackgroundView()
@@ -244,53 +488,132 @@ private struct HomeScreen: View {
                             TimelineView(.animation(minimumInterval: 1.0 / 24.0)) { timeline in
                                 homeLayout(
                                     containerWidth: max(geometry.size.width - 36, 0),
-                                    animationDate: timeline.date
+                                    animationDate: timeline.date,
+                                    requiresDragHoldBeforeDragging: requiresDragHoldBeforeDragging
                                 )
                             }
                         } else {
                             homeLayout(
                                 containerWidth: max(geometry.size.width - 36, 0),
-                                animationDate: frozenAnimationDate
+                                animationDate: frozenAnimationDate,
+                                requiresDragHoldBeforeDragging: requiresDragHoldBeforeDragging
                             )
                         }
                     }
-                    .frame(maxWidth: .infinity, minHeight: homeMinContentHeight, alignment: .topLeading)
-                    .padding(.horizontal, 18)
-                    .padding(.top, homeTopPadding)
-                    .padding(.bottom, homeBottomPadding)
                     .background {
                         GeometryReader { proxy in
                             Color.clear.preference(key: HomeContentHeightPreferenceKey.self, value: proxy.size.height)
                         }
                     }
+                    .frame(maxWidth: .infinity, minHeight: max(geometry.size.height - homeTopPadding - homeBottomPadding, 0), alignment: .topLeading)
+                    .padding(.horizontal, 18)
+                    .padding(.top, homeTopPadding)
+                    .padding(.bottom, homeBottomPadding)
+                    .overlay(alignment: .topLeading) {
+                        draggedNoteOverlay(animationDate: state.isFeedVisible ? Date() : frozenAnimationDate)
+                    }
+                    .overlay {
+                        if isReorderMode {
+                            GlobalDragCaptureView(
+                                isEnabled: true,
+                                minimumHoldDuration: reorderScrollableDragHoldDuration,
+                                onBegan: { point in
+                                    guard let noteID = noteID(at: point) else { return }
+                                    beginDragging(noteID)
+                                    dragTranslation = .zero
+                                },
+                                onChanged: { _, translation in
+                                    guard let noteID = activeDragNoteID else { return }
+                                    dragTranslation = translation
+                                    updateHoverIntent(for: noteID, translation: translation)
+                                },
+                                onEnded: { _, translation in
+                                    guard let noteID = activeDragNoteID else { return }
+                                    endDragging(noteID: noteID, translation: translation)
+                                },
+                                onCancelled: {
+                                    guard let noteID = activeDragNoteID else { return }
+                                    endDragging(noteID: noteID, translation: dragTranslation)
+                                }
+                            )
+                        }
+                    }
                 }
                 .scrollBounceBehavior(.basedOnSize)
+                .scrollDisabled(isScrollLockedForActiveDrag)
                 .coordinateSpace(name: "home-scroll")
-                .offset(y: homeDragOffset)
-                .simultaneousGesture(
-                    DragGesture(minimumDistance: 1, coordinateSpace: .named("home-scroll"))
-                        .onChanged { value in
-                            guard allowsHomeRubberBand, !isReorderMode else { return }
-                            homeDragOffset = rubberBandOffset(for: value.translation.height)
-                        }
-                        .onEnded { _ in
-                            guard homeDragOffset != 0 else { return }
-                            withAnimation(.spring(response: 0.34, dampingFraction: 0.78)) {
-                                homeDragOffset = 0
-                            }
-                        }
-                )
                 .onAppear {
                     synchronizeOrderingIfNeeded()
                 }
                 .onChange(of: state.notes.map(\.id)) { _, _ in
                     synchronizeOrderingIfNeeded()
+                    let visibleIDs = Set(state.notes.map(\.id))
+                    suppressedNoteOutlineIDs = suppressedNoteOutlineIDs.intersection(visibleIDs)
+                    suppressedNoteContentIDs = suppressedNoteContentIDs.intersection(visibleIDs)
                 }
                 .onPreferenceChange(NoteFramePreferenceKey.self) { frames in
                     noteFrames = frames
                 }
                 .onPreferenceChange(HomeContentHeightPreferenceKey.self) { height in
                     homeContentHeight = height
+                }
+                .onChange(of: state.expandedNoteID) { oldValue, newValue in
+                    pendingOutlineRevealTask?.cancel()
+                    pendingOutlineRevealTask = nil
+                    pendingContentRevealTask?.cancel()
+                    pendingContentRevealTask = nil
+
+                    if let expandedID = newValue {
+                        suppressedNoteOutlineIDs.insert(expandedID)
+                        suppressedNoteContentIDs.insert(expandedID)
+                        return
+                    }
+
+                    guard let closingID = oldValue else { return }
+
+                    pendingOutlineRevealTask = Task {
+                        try? await Task.sleep(nanoseconds: UInt64((noteMorphDuration + 0.08) * 1_000_000_000))
+                        guard !Task.isCancelled else { return }
+                        await MainActor.run {
+                            withAnimation(.easeOut(duration: 0.18)) {
+                                suppressedNoteOutlineIDs.remove(closingID)
+                            }
+                            pendingOutlineRevealTask = nil
+                        }
+                    }
+
+                    pendingContentRevealTask = Task {
+                        try? await Task.sleep(nanoseconds: UInt64((noteMorphDuration + 0.18) * 1_000_000_000))
+                        guard !Task.isCancelled else { return }
+                        await MainActor.run {
+                            withAnimation(.easeOut(duration: 0.22)) {
+                                suppressedNoteContentIDs.remove(closingID)
+                            }
+                            pendingContentRevealTask = nil
+                        }
+                    }
+                }
+                .onChange(of: state.isPresentingNewNote) { _, isPresenting in
+                    pendingSeedRevealTask?.cancel()
+                    pendingSeedRevealTask = nil
+
+                    if isPresenting {
+                        isSeedDecorationReady = false
+                        isSeedContentReady = false
+                        return
+                    }
+
+                    pendingSeedRevealTask = Task {
+                        try? await Task.sleep(nanoseconds: UInt64(noteMorphDuration * 1_000_000_000))
+                        guard !Task.isCancelled else { return }
+                        await MainActor.run {
+                            withAnimation(.easeOut(duration: 0.22)) {
+                                isSeedDecorationReady = true
+                                isSeedContentReady = true
+                            }
+                            pendingSeedRevealTask = nil
+                        }
+                    }
                 }
                 .onChange(of: state.isFeedVisible) { _, isVisible in
                     if !isVisible {
@@ -310,11 +633,7 @@ private struct HomeScreen: View {
                         .font(AppFont.heading(16, weight: .semibold))
                         .foregroundStyle(.black)
                         .frame(width: 58, height: 58)
-                        .background(Color(red: 0.88, green: 0.88, blue: 0.88), in: Circle())
-                        .overlay {
-                            Circle()
-                                .stroke(Color.black.opacity(0.15), lineWidth: 1)
-                        }
+                        .glassCircleButtonChrome()
                 }
                 .padding(.trailing, 22)
                 .padding(.bottom, isReorderMode ? 148 : 26)
@@ -322,13 +641,115 @@ private struct HomeScreen: View {
                 if isReorderMode {
                     reorderInstruction(bottomInset: geometry.safeAreaInsets.bottom)
                 }
+
+                if isReorderMode {
+                    TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
+                        Text("DEBUG: \(debugJudgmentLabel(at: timeline.date))")
+                            .font(AppFont.meta(12))
+                            .foregroundStyle(.red)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                            .background(Color.white.opacity(0.85))
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding(.bottom, max(geometry.safeAreaInsets.bottom, 10) + 60)
+                            .frame(maxHeight: .infinity, alignment: .bottom)
+                            .allowsHitTesting(false)
+                    }
+                }
+
             }
         }
     }
 
+    private func debugJudgmentLabel(at now: Date) -> String {
+        guard let dragID = activeDragNoteID else { return "idle" }
+        let overlapStr = debugOverlapString(for: dragID)
+        if let candidate = hoverCandidate {
+            let timerStr = debugHoverTimerString(for: candidate, now: now)
+            if let intent = activePreviewIntent, intent == candidate.intent {
+                return "\(debugIntentLabel(for: intent, dragID: dragID))\(timerStr)\(overlapStr)"
+            }
+            return "\(debugIntentLabel(for: candidate.intent, dragID: dragID)) pending\(timerStr)\(overlapStr)"
+        }
+
+        if let intent = activePreviewIntent {
+            return "\(debugIntentLabel(for: intent, dragID: dragID))\(overlapStr)"
+        }
+
+        return "hold\(overlapStr)"
+    }
+
+    private func debugIntentLabel(for intent: HoverIntent, dragID: String) -> String {
+        switch intent {
+        case .group:
+            return "group and reorder"
+        case .reorder:
+            if dragBaseAffinityGroups.contains(where: { $0.contains(dragID) }) {
+                return "ungroup and reorder"
+            }
+            return "reorder"
+        }
+    }
+
+    private func debugHoverTimerString(for candidate: HoverCandidate, now: Date) -> String {
+        let elapsed = max(0, now.timeIntervalSince(candidate.since))
+        let clampedElapsed = min(elapsed, reorderHoverDwellDuration)
+        return String(format: " | timer: %.2f/%.2f", clampedElapsed, reorderHoverDwellDuration)
+    }
+
+    private func debugOverlapString(for noteID: String) -> String {
+        guard let start = dragStartFrame else { return "" }
+        let fingerFrame = start.offsetBy(dx: dragTranslation.width, dy: dragTranslation.height)
+        var best: (id: String, ratio: CGFloat)?
+        for (otherID, otherFrame) in noteFrames where otherID != noteID {
+            let ratio = overlapActivationRatio(between: fingerFrame, and: otherFrame)
+            if ratio > (best?.ratio ?? 0) {
+                best = (otherID, ratio)
+            }
+        }
+        guard let best, best.ratio > 0.01 else { return "" }
+        return " | overlap: \(Int(best.ratio * 100))%"
+    }
+
+    private var effectiveDragOffset: CGSize {
+        guard let dragID = activeDragNoteID,
+              let start = dragStartFrame,
+              let current = noteFrames[dragID] else {
+            return dragTranslation
+        }
+        return CGSize(
+            width: dragTranslation.width + start.minX - current.minX,
+            height: dragTranslation.height + start.minY - current.minY
+        )
+    }
+
+    private var reorderSpring: Animation {
+        .spring(response: 0.38, dampingFraction: 0.82)
+    }
+
+    private var dropSettleSpring: Animation {
+        .spring(response: 0.32, dampingFraction: 0.72)
+    }
+
+    private func pollHoverCandidateActivation() {
+        guard let noteID = activeDragNoteID,
+              let candidate = hoverCandidate,
+              let startFrame = dragStartFrame ?? noteFrames[noteID] else {
+            return
+        }
+
+        let finalFrame = startFrame.offsetBy(dx: dragTranslation.width, dy: dragTranslation.height)
+        maybeActivatePreview(for: noteID, candidate: candidate, finalFrame: finalFrame)
+    }
+
+    private func isVisuallyDragging(_ noteID: String) -> Bool {
+        activeDragNoteID == noteID
+    }
+
     private var homeHeader: some View {
         HStack(alignment: .center, spacing: 12) {
-            Text("garden · \(state.notes.count) thoughts")
+            Text("moss garden")
                 .font(AppFont.meta(11))
                 .tracking(1.8)
                 .textCase(.uppercase)
@@ -351,29 +772,126 @@ private struct HomeScreen: View {
                 .transition(.identity)
             }
         }
+        .onReceive(Timer.publish(every: 1.0 / 30.0, on: .main, in: .common).autoconnect()) { _ in
+            guard isReorderMode else { return }
+            pollHoverCandidateActivation()
+        }
     }
 
-    private func homeLayout(containerWidth: CGFloat, animationDate: Date) -> some View {
-        let columns = buildColumns()
+    private func homeLayout(containerWidth: CGFloat, animationDate: Date, requiresDragHoldBeforeDragging: Bool) -> some View {
+        let notesByID = Dictionary(uniqueKeysWithValues: displayNotes.map { ($0.id, $0) })
         let spacing: CGFloat = 16
         let columnWidth = max((containerWidth - spacing) / 2, 0)
+        let columns = resolvedColumnLayout(notesByID: notesByID, columnWidth: columnWidth)
+        let leftHeight = estimatedColumnHeight(columns.left, notesByID: notesByID, columnWidth: columnWidth)
+        let rightHeight = estimatedColumnHeight(columns.right, notesByID: notesByID, columnWidth: columnWidth)
+        let seedInLeftColumn = leftHeight <= rightHeight
+        let positionedItems = positionedColumnItems(
+            columns: columns,
+            columnWidth: columnWidth,
+            columnSpacing: spacing,
+            notesByID: notesByID
+        )
+        let contentHeight = max(
+            positionedItems.map { $0.origin.y + $0.height }.max() ?? 0,
+            seedOrigin(
+                placeInLeftColumn: seedInLeftColumn,
+                leftHeight: leftHeight,
+                rightHeight: rightHeight,
+                columnWidth: columnWidth,
+                columnSpacing: spacing
+            ).y + 156
+        )
 
-        return HStack(alignment: .top, spacing: spacing) {
-            VStack(spacing: 16) {
-                ForEach(Array(columns.left.enumerated()), id: \.element.id) { index, item in
-                    itemView(item, indexSeed: index * 2, animationDate: animationDate)
-                }
+        return ZStack(alignment: .topLeading) {
+            ForEach(positionedItems) { placed in
+                itemView(
+                    placed.item,
+                    notesByID: notesByID,
+                    columnWidth: columnWidth,
+                    indexSeed: placed.indexSeed,
+                    animationDate: animationDate,
+                    requiresDragHoldBeforeDragging: requiresDragHoldBeforeDragging
+                )
+                .frame(width: columnWidth, alignment: .topLeading)
+                .offset(x: placed.origin.x, y: placed.origin.y)
             }
-            .frame(width: columnWidth, alignment: .top)
 
-            VStack(spacing: 16) {
-                ForEach(Array(columns.right.enumerated()), id: \.element.id) { index, item in
-                    itemView(item, indexSeed: index * 2 + 1, animationDate: animationDate)
-                }
+            if !isReorderMode {
+                seedCard()
+                    .frame(width: columnWidth, alignment: .topLeading)
+                    .offset(
+                        x: seedOrigin(
+                            placeInLeftColumn: seedInLeftColumn,
+                            leftHeight: leftHeight,
+                            rightHeight: rightHeight,
+                            columnWidth: columnWidth,
+                            columnSpacing: spacing
+                        ).x,
+                        y: seedOrigin(
+                            placeInLeftColumn: seedInLeftColumn,
+                            leftHeight: leftHeight,
+                            rightHeight: rightHeight,
+                            columnWidth: columnWidth,
+                            columnSpacing: spacing
+                        ).y
+                    )
+                    .zIndex(0)
             }
-            .frame(width: columnWidth, alignment: .top)
         }
-        .frame(maxWidth: containerWidth, alignment: .topLeading)
+        .frame(width: containerWidth, height: contentHeight, alignment: .topLeading)
+    }
+
+    private func positionedColumnItems(
+        columns: ColumnLayout,
+        columnWidth: CGFloat,
+        columnSpacing: CGFloat,
+        notesByID: [String: APINote]
+    ) -> [PositionedColumnItem] {
+        var positioned: [PositionedColumnItem] = []
+        var leftY: CGFloat = 0
+        var rightY: CGFloat = 0
+
+        for (index, item) in columns.left.enumerated() {
+            let height = estimatedHeight(for: item, notesByID: notesByID, columnWidth: columnWidth)
+            positioned.append(
+                PositionedColumnItem(
+                    item: item,
+                    indexSeed: index * 2,
+                    origin: CGPoint(x: 0, y: leftY),
+                    height: height
+                )
+            )
+            leftY += height + 16
+        }
+
+        for (index, item) in columns.right.enumerated() {
+            let height = estimatedHeight(for: item, notesByID: notesByID, columnWidth: columnWidth)
+            positioned.append(
+                PositionedColumnItem(
+                    item: item,
+                    indexSeed: index * 2 + 1,
+                    origin: CGPoint(x: columnWidth + columnSpacing, y: rightY),
+                    height: height
+                )
+            )
+            rightY += height + 16
+        }
+
+        return positioned
+    }
+
+    private func seedOrigin(
+        placeInLeftColumn: Bool,
+        leftHeight: CGFloat,
+        rightHeight: CGFloat,
+        columnWidth: CGFloat,
+        columnSpacing: CGFloat
+    ) -> CGPoint {
+        if placeInLeftColumn {
+            return CGPoint(x: 0, y: leftHeight + (leftHeight > 0 ? 16 : 0))
+        }
+        return CGPoint(x: columnWidth + columnSpacing, y: rightHeight + (rightHeight > 0 ? 16 : 0))
     }
 
     private func rotation(for index: Int) -> Double {
@@ -397,102 +915,193 @@ private struct HomeScreen: View {
     }
 
     @ViewBuilder
-    private func itemView(_ item: HomeItem, indexSeed: Int, animationDate: Date) -> some View {
-        switch item.kind {
-        case .note(let note):
-            noteCard(note, index: indexSeed, animationDate: animationDate)
-        case .group(let front, let back):
+    private func itemView(_ item: ColumnLayoutItem, notesByID: [String: APINote], columnWidth: CGFloat, indexSeed: Int, animationDate: Date, requiresDragHoldBeforeDragging: Bool) -> some View {
+        if item.noteIDs.count == 1, let note = item.noteIDs.first.flatMap({ notesByID[$0] }) {
+            noteCard(note, index: indexSeed, animationDate: animationDate, requiresDragHoldBeforeDragging: requiresDragHoldBeforeDragging)
+        } else {
+            let notes = item.noteIDs.compactMap { notesByID[$0] }
+            if notes.count >= 2 {
             RelatedNoteCluster(
-                front: front,
-                back: back,
-                frontRotation: rotation(for: indexSeed),
-                backRotation: rotation(for: indexSeed + 1),
+                notes: notes,
+                columnWidth: columnWidth,
+                rotations: notes.indices.map { rotation(for: indexSeed + $0) },
                 activeDragNoteID: activeDragNoteID,
+                isDroppingDraggedNote: isDroppingDraggedNote,
                 isInReorderMode: isReorderMode,
-                dragTranslation: dragTranslation,
+                requiresDragHoldBeforeDragging: requiresDragHoldBeforeDragging,
+                dragTranslation: effectiveDragOffset,
                 phaseSeed: phaseSeed,
                 jiggleProgress: jiggleProgress,
                 transitionNamespace: transitionNamespace,
                 expandedNoteID: state.expandedNoteID,
+                suppressedNoteOutlineIDs: suppressedNoteOutlineIDs,
+                suppressedNoteContentIDs: suppressedNoteContentIDs,
                 animationDate: animationDate
             ) { noteID in
                 handleTap(on: noteID)
+            } onEnterReorderMode: {
+                enterReorderMode()
             } onDragChanged: { noteID, translation in
                 guard isReorderMode else { return }
                 beginDragging(noteID)
                 dragTranslation = translation
-                updateAffinityCandidate(for: noteID, translation: translation)
+                updateHoverIntent(for: noteID, translation: translation)
             } onDragEnded: { noteID, translation in
                 guard isReorderMode else { return }
                 endDragging(noteID: noteID, translation: translation)
             }
-        case .seed:
-            EmptyNoteCard(
-                transitionNamespace: newThoughtNamespace,
-                isExpanded: state.isPresentingNewNote,
-                isAddMorphActive: state.addMorphTargetNoteID != nil,
-                isVisible: !isReorderMode
-            ) {
-                withAnimation(noteTransitionAnimation) {
-                    onOpenNewNote()
+            }
+        }
+    }
+
+    private func seedCard() -> some View {
+        EmptyNoteCard(
+            transitionNamespace: newThoughtNamespace,
+            isExpanded: state.isPresentingNewNote,
+            isAddMorphActive: state.addMorphTargetNoteID != nil,
+            isVisible: !isReorderMode,
+            isDecorationReady: isSeedDecorationReady,
+            isContentReady: isSeedContentReady
+        ) {
+            withAnimation(noteTransitionAnimation) {
+                onOpenNewNote()
+            }
+        }
+        .background(
+            GeometryReader { proxy in
+                Color.clear.preference(
+                    key: NoteFramePreferenceKey.self,
+                    value: ["seed": proxy.frame(in: .named("home-scroll"))]
+                )
+            }
+        )
+    }
+
+    @ViewBuilder
+    private func draggedNoteOverlay(animationDate: Date) -> some View {
+        if let dragID = activeDragNoteID,
+           let note = displayNotes.first(where: { $0.id == dragID }),
+           let startFrame = dragStartFrame ?? noteFrames[dragID] {
+            let isAddMorphTarget = state.addMorphTargetNoteID == note.id
+
+            NoteCard(
+                note: note,
+                rotation: rotation(for: orderedNoteIDs.firstIndex(of: note.id) ?? 0),
+                isReordering: true,
+                isInReorderMode: isReorderMode,
+                phaseSeed: phaseSeed(for: note.id),
+                jiggleProgress: jiggleProgress,
+                transitionNamespace: transitionNamespace,
+                isExpanded: state.expandedNoteID == note.id,
+                isOutlineReady: !suppressedNoteOutlineIDs.contains(note.id),
+                isContentReady: !suppressedNoteContentIDs.contains(note.id),
+                isTransitionSource: state.expandedNoteID == note.id,
+                animationDate: animationDate,
+                isSurfaceTransitionEnabled: false
+            )
+            .overlay {
+                if isAddMorphTarget {
+                    MorphingAddedNoteTarget(note: note, rotation: rotation(for: orderedNoteIDs.firstIndex(of: note.id) ?? 0), transitionNamespace: newThoughtNamespace)
+                }
+            }
+            .frame(width: startFrame.width)
+            .offset(
+                x: startFrame.minX + dragTranslation.width,
+                y: startFrame.minY + dragTranslation.height
+            )
+            .allowsHitTesting(false)
+            .zIndex(20_000)
+            .transaction { t in
+                if !isDroppingDraggedNote {
+                    t.animation = nil
                 }
             }
         }
     }
 
-    private func noteCard(_ note: APINote, index: Int, animationDate: Date) -> some View {
-        let isAddMorphTarget = state.addMorphTargetNoteID == note.id
+    private func noteID(at point: CGPoint) -> String? {
+        noteFrames
+            .filter { id, frame in
+                id != "seed" && frame.contains(point)
+            }
+            .max { lhs, rhs in
+                layerPriority(for: lhs.key) < layerPriority(for: rhs.key)
+            }?
+            .key
+    }
 
-        return NoteCard(
+    private func layerPriority(for noteID: String) -> Double {
+        if isVisuallyDragging(noteID) {
+            return 10_000
+        }
+        let baseY = noteFrames[noteID]?.midY ?? 0
+        let currentY = baseY + (activeDragNoteID == noteID ? effectiveDragOffset.height : 0)
+        return Double(currentY)
+    }
+
+    @ViewBuilder
+    private func noteCard(_ note: APINote, index: Int, animationDate: Date, requiresDragHoldBeforeDragging: Bool) -> some View {
+        let isAddMorphTarget = state.addMorphTargetNoteID == note.id
+        let isDragged = activeDragNoteID == note.id
+        let baseOpacity = isAddMorphTarget ? 0.001 : 1.0
+
+        let placeholderFace = NoteCard(
             note: note,
             rotation: rotation(for: index),
-            isReordering: activeDragNoteID == note.id,
+            isReordering: isVisuallyDragging(note.id),
             isInReorderMode: isReorderMode,
             phaseSeed: phaseSeed(for: note.id),
             jiggleProgress: jiggleProgress,
             transitionNamespace: transitionNamespace,
             isExpanded: state.expandedNoteID == note.id,
+            isOutlineReady: !suppressedNoteOutlineIDs.contains(note.id),
+            isContentReady: !suppressedNoteContentIDs.contains(note.id),
             isTransitionSource: state.expandedNoteID == note.id,
-            animationDate: animationDate
+            animationDate: animationDate,
+            isSurfaceTransitionEnabled: true
         )
-        .opacity(isAddMorphTarget ? 0.001 : 1)
         .overlay {
             if isAddMorphTarget {
                 MorphingAddedNoteTarget(note: note, rotation: rotation(for: index), transitionNamespace: newThoughtNamespace)
             }
         }
-        .frame(maxWidth: .infinity)
+
+        let placeholderCard = placeholderFace
+            .opacity(isDragged ? 0.001 : baseOpacity)
+            .frame(maxWidth: .infinity)
+            .background(
+                GeometryReader { proxy in
+                    Color.clear.preference(
+                        key: NoteFramePreferenceKey.self,
+                        value: [note.id: proxy.frame(in: .named("home-scroll"))]
+                    )
+                }
+            )
+
+        let card = ZStack(alignment: .topLeading) {
+            placeholderCard
+        }
         .contentShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
-        .offset(activeDragNoteID == note.id ? dragTranslation : .zero)
-        .zIndex(activeDragNoteID == note.id ? 100 : 0)
-        .background(
-            GeometryReader { proxy in
-                Color.clear.preference(
-                    key: NoteFramePreferenceKey.self,
-                    value: [note.id: proxy.frame(in: .named("home-scroll"))]
-                )
-            }
-        )
+        .zIndex(layerPriority(for: note.id))
         .onTapGesture {
             debugNoteLog("tap note", note.id, "expanded:", state.expandedNoteID == note.id)
-            if isReorderMode {
-                cancelDragging()
-            } else {
+            if !isReorderMode {
                 handleTap(on: note.id)
             }
         }
-        .highPriorityGesture(enterReorderGesture(noteID: note.id))
-        .simultaneousGesture(dragGesture(noteID: note.id))
+
+        if !isReorderMode {
+            card.highPriorityGesture(enterReorderGesture(noteID: note.id))
+        } else if requiresDragHoldBeforeDragging {
+            card
+        } else {
+            card.simultaneousGesture(dragGesture(noteID: note.id))
+        }
     }
 
     private func synchronizeOrderingIfNeeded() {
         let ids = displayNotes.map(\.id)
         if orderedNoteIDs.isEmpty {
-            orderedNoteIDs = ids
-            return
-        }
-
-        if !isReorderMode && activeDragNoteID == nil {
             orderedNoteIDs = ids
         } else {
             let existing = Set(orderedNoteIDs)
@@ -500,153 +1109,296 @@ private struct HomeScreen: View {
             orderedNoteIDs = deduplicated(orderedNoteIDs.filter(ids.contains) + missing)
         }
 
-        if let group = affinityGroup {
-            let visible = Set(ids)
-            if !visible.contains(group.frontID) || !visible.contains(group.backID) {
-                affinityGroup = nil
-            }
+        let visible = Set(ids)
+        affinityGroups = affinityGroups.compactMap { group in
+            let remaining = group.noteIDs.filter { visible.contains($0) }
+            return remaining.count >= 2 ? AffinityGroup(noteIDs: remaining) : nil
         }
-    }
-
-    private func buildColumns() -> (left: [HomeItem], right: [HomeItem]) {
-        var left: [HomeItem] = []
-        var right: [HomeItem] = []
-        var leftScore: CGFloat = 0
-        var rightScore: CGFloat = 0
-
         let notesByID = Dictionary(uniqueKeysWithValues: displayNotes.map { ($0.id, $0) })
-        let items = buildOrderedItems(notesByID: notesByID) + [.seed]
-
-        for item in items {
-            let height = item.estimatedHeight
-            if leftScore <= rightScore {
-                left.append(item)
-                leftScore += height + 16
-            } else {
-                right.append(item)
-                rightScore += height + 16
-            }
+        if columnLayout.isEmpty {
+            let layout = buildColumnLayoutFromModel(notesByID: notesByID)
+            syncLayoutState(from: layout)
+        } else {
+            let layout = reconciledColumnLayout(columnLayout, notesByID: notesByID)
+            syncLayoutState(from: layout)
         }
-
-        return (left, right)
     }
 
-    private func buildOrderedItems(notesByID: [String: APINote]) -> [HomeItem] {
-        var items: [HomeItem] = []
-        var consumed = Set<String>()
+    private func resolvedColumnLayout(notesByID: [String: APINote], columnWidth: CGFloat = fallbackHomeColumnWidth()) -> ColumnLayout {
+        if columnLayout.isEmpty {
+            return buildColumnLayoutFromModel(notesByID: notesByID, columnWidth: columnWidth)
+        }
+        return reconciledColumnLayout(columnLayout, notesByID: notesByID, columnWidth: columnWidth)
+    }
 
-        for id in orderedNoteIDs {
+    private func buildLayoutItems(notesByID: [String: APINote], order: [String]? = nil, groups: [AffinityGroup]? = nil) -> [ColumnLayoutItem] {
+        var items: [ColumnLayoutItem] = []
+        var consumed = Set<String>()
+        let sourceOrder = order ?? orderedNoteIDs
+        let sourceGroups = groups ?? affinityGroups
+
+        for id in sourceOrder {
             guard let note = notesByID[id], !consumed.contains(id) else { continue }
 
-            if let group = affinityGroup {
-                if id == group.frontID,
-                   let back = notesByID[group.backID] {
-                    items.append(.group(front: note, back: back))
-                    consumed.insert(group.frontID)
-                    consumed.insert(group.backID)
-                    continue
-                }
-
-                if id == group.backID {
-                    continue
-                }
+            if let group = sourceGroups.first(where: { $0.contains(id) }) {
+                let groupNoteIDs = group.noteIDs.filter { notesByID[$0] != nil }
+                guard groupNoteIDs.count >= 2 else { continue }
+                items.append(.group(groupNoteIDs))
+                consumed.formUnion(groupNoteIDs)
+                continue
             }
 
-            items.append(.note(note))
+            items.append(.note(note.id))
             consumed.insert(id)
         }
 
         return items
     }
 
-    private func beginDragging(_ noteID: String) {
-        if activeDragNoteID == nil {
-            activeDragNoteID = noteID
-            dragTranslation = .zero
-            affinityCandidate = nil
+    private func buildColumnLayoutFromModel(notesByID: [String: APINote], order: [String]? = nil, groups: [AffinityGroup]? = nil, columnWidth: CGFloat = fallbackHomeColumnWidth()) -> ColumnLayout {
+        var layout = ColumnLayout()
+        let items = buildLayoutItems(notesByID: notesByID, order: order, groups: groups)
+
+        for item in items {
+            if estimatedColumnHeight(layout.left, notesByID: notesByID, columnWidth: columnWidth) <= estimatedColumnHeight(layout.right, notesByID: notesByID, columnWidth: columnWidth) {
+                layout.left.append(item)
+            } else {
+                layout.right.append(item)
+            }
+        }
+
+        return layout
+    }
+
+    private func reconciledColumnLayout(_ layout: ColumnLayout, notesByID: [String: APINote], columnWidth: CGFloat = fallbackHomeColumnWidth()) -> ColumnLayout {
+        var reconciled = ColumnLayout(
+            left: reconcileColumn(layout.left, notesByID: notesByID),
+            right: reconcileColumn(layout.right, notesByID: notesByID)
+        )
+        let usedIDs = Set(reconciled.left.flatMap(\.noteIDs) + reconciled.right.flatMap(\.noteIDs))
+        let missingItems = buildLayoutItems(notesByID: notesByID).filter { item in
+            !item.noteIDs.contains(where: usedIDs.contains)
+        }
+
+        for item in missingItems {
+            if estimatedColumnHeight(reconciled.left, notesByID: notesByID, columnWidth: columnWidth) <= estimatedColumnHeight(reconciled.right, notesByID: notesByID, columnWidth: columnWidth) {
+                reconciled.left.append(item)
+            } else {
+                reconciled.right.append(item)
+            }
+        }
+
+        return reconciled
+    }
+
+    private func reconcileColumn(_ items: [ColumnLayoutItem], notesByID: [String: APINote]) -> [ColumnLayoutItem] {
+        items.compactMap { item in
+            let visibleIDs = item.noteIDs.filter { notesByID[$0] != nil }
+            switch visibleIDs.count {
+            case 0:
+                return nil
+            case 1:
+                return .note(visibleIDs[0])
+            default:
+                return .group(visibleIDs)
+            }
         }
     }
 
-    private func cancelDragging() {
-        activeDragNoteID = nil
-        dragTranslation = .zero
-        affinityCandidate = nil
-        if isReorderMode {
-            withAnimation(.easeOut(duration: 0.16)) {
-                jiggleProgress = 0
+    private func estimatedColumnHeight(_ items: [ColumnLayoutItem], notesByID: [String: APINote], columnWidth: CGFloat = fallbackHomeColumnWidth()) -> CGFloat {
+        items.enumerated().reduce(CGFloat.zero) { partial, entry in
+            let (index, item) = entry
+            let itemHeight = estimatedHeight(for: item, notesByID: notesByID, columnWidth: columnWidth)
+            return partial + itemHeight + (index == items.count - 1 ? 0 : 16)
+        }
+    }
+
+    private func estimatedHeight(for item: ColumnLayoutItem, notesByID: [String: APINote], columnWidth: CGFloat = fallbackHomeColumnWidth()) -> CGFloat {
+        let notes = item.noteIDs.compactMap { notesByID[$0] }
+        if notes.count <= 1, let note = notes.first {
+            return estimatedHomeNoteCardHeight(for: note, columnWidth: columnWidth)
+        }
+        return estimatedStackedClusterHeight(for: notes, columnWidth: columnWidth)
+    }
+
+    private func syncLayoutState(from layout: ColumnLayout) {
+        columnLayout = layout
+        affinityGroups = layout.groups
+        orderedNoteIDs = layout.flattenedOrder
+    }
+
+    private func beginDragging(_ noteID: String) {
+        if activeDragNoteID == nil {
+            activeDragNoteID = noteID
+            isDroppingDraggedNote = false
+            if dragStartFrame == nil {
+                dragStartFrame = noteFrames[noteID]
             }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.16) {
-                if jiggleProgress == 0 {
-                    isReorderMode = false
-                }
+            if dragBaseColumnLayout.isEmpty {
+                dragBaseColumnLayout = columnLayout
+            }
+            if dragBaseOrder.isEmpty {
+                dragBaseOrder = orderedNoteIDs
+            }
+            if dragBaseAffinityGroups.isEmpty {
+                dragBaseAffinityGroups = affinityGroups
+            }
+        }
+    }
+
+    private func clearDragArming() {
+        activeDragNoteID = nil
+        isDroppingDraggedNote = false
+        dragTranslation = .zero
+        hoverCandidate = nil
+        activePreviewIntent = nil
+        dragStartFrame = nil
+        dragBaseOrder = []
+        dragBaseAffinityGroups = []
+        dragBaseColumnLayout = ColumnLayout()
+    }
+
+    private func cancelDragging(exitReorderMode: Bool = true) {
+        activeDragNoteID = nil
+        isDroppingDraggedNote = false
+        dragTranslation = .zero
+        hoverCandidate = nil
+        activePreviewIntent = nil
+        dragStartFrame = nil
+        dragBaseOrder = []
+        dragBaseAffinityGroups = []
+        dragBaseColumnLayout = ColumnLayout()
+        guard exitReorderMode, isReorderMode else { return }
+        withAnimation(.easeOut(duration: 0.16)) {
+            jiggleProgress = 0
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.16) {
+            if jiggleProgress == 0 {
+                isReorderMode = false
+            }
+        }
+    }
+
+    private func keepReorderModeAfterDrop() {
+        activeDragNoteID = nil
+        isDroppingDraggedNote = false
+        dragTranslation = .zero
+        hoverCandidate = nil
+        activePreviewIntent = nil
+        dragStartFrame = nil
+        dragBaseOrder = []
+        dragBaseAffinityGroups = []
+        dragBaseColumnLayout = ColumnLayout()
+        if jiggleProgress < 1 {
+            withAnimation(.easeOut(duration: 0.16)) {
+                jiggleProgress = 1
             }
         }
     }
 
     private func endDragging(noteID: String, translation: CGSize) {
-        guard let startFrame = noteFrames[noteID] else {
-            cancelDragging()
+        guard (dragStartFrame ?? noteFrames[noteID]) != nil else {
+            keepReorderModeAfterDrop()
             return
         }
 
-        let finalFrame = startFrame.offsetBy(dx: translation.width, dy: translation.height)
-
-        if let targetID = confirmedAffinityTarget(for: noteID, finalFrame: finalFrame) {
-            affinityGroup = AffinityGroup(frontID: noteID, backID: targetID)
-            orderedNoteIDs.removeAll { $0 == noteID }
-            if let targetIndex = orderedNoteIDs.firstIndex(of: targetID) {
-                orderedNoteIDs.insert(noteID, at: targetIndex)
-            } else {
-                orderedNoteIDs.append(noteID)
+        if activePreviewIntent == nil {
+            withAnimation(reorderSpring) {
+                restoreDragBaseline()
+                keepReorderModeAfterDrop()
             }
-        } else {
-            if let group = affinityGroup, group.contains(noteID) {
-                affinityGroup = nil
+            Task {
+                await onPersistManualOrder(orderedNoteIDs)
             }
-            reorder(noteID: noteID, finalFrame: finalFrame)
+            return
         }
 
         Task {
             await onPersistManualOrder(orderedNoteIDs)
         }
-        cancelDragging()
+
+        if let startFrame = dragStartFrame,
+           let currentFrame = noteFrames[noteID] {
+            isDroppingDraggedNote = true
+            let settleTranslation = CGSize(
+                width: currentFrame.minX - startFrame.minX,
+                height: currentFrame.minY - startFrame.minY
+            )
+            withAnimation(dropSettleSpring) {
+                dragTranslation = settleTranslation
+            }
+        }
+
+        let droppingNoteID = noteID
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+            guard activeDragNoteID == droppingNoteID else { return }
+            keepReorderModeAfterDrop()
+        }
     }
 
-    private func updateAffinityCandidate(for noteID: String, translation: CGSize) {
-        guard let startFrame = noteFrames[noteID] else { return }
+    private func updateHoverIntent(for noteID: String, translation: CGSize) {
+        guard let startFrame = dragStartFrame ?? noteFrames[noteID] else { return }
         let finalFrame = startFrame.offsetBy(dx: translation.width, dy: translation.height)
 
-        if let targetID = overlappingTarget(for: noteID, finalFrame: finalFrame) {
-            if affinityCandidate?.targetID != targetID {
-                affinityCandidate = AffinityCandidate(targetID: targetID, since: Date())
+        guard let resolution = hoverResolution(for: noteID, finalFrame: finalFrame) else {
+            hoverCandidate = nil
+            if activePreviewIntent != nil {
+                withAnimation(reorderSpring) {
+                    restoreDragBaseline()
+                }
+                activePreviewIntent = nil
             }
+            return
+        }
+
+        let now = Date()
+        let nextCandidate: HoverCandidate
+        if let current = hoverCandidate,
+           current.intent == resolution.intent,
+           distance(current.anchorPoint, resolution.anchorPoint) <= reorderHoverJitterTolerance {
+            nextCandidate = HoverCandidate(
+                intent: current.intent,
+                since: current.since,
+                anchorPoint: resolution.anchorPoint
+            )
         } else {
-            affinityCandidate = nil
-        }
-    }
-
-    private func confirmedAffinityTarget(for noteID: String, finalFrame: CGRect) -> String? {
-        guard let targetID = overlappingTarget(for: noteID, finalFrame: finalFrame),
-              let candidate = affinityCandidate,
-              candidate.targetID == targetID
-        else {
-            return nil
+            nextCandidate = HoverCandidate(
+                intent: resolution.intent,
+                since: now,
+                anchorPoint: resolution.anchorPoint
+            )
         }
 
-        return Date().timeIntervalSince(candidate.since) >= 0.5 ? targetID : nil
+        if let activePreviewIntent, activePreviewIntent != nextCandidate.intent {
+            withAnimation(reorderSpring) {
+                restoreDragBaseline()
+            }
+            self.activePreviewIntent = nil
+        }
+
+        hoverCandidate = nextCandidate
+        maybeActivatePreview(for: noteID, candidate: nextCandidate, finalFrame: finalFrame)
     }
 
     private func overlappingTarget(for noteID: String, finalFrame: CGRect) -> String? {
+        bestOverlapTarget(for: noteID, finalFrame: finalFrame)?.id
+    }
+
+    private func bestOverlapTarget(for noteID: String, finalFrame: CGRect) -> (id: String, ratio: CGFloat)? {
+        var bestMatch: (id: String, ratio: CGFloat)?
+
         for (otherID, otherFrame) in noteFrames where otherID != noteID {
-            let intersection = finalFrame.intersection(otherFrame)
-            guard !intersection.isNull else { continue }
-            let overlapArea = intersection.width * intersection.height
-            let ownArea = max(finalFrame.width * finalFrame.height, 1)
-            if overlapArea / ownArea > 0.35 {
-                return otherID
+            let overlapValue = overlapActivationRatio(between: finalFrame, and: otherFrame)
+            guard overlapValue > groupingOverlapThreshold else { continue }
+
+            if let bestMatch, bestMatch.ratio >= overlapValue {
+                continue
             }
+
+            bestMatch = (otherID, overlapValue)
         }
-        return nil
+
+        return bestMatch
     }
 
     private func reorder(noteID: String, finalFrame: CGRect) {
@@ -668,36 +1420,397 @@ private struct HomeScreen: View {
         orderedNoteIDs = newOrder
     }
 
+    private func affinityGroup(containing noteID: String) -> AffinityGroup? {
+        affinityGroups.first { $0.contains(noteID) }
+    }
+
+    private func affinityGroup(startingWith noteID: String) -> AffinityGroup? {
+        affinityGroups.first { $0.anchorID == noteID }
+    }
+
+    private func removeAffinityGroups(containingAnyOf noteIDs: Set<String>) {
+        affinityGroups.removeAll { !noteIDs.isDisjoint(with: $0.noteIDSet) }
+    }
+
+    private func removeNoteFromAffinityGroups(_ noteID: String) {
+        affinityGroups = affinityGroups.compactMap { group in
+            guard group.contains(noteID) else { return group }
+            let remaining = group.noteIDs.filter { $0 != noteID }
+            return remaining.count >= 2 ? AffinityGroup(noteIDs: remaining) : nil
+        }
+    }
+
+    private func groupedNoteIDs(adding noteID: String, below targetID: String, in existingIDs: [String]) -> [String] {
+        var ids = existingIDs
+        ids.removeAll { $0 == noteID }
+
+        if let targetIndex = ids.firstIndex(of: targetID) {
+            ids.insert(noteID, at: min(targetIndex + 1, ids.count))
+        } else {
+            ids.append(targetID)
+            ids.append(noteID)
+        }
+
+        return deduplicated(ids)
+    }
+
+    private func items(in side: ColumnSide, from layout: ColumnLayout) -> [ColumnLayoutItem] {
+        switch side {
+        case .left:
+            return layout.left
+        case .right:
+            return layout.right
+        }
+    }
+
+    private func set(item: ColumnLayoutItem, at location: ColumnLocation, in layout: inout ColumnLayout) {
+        switch location.side {
+        case .left:
+            guard layout.left.indices.contains(location.index) else { return }
+            layout.left[location.index] = item
+        case .right:
+            guard layout.right.indices.contains(location.index) else { return }
+            layout.right[location.index] = item
+        }
+    }
+
+    private func insert(item: ColumnLayoutItem, at location: ColumnLocation, in layout: inout ColumnLayout) {
+        switch location.side {
+        case .left:
+            layout.left.insert(item, at: min(location.index, layout.left.count))
+        case .right:
+            layout.right.insert(item, at: min(location.index, layout.right.count))
+        }
+    }
+
+    private func removing(noteID: String, from layout: ColumnLayout) -> (layout: ColumnLayout, origin: ColumnLocation?) {
+        var updated = layout
+
+        for (index, item) in layout.left.enumerated() where item.noteIDs.contains(noteID) {
+            let remaining = item.noteIDs.filter { $0 != noteID }
+            if remaining.isEmpty {
+                updated.left.remove(at: index)
+            } else if remaining.count == 1 {
+                updated.left[index] = .note(remaining[0])
+            } else {
+                updated.left[index] = .group(remaining)
+            }
+            return (updated, ColumnLocation(side: .left, index: index))
+        }
+
+        for (index, item) in layout.right.enumerated() where item.noteIDs.contains(noteID) {
+            let remaining = item.noteIDs.filter { $0 != noteID }
+            if remaining.isEmpty {
+                updated.right.remove(at: index)
+            } else if remaining.count == 1 {
+                updated.right[index] = .note(remaining[0])
+            } else {
+                updated.right[index] = .group(remaining)
+            }
+            return (updated, ColumnLocation(side: .right, index: index))
+        }
+
+        return (updated, nil)
+    }
+
+    private func location(of noteID: String, in layout: ColumnLayout) -> ColumnLocation? {
+        for (index, item) in layout.left.enumerated() where item.noteIDs.contains(noteID) {
+            return ColumnLocation(side: .left, index: index)
+        }
+        for (index, item) in layout.right.enumerated() where item.noteIDs.contains(noteID) {
+            return ColumnLocation(side: .right, index: index)
+        }
+        return nil
+    }
+
+    private func reorderDestination(for finalFrame: CGRect, in layout: ColumnLayout) -> ColumnLocation? {
+        let targetSide: ColumnSide = finalFrame.midX <= columnSplitX(for: layout) ? .left : .right
+        let columnItems = items(in: targetSide, from: layout)
+        guard !columnItems.isEmpty else { return ColumnLocation(side: targetSide, index: 0) }
+
+        let itemFrames = columnItems.compactMap { item -> CGRect? in
+            itemFrame(for: item)
+        }
+        guard itemFrames.count == columnItems.count else { return nil }
+
+        if let first = itemFrames.first, finalFrame.midY <= first.midY {
+            return ColumnLocation(side: targetSide, index: 0)
+        }
+
+        if let last = itemFrames.last, finalFrame.midY >= last.midY {
+            return ColumnLocation(side: targetSide, index: columnItems.count)
+        }
+
+        for index in 1..<itemFrames.count {
+            let upper = itemFrames[index - 1]
+            let lower = itemFrames[index]
+            if finalFrame.midY > upper.midY, finalFrame.midY < lower.midY {
+                return ColumnLocation(side: targetSide, index: index)
+            }
+        }
+
+        return nil
+    }
+
+    private func itemFrame(for item: ColumnLayoutItem) -> CGRect? {
+        let frames = item.noteIDs.compactMap { noteFrames[$0] }
+        guard var union = frames.first else { return nil }
+        for frame in frames.dropFirst() {
+            union = union.union(frame)
+        }
+        return union
+    }
+
+    private func columnSplitX(for layout: ColumnLayout) -> CGFloat {
+        let leftFrames = layout.left.compactMap { itemFrame(for: $0) }
+        let rightFrames = layout.right.compactMap { itemFrame(for: $0) }
+
+        if let leftX = leftFrames.map(\.midX).average,
+           let rightX = rightFrames.map(\.midX).average {
+            return (leftX + rightX) * 0.5
+        }
+
+        let allFrames = leftFrames + rightFrames
+        guard let minX = allFrames.map(\.midX).min(),
+              let maxX = allFrames.map(\.midX).max() else {
+            return 0
+        }
+        return (minX + maxX) * 0.5
+    }
+
+    private func hoverResolution(for noteID: String, finalFrame: CGRect) -> HoverResolution? {
+        let baseLayout = dragBaseColumnLayout.isEmpty ? columnLayout : dragBaseColumnLayout
+
+        let baseOrder = dragBaseOrder.isEmpty ? orderedNoteIDs : dragBaseOrder
+
+        if let baseGroup = dragBaseAffinityGroups.first(where: { $0.contains(noteID) }) {
+            let otherMembers = Set(baseGroup.noteIDs).subtracting([noteID])
+            let stillTooClose = otherMembers.contains { memberID in
+                guard let memberFrame = noteFrames[memberID] else { return false }
+                return overlapActivationRatio(between: finalFrame, and: memberFrame) >= ungroupingOverlapThreshold
+            }
+            if stillTooClose { return nil }
+
+            if let ungroupedLayout = reorderedLayoutForGroupedNote(noteID: noteID, finalFrame: finalFrame, baseLayout: baseLayout) {
+                return HoverResolution(intent: .reorder(layout: ungroupedLayout), anchorPoint: finalFrame.center)
+            }
+            let reordered = reorderedIDs(noteID: noteID, finalFrame: finalFrame, using: baseOrder)
+            let fallbackLayout = buildColumnLayoutFromModel(
+                notesByID: Dictionary(uniqueKeysWithValues: displayNotes.map { ($0.id, $0) }),
+                order: reordered,
+                groups: dragBaseAffinityGroups.compactMap { group in
+                    let remaining = group.noteIDs.filter { $0 != noteID }
+                    return remaining.count >= 2 ? AffinityGroup(noteIDs: remaining) : nil
+                }
+            )
+            return HoverResolution(intent: .reorder(layout: fallbackLayout), anchorPoint: finalFrame.center)
+        }
+
+        if let target = bestOverlapTarget(for: noteID, finalFrame: finalFrame) {
+            let targetID = target.id
+            if let groupedLayout = groupedLayout(for: noteID, targetID: targetID, baseLayout: baseLayout) {
+                let anchor = noteFrames[targetID]?.center ?? finalFrame.center
+                return HoverResolution(intent: .group(layout: groupedLayout), anchorPoint: anchor)
+            }
+        }
+
+        if let reorderIntent = reorderIntentForUngroupedNote(noteID: noteID, finalFrame: finalFrame, baseLayout: baseLayout) {
+            return HoverResolution(intent: reorderIntent, anchorPoint: finalFrame.center)
+        }
+
+        return nil
+    }
+
+    private func maybeActivatePreview(for noteID: String, candidate: HoverCandidate, finalFrame: CGRect) {
+        guard Date().timeIntervalSince(candidate.since) >= reorderHoverDwellDuration else { return }
+        guard activePreviewIntent != candidate.intent else { return }
+
+        withAnimation(reorderSpring) {
+            applyPreview(candidate.intent, dragging: noteID)
+        }
+        activePreviewIntent = candidate.intent
+    }
+
+    private func applyPreview(_ intent: HoverIntent, dragging noteID: String) {
+        restoreDragBaseline()
+
+        switch intent {
+        case .group(let layout), .reorder(let layout):
+            syncLayoutState(from: layout)
+        }
+    }
+
+    private func reorderIntentForUngroupedNote(noteID: String, finalFrame: CGRect, baseLayout: ColumnLayout) -> HoverIntent? {
+        let startFrame = dragStartFrame ?? noteFrames[noteID] ?? finalFrame
+        let travelDistance = distance(startFrame.center, finalFrame.center)
+
+        guard travelDistance >= reorderMinimumTravelDistance else {
+            return nil
+        }
+
+        guard let reorderedLayout = reorderedLayoutForUngroupedNote(noteID: noteID, finalFrame: finalFrame, baseLayout: baseLayout),
+              reorderedLayout != baseLayout else {
+            return nil
+        }
+
+        return .reorder(layout: reorderedLayout)
+    }
+
+    private func groupedLayout(for noteID: String, targetID: String, baseLayout: ColumnLayout) -> ColumnLayout? {
+        let removal = removing(noteID: noteID, from: baseLayout)
+        guard let targetLocation = location(of: targetID, in: removal.layout) else { return nil }
+        var layout = removal.layout
+        let columnItems = items(in: targetLocation.side, from: layout)
+        guard columnItems.indices.contains(targetLocation.index) else { return nil }
+        let targetItem = columnItems[targetLocation.index]
+        let updatedGroupIDs = groupedNoteIDs(adding: noteID, below: targetID, in: targetItem.noteIDs)
+        set(item: .group(updatedGroupIDs), at: targetLocation, in: &layout)
+        return layout
+    }
+
+    private func reorderedLayoutForUngroupedNote(noteID: String, finalFrame: CGRect, baseLayout: ColumnLayout) -> ColumnLayout? {
+        let removal = removing(noteID: noteID, from: baseLayout)
+        guard let destination = reorderDestination(for: finalFrame, in: removal.layout) else { return nil }
+        var layout = removal.layout
+        insert(item: .note(noteID), at: destination, in: &layout)
+        return layout
+    }
+
+    private func reorderedLayoutForGroupedNote(noteID: String, finalFrame: CGRect, baseLayout: ColumnLayout) -> ColumnLayout? {
+        let removal = removing(noteID: noteID, from: baseLayout)
+        var layout = removal.layout
+
+        if let destination = reorderDestination(for: finalFrame, in: layout) {
+            insert(item: .note(noteID), at: destination, in: &layout)
+            return layout
+        }
+
+        guard let origin = removal.origin else { return nil }
+        let fallbackIndex = min(origin.index + 1, items(in: origin.side, from: layout).count)
+        insert(item: .note(noteID), at: ColumnLocation(side: origin.side, index: fallbackIndex), in: &layout)
+        return layout
+    }
+
+    private func insertionSlotYPositions(for orderWithoutDragged: [String]) -> [CGFloat] {
+        guard !orderWithoutDragged.isEmpty else { return [] }
+
+        var slots: [CGFloat] = []
+        if let firstFrame = noteFrames[orderWithoutDragged[0]] {
+            slots.append(firstFrame.minY)
+        }
+
+        for index in 0..<(orderWithoutDragged.count - 1) {
+            guard let lhs = noteFrames[orderWithoutDragged[index]],
+                  let rhs = noteFrames[orderWithoutDragged[index + 1]] else { continue }
+            slots.append((lhs.maxY + rhs.minY) * 0.5)
+        }
+
+        if let lastFrame = noteFrames[orderWithoutDragged[orderWithoutDragged.count - 1]] {
+            slots.append(lastFrame.maxY)
+        }
+
+        return slots
+    }
+
+    private func restoreDragBaseline() {
+        if !dragBaseColumnLayout.isEmpty {
+            syncLayoutState(from: dragBaseColumnLayout)
+            return
+        }
+        orderedNoteIDs = dragBaseOrder.isEmpty ? orderedNoteIDs : dragBaseOrder
+        affinityGroups = dragBaseAffinityGroups
+    }
+
+    private func reorderedIDs(noteID: String, finalFrame: CGRect, using order: [String]) -> [String] {
+        var newOrder = order.filter { $0 != noteID }
+        let targetPoints = noteFrames
+            .filter { $0.key != noteID }
+            .map { (id: $0.key, center: CGPoint(x: $0.value.midX, y: $0.value.midY)) }
+
+        guard let nearest = targetPoints.min(by: {
+            distance($0.center, finalFrame.center) < distance($1.center, finalFrame.center)
+        }), let targetIndex = newOrder.firstIndex(of: nearest.id) else {
+            newOrder.append(noteID)
+            return newOrder
+        }
+
+        let insertIndex = finalFrame.midY < nearest.center.y ? targetIndex : targetIndex + 1
+        newOrder.insert(noteID, at: min(insertIndex, newOrder.count))
+        return newOrder
+    }
+
     private func distance(_ lhs: CGPoint, _ rhs: CGPoint) -> CGFloat {
         hypot(lhs.x - rhs.x, lhs.y - rhs.y)
+    }
+
+    private func enterReorderMode() {
+        guard !isReorderMode else { return }
+        triggerReorderEntryHaptic()
+        isReorderMode = true
+        withAnimation(.easeOut(duration: 0.22)) {
+            jiggleProgress = 1
+        }
     }
 
     private func enterReorderGesture(noteID: String) -> some Gesture {
         LongPressGesture(minimumDuration: 0.65)
             .onEnded { _ in
-                if !isReorderMode {
-                    isReorderMode = true
-                    withAnimation(.easeOut(duration: 0.22)) {
-                        jiggleProgress = 1
-                    }
-                }
+                enterReorderMode()
             }
     }
 
+    private func triggerReorderEntryHaptic() {
+        let generator = UIImpactFeedbackGenerator(style: .light)
+        generator.prepare()
+        generator.impactOccurred(intensity: 0.7)
+    }
+
     private func dragGesture(noteID: String) -> some Gesture {
-        DragGesture(coordinateSpace: .named("home-scroll"))
+        DragGesture(
+            minimumDistance: isReorderMode ? 0 : 10_000,
+            coordinateSpace: .named("home-scroll")
+        )
             .onChanged { value in
                 guard isReorderMode else { return }
-                if activeDragNoteID == nil {
-                    activeDragNoteID = noteID
-                }
+                beginDragging(noteID)
                 guard activeDragNoteID == noteID else { return }
                 dragTranslation = value.translation
-                updateAffinityCandidate(for: noteID, translation: value.translation)
+                updateHoverIntent(for: noteID, translation: value.translation)
             }
             .onEnded { value in
                 guard isReorderMode, activeDragNoteID == noteID else { return }
                 endDragging(noteID: noteID, translation: value.translation)
+            }
+    }
+
+    private func pressThenDragGesture(noteID: String) -> some Gesture {
+        LongPressGesture(minimumDuration: reorderScrollableDragHoldDuration)
+            .sequenced(before: DragGesture(coordinateSpace: .named("home-scroll")))
+            .onChanged { value in
+                guard isReorderMode else { return }
+
+                switch value {
+                case .first(true):
+                    beginDragging(noteID)
+                case .second(true, let drag?):
+                    beginDragging(noteID)
+                    guard activeDragNoteID == noteID else { return }
+                    dragTranslation = drag.translation
+                    updateHoverIntent(for: noteID, translation: drag.translation)
+                default:
+                    break
+                }
+            }
+            .onEnded { value in
+                guard isReorderMode else { return }
+
+                switch value {
+                case .second(true, let drag?):
+                    guard activeDragNoteID == noteID else { return }
+                    endDragging(noteID: noteID, translation: drag.translation)
+                default:
+                    clearDragArming()
+                }
             }
     }
 
@@ -834,7 +1947,7 @@ private struct NewNoteScreen: View {
                 VStack {
                     ZStack {
                         RoundedRectangle(cornerRadius: 30, style: .continuous)
-                            .fill(Color.white.opacity(0.98))
+                            .fill(noteSurfaceColor)
                             .matchedGeometryEffect(id: "new-thought-surface", in: transitionNamespace)
                             .shadow(color: noteShadowColor.opacity(0.72), radius: 18, x: 0, y: 12)
 
@@ -879,8 +1992,10 @@ private struct NewNoteScreen: View {
             ZStack(alignment: .topLeading) {
                 if viewModel.draftText.isEmpty {
                     Text("start a thought")
-                        .font(AppFont.body(21))
+                        .font(AppFont.meta(11))
+                        .tracking(1.2)
                         .foregroundStyle(.black.opacity(0.34))
+                        .padding(.top, 5)
                 }
 
                 TextField("", text: $viewModel.draftText, axis: .vertical)
@@ -945,6 +2060,7 @@ private struct NoteFullPageScreen: View {
     let note: APINote
     let transitionNamespace: Namespace.ID
     @State private var followUpDraft = ""
+    @FocusState private var isFollowUpFocused: Bool
     @State private var currentThread: APIConversationThread?
     @State private var isEnriching = false
     @State private var isSendingFollowUp = false
@@ -976,11 +2092,7 @@ private struct NoteFullPageScreen: View {
                         .foregroundStyle(noteAccentColor)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 10)
-                        .background(Color.white.opacity(0.82), in: Capsule())
-                        .overlay {
-                            Capsule()
-                                .stroke(noteAccentColor.opacity(0.16), lineWidth: 1)
-                        }
+                        .glassCapsuleButtonChrome()
                 }
                 .padding(.top, 8)
                 .padding(.trailing, 18)
@@ -1071,7 +2183,7 @@ private struct NoteFullPageScreen: View {
     ) -> some View {
         ZStack(alignment: .topLeading) {
             RoundedRectangle(cornerRadius: surfaceCornerRadius, style: .continuous)
-                .fill(Color.white)
+                .fill(noteSurfaceColor)
                 .matchedGeometryEffect(id: "note-surface-\(note.id)", in: transitionNamespace)
                 .shadow(color: noteShadowColor, radius: 24, x: 0, y: 12)
                 .ignoresSafeArea()
@@ -1119,11 +2231,6 @@ private struct NoteFullPageScreen: View {
                                 .padding(.top, 28)
                         }
 
-                        if !note.timeline.isEmpty {
-                            timelineSection
-                                .padding(.top, 28)
-                        }
-
                         if let latestReply = note.latestChatReply, !latestReply.isEmpty {
                             latestReplySection(latestReply)
                                 .padding(.top, 28)
@@ -1131,6 +2238,11 @@ private struct NoteFullPageScreen: View {
 
                         if let pendingFollowUp = pendingFollowUpText {
                             pendingFollowUpSection(pendingFollowUp)
+                                .padding(.top, 28)
+                        }
+
+                        if shouldShowRequestResponseOnlyCTA && isEnriching {
+                            centeredExploringSection
                                 .padding(.top, 28)
                         }
                     }
@@ -1164,42 +2276,18 @@ private struct NoteFullPageScreen: View {
             Text(noteTimestamp)
                 .font(AppFont.meta(11))
                 .tracking(1.6)
-                .textCase(.uppercase)
                 .foregroundStyle(.black.opacity(0.5))
-
-            if let statusLabel = detailStatusLabel {
-                Text(statusLabel)
-                    .font(AppFont.meta(11))
-                    .tracking(1.6)
-                    .textCase(.uppercase)
-                    .foregroundStyle(noteAccentColor)
-            }
-
-            if let providerLabel = visibleProviderLabel {
-                Text(providerLabel)
-                    .font(AppFont.meta(11))
-                    .tracking(1.6)
-                    .textCase(.uppercase)
-                    .foregroundStyle(noteAccentColor.opacity(0.82))
-            }
-
         }
         .opacity(showPrimaryContent ? 1 : 0)
     }
 
     private var aiGrowthSection: some View {
         VStack(alignment: .leading, spacing: 20) {
-            ForEach(Array(growthParagraphs.enumerated()), id: \.offset) { index, paragraph in
-                VStack(alignment: .leading, spacing: 20) {
-                    Text(paragraph)
-                        .font(AppFont.body(19))
-                        .lineSpacing(4)
-                        .foregroundStyle(.black)
-
-                    if index < growthParagraphs.count - 1 {
-                        divider
-                    }
-                }
+            ForEach(Array(growthParagraphs.enumerated()), id: \.offset) { _, paragraph in
+                Text(paragraph)
+                    .font(AppFont.body(19))
+                    .lineSpacing(4)
+                    .foregroundStyle(.black)
             }
         }
         .opacity(showGrowthContent ? 1 : 0)
@@ -1207,30 +2295,28 @@ private struct NoteFullPageScreen: View {
     }
 
     private var inlineContinueThoughtCTA: some View {
-        HStack {
-            Spacer()
-
+        Group {
             if isEnriching {
-                ExploringLoadingLabel()
+                centeredExploringSection
             } else {
-                Button {
-                    Task { await requestResponse() }
-                } label: {
-                    Text("continue this thought")
-                        .font(AppFont.meta(11))
-                        .tracking(1.2)
-                        .foregroundStyle(noteAccentColor)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 10)
-                        .background(Color.white.opacity(0.82), in: Capsule())
-                        .overlay {
-                            Capsule()
-                                .stroke(noteAccentColor.opacity(0.16), lineWidth: 1)
-                        }
+                HStack {
+                    Spacer()
+
+                    Button {
+                        Task { await requestResponse() }
+                    } label: {
+                        Text("continue this thought")
+                            .font(AppFont.meta(11))
+                            .tracking(1.2)
+                            .foregroundStyle(noteAccentColor)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
+                            .glassCapsuleButtonChrome()
+                    }
+
+                    Spacer()
                 }
             }
-
-            Spacer()
         }
         .opacity(showGrowthContent ? 1 : 0)
         .offset(y: showGrowthContent ? 0 : 12)
@@ -1251,6 +2337,20 @@ private struct NoteFullPageScreen: View {
                         .font(AppFont.body(17))
                         .lineSpacing(3)
                         .foregroundStyle(.black.opacity(0.9))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    Button {
+                        askAboutPrompt(prompt)
+                    } label: {
+                        Text("ask")
+                            .font(AppFont.meta(11))
+                            .tracking(1.2)
+                            .foregroundStyle(noteAccentColor)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
+                            .glassCapsuleButtonChrome()
+                    }
+                    .padding(.top, -2)
                 }
             }
         }
@@ -1309,64 +2409,18 @@ private struct NoteFullPageScreen: View {
         .offset(y: showFootnoteContent ? 0 : 12)
     }
 
-    private var timelineSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            sectionLabel("recent evolution")
-
-            ForEach(note.timeline.prefix(5)) { event in
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(event.summary)
-                        .font(AppFont.body(16))
-                        .foregroundStyle(.black.opacity(0.84))
-
-                    if let provider = timelineProviderLabel(for: event) {
-                        Text(provider)
-                            .font(AppFont.meta(10))
-                            .tracking(1.0)
-                            .textCase(.uppercase)
-                            .foregroundStyle(noteAccentColor.opacity(0.72))
-                    }
-
-                    Text(event.createdAt.formatted(date: .abbreviated, time: .shortened))
-                        .font(AppFont.meta(12))
-                        .foregroundStyle(.black.opacity(0.5))
-                }
-                .padding(.bottom, 2)
-            }
-        }
-        .opacity(showFootnoteContent ? 1 : 0)
-        .offset(y: showFootnoteContent ? 0 : 12)
-    }
-
-    private func timelineProviderLabel(for event: APITimelineEvent) -> String? {
-        let explicitProvider = event.provider?.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines) ?? ""
-        if !explicitProvider.isEmpty {
-            return explicitProvider
-        }
-
-        switch event.type {
-        case TimelineEventKind.noteEnriched.rawValue:
-            let provider = note.enrichments.first?.provider.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines) ?? ""
-            return provider.isEmpty ? nil : provider
-        case TimelineEventKind.chatUpdated.rawValue:
-            let provider = currentThread?.messages
-                .last(where: { $0.role == MessageRole.assistant.rawValue })?
-                .provider
-                .trimmingCharacters(in: CharacterSet.whitespacesAndNewlines) ?? ""
-            return provider.isEmpty ? nil : provider
-        default:
-            return nil
-        }
-    }
-
     private func latestReplySection(_ reply: String) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             sectionLabel("latest reply")
 
-            Text(reply)
-                .font(AppFont.body(18))
-                .lineSpacing(3)
-                .foregroundStyle(.black.opacity(0.82))
+            VStack(alignment: .leading, spacing: 20) {
+                ForEach(Array(paragraphs(from: reply).enumerated()), id: \.offset) { _, paragraph in
+                    Text(paragraph)
+                        .font(AppFont.body(18))
+                        .lineSpacing(3)
+                        .foregroundStyle(.black.opacity(0.82))
+                }
+            }
         }
         .opacity(showGrowthContent ? 1 : 0)
         .offset(y: showGrowthContent ? 0 : 12)
@@ -1376,10 +2430,14 @@ private struct NoteFullPageScreen: View {
         VStack(alignment: .leading, spacing: 20) {
             divider
 
-            Text(followUp)
-                .font(AppFont.body(19))
-                .lineSpacing(4)
-                .foregroundStyle(noteAccentColor.opacity(0.78))
+            VStack(alignment: .leading, spacing: 20) {
+                ForEach(Array(paragraphs(from: followUp).enumerated()), id: \.offset) { _, paragraph in
+                    Text(paragraph)
+                        .font(AppFont.body(19))
+                        .lineSpacing(4)
+                        .foregroundStyle(noteAccentColor.opacity(0.78))
+                }
+            }
         }
         .opacity(showGrowthContent ? 1 : 0)
         .offset(y: showGrowthContent ? 0 : 12)
@@ -1389,24 +2447,18 @@ private struct NoteFullPageScreen: View {
         VStack(spacing: 12) {
             if shouldShowRequestResponseOnlyCTA {
                 Group {
-                    if isEnriching {
-                        ExploringLoadingLabel()
-                    } else {
+                    if !isEnriching {
                         VStack(spacing: 10) {
                             Button {
                                 Task { await requestResponse() }
                             } label: {
-                                Text("request response")
+                                Text("grow this idea")
                                     .font(AppFont.meta(11))
                                     .tracking(1.2)
                                     .foregroundStyle(noteAccentColor)
                                     .padding(.horizontal, 16)
                                     .padding(.vertical, 10)
-                                    .background(Color.white.opacity(0.92), in: Capsule())
-                                    .overlay {
-                                        Capsule()
-                                            .stroke(noteAccentColor.opacity(0.16), lineWidth: 1)
-                                    }
+                                    .glassCapsuleButtonChrome()
                             }
 
                             if note.status == "failed" {
@@ -1435,6 +2487,7 @@ private struct NoteFullPageScreen: View {
                             .font(AppFont.meta(11))
                             .tracking(1.2)
                             .foregroundStyle(.black)
+                            .focused($isFollowUpFocused)
                             .lineLimit(1...4)
                     }
 
@@ -1472,9 +2525,9 @@ private struct NoteFullPageScreen: View {
         .background(
             LinearGradient(
                 colors: [
-                    Color.white.opacity(0),
-                    Color.white.opacity(0.88),
-                    Color.white.opacity(0.98)
+                    noteSurfaceColor.opacity(0),
+                    noteSurfaceColor.opacity(0.88),
+                    noteSurfaceColor.opacity(0.98)
                 ],
                 startPoint: .top,
                 endPoint: .bottom
@@ -1514,39 +2567,19 @@ private struct NoteFullPageScreen: View {
 
     private var growthParagraphs: [String] {
         let expansion = note.enrichments.first?.expansion.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        let paragraphs = expansion
-            .components(separatedBy: "\n\n")
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-        return paragraphs
+        return paragraphs(from: expansion)
     }
 
     private var hasAIGrowthParagraphs: Bool {
         !growthParagraphs.isEmpty
     }
 
-    private var detailStatusLabel: String? {
-        if note.latestChatReply != nil {
-            return "in conversation"
+    private var centeredExploringSection: some View {
+        HStack {
+            Spacer()
+            ExploringLoadingLabel()
+            Spacer()
         }
-        if note.enrichments.isEmpty {
-            return "noted"
-        }
-        return nil
-    }
-
-    private var visibleProviderLabel: String? {
-        if let provider = currentThread?.messages
-            .last(where: { $0.role == MessageRole.assistant.rawValue })?
-            .provider
-            .trimmingCharacters(in: CharacterSet.whitespacesAndNewlines),
-           !provider.isEmpty {
-            return provider
-        }
-
-        let provider = note.enrichments.first?.provider
-            .trimmingCharacters(in: CharacterSet.whitespacesAndNewlines) ?? ""
-        return provider.isEmpty ? nil : provider
     }
 
     private func requestResponse() async {
@@ -1571,14 +2604,40 @@ private struct NoteFullPageScreen: View {
         currentThread = await viewModel.fetchConversationThread(noteID: note.id)
     }
 
+    private func askAboutPrompt(_ prompt: String) {
+        followUpDraft = prompt
+        isFollowUpFocused = true
+    }
+
+    private func paragraphs(from text: String) -> [String] {
+        let normalized = text
+            .replacingOccurrences(of: "\r\n", with: "\n")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalized.isEmpty else { return [] }
+
+        var result: [String] = []
+        var current: [String] = []
+
+        for line in normalized.components(separatedBy: .newlines) {
+            if line.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                if !current.isEmpty {
+                    result.append(current.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines))
+                    current.removeAll()
+                }
+            } else {
+                current.append(line)
+            }
+        }
+
+        if !current.isEmpty {
+            result.append(current.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines))
+        }
+
+        return result.filter { !$0.isEmpty }
+    }
+
     private var noteTimestamp: String {
-        if Calendar.current.isDateInToday(note.updatedAt) {
-            return note.updatedAt.formatted(date: .omitted, time: .shortened)
-        }
-        if Calendar.current.isDateInYesterday(note.updatedAt) {
-            return "yesterday"
-        }
-        return note.updatedAt.formatted(date: .abbreviated, time: .omitted)
+        noteDetailTimestampLabel(for: note.updatedAt)
     }
 
     private var divider: some View {
@@ -1676,7 +2735,7 @@ private struct NoteFullPageScreen: View {
         guard let url = URL(string: urlString), let host = url.host else {
             return "citation"
         }
-        return host.replacingOccurrences(of: "www.", with: "")
+        return host.replacingOccurrences(of: "www.", with: "").lowercased()
     }
 }
 
@@ -1684,7 +2743,7 @@ private struct ExploringLoadingLabel: View {
     @State private var dotCount = 1
 
     var body: some View {
-        Text("exploring" + String(repeating: ".", count: dotCount))
+        Text("exploring" + String(repeating: ".", count: dotCount) + " check back later")
             .font(AppFont.meta(11))
             .tracking(1.2)
             .foregroundStyle(noteAccentColor)
@@ -1758,9 +2817,41 @@ private struct NoteCard: View {
     let jiggleProgress: CGFloat
     let transitionNamespace: Namespace.ID
     let isExpanded: Bool
+    let isOutlineReady: Bool
+    let isContentReady: Bool
     let isTransitionSource: Bool
     let animationDate: Date
-    @State private var showCardContent = true
+    let isSurfaceTransitionEnabled: Bool
+
+    init(
+        note: APINote,
+        rotation: Double,
+        isReordering: Bool,
+        isInReorderMode: Bool,
+        phaseSeed: Double,
+        jiggleProgress: CGFloat,
+        transitionNamespace: Namespace.ID,
+        isExpanded: Bool,
+        isOutlineReady: Bool,
+        isContentReady: Bool,
+        isTransitionSource: Bool,
+        animationDate: Date,
+        isSurfaceTransitionEnabled: Bool = true
+    ) {
+        self.note = note
+        self.rotation = rotation
+        self.isReordering = isReordering
+        self.isInReorderMode = isInReorderMode
+        self.phaseSeed = phaseSeed
+        self.jiggleProgress = jiggleProgress
+        self.transitionNamespace = transitionNamespace
+        self.isExpanded = isExpanded
+        self.isOutlineReady = isOutlineReady
+        self.isContentReady = isContentReady
+        self.isTransitionSource = isTransitionSource
+        self.animationDate = animationDate
+        self.isSurfaceTransitionEnabled = isSurfaceTransitionEnabled
+    }
 
     var body: some View {
         let jiggle = jiggleState(at: animationDate)
@@ -1775,7 +2866,6 @@ private struct NoteCard: View {
                 Text(noteTimestamp)
                     .font(AppFont.meta(11))
                     .tracking(1.2)
-                    .textCase(.uppercase)
                     .foregroundStyle(.black.opacity(0.5))
 
                 Spacer()
@@ -1789,7 +2879,7 @@ private struct NoteCard: View {
                 }
             }
         }
-        .opacity(showCardContent ? 1 : 0)
+        .opacity(isContentReady ? 1 : 0)
         .padding(.horizontal, 18)
         .padding(.vertical, 18)
         .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -1797,9 +2887,13 @@ private struct NoteCard: View {
             ZStack {
                 if !isExpanded {
                     LivingCellCardShape(phase: edgePhase, amplitude: edgeAmplitude)
-                        .fill(Color.white.opacity(0.93))
+                        .fill(noteSurfaceColor)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .matchedGeometryEffect(id: "note-surface-\(note.id)", in: transitionNamespace)
+                        .applyNoteSurfaceTransition(
+                            id: "note-surface-\(note.id)",
+                            namespace: transitionNamespace,
+                            isEnabled: isSurfaceTransitionEnabled
+                        )
 
                     LivingCellCardShape(phase: edgePhase, amplitude: edgeAmplitude)
                         .stroke(
@@ -1807,7 +2901,11 @@ private struct NoteCard: View {
                             lineWidth: isReordering ? 1.3 : 1
                         )
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .matchedGeometryEffect(id: "note-stroke-\(note.id)", in: transitionNamespace)
+                        .applyNoteSurfaceTransition(
+                            id: "note-stroke-\(note.id)",
+                            namespace: transitionNamespace,
+                            isEnabled: isSurfaceTransitionEnabled
+                        )
                 } else {
                     RoundedRectangle(cornerRadius: 30, style: .continuous)
                         .fill(Color.white.opacity(0.001))
@@ -1818,38 +2916,42 @@ private struct NoteCard: View {
         .overlay {
             if !isExpanded {
                 ZStack {
-                    LivingCellCardShape(phase: edgePhase, amplitude: edgeAmplitude)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    hasAIResponse ? noteAccentColor.opacity(0.055) : .clear,
-                                    hasAIResponse ? noteAccentColor.opacity(0.016) : .clear,
-                                    .clear
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-
                     BilayerCardOutline(
                         phase: edgePhase,
                         amplitude: edgeAmplitude,
                         innerColor: noteAccentColor,
                         innerOpacity: hasAIResponse ? 0.17 : 0.09
                     )
+                    .opacity(isOutlineReady ? 1 : 0)
+                    .animation(.easeOut(duration: 0.18), value: isOutlineReady)
 
-                    if isActivelyGrowing {
-                        RunningStrokeIndicator(
-                            phase: edgePhase,
-                            amplitude: edgeAmplitude,
-                            progress: cometProgress,
-                            color: noteAccentColor
-                        )
+                    ZStack {
+                        LivingCellCardShape(phase: edgePhase, amplitude: edgeAmplitude)
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        hasAIResponse ? noteAccentColor.opacity(0.055) : .clear,
+                                        hasAIResponse ? noteAccentColor.opacity(0.016) : .clear,
+                                        .clear
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+
+                        if isActivelyGrowing {
+                            RunningStrokeIndicator(
+                                phase: edgePhase,
+                                amplitude: edgeAmplitude,
+                                progress: cometProgress,
+                                color: noteAccentColor
+                            )
+                        }
                     }
+                    .opacity(isContentReady ? 1 : 0)
+                    .animation(.easeOut(duration: 0.18), value: isContentReady)
                 }
                 .padding(1.5)
-                .opacity(showCardContent ? 1 : 0)
-                .animation(.easeOut(duration: 0.22), value: showCardContent)
             }
         }
         .overlay(alignment: .bottomTrailing) {
@@ -1862,8 +2964,7 @@ private struct NoteCard: View {
                     )
                     .padding(.trailing, 18)
                     .padding(.bottom, 18)
-                    .opacity(showCardContent ? 1 : 0)
-                    .animation(.easeOut(duration: 0.22), value: showCardContent)
+                    .opacity(1)
             }
         }
         .contentShape(LivingCellCardShape(phase: edgePhase, amplitude: edgeAmplitude))
@@ -1885,18 +2986,6 @@ private struct NoteCard: View {
         )
         .opacity(isExpanded ? 0.001 : 1)
         .animation(.easeInOut(duration: 0.18), value: isReordering)
-        .onChange(of: isExpanded) { wasExpanded, nowExpanded in
-            if nowExpanded {
-                showCardContent = false
-            } else if wasExpanded {
-                Task {
-                    try? await Task.sleep(nanoseconds: UInt64(noteMorphDuration * 0.55 * 1_000_000_000))
-                    withAnimation(.easeOut(duration: 0.22)) {
-                        showCardContent = true
-                    }
-                }
-            }
-        }
     }
 
     private var statusText: String? {
@@ -1953,13 +3042,7 @@ private struct NoteCard: View {
     }
 
     private var noteTimestamp: String {
-        if Calendar.current.isDateInToday(note.updatedAt) {
-            return note.updatedAt.formatted(date: .omitted, time: .shortened)
-        }
-        if Calendar.current.isDateInYesterday(note.updatedAt) {
-            return "yesterday"
-        }
-        return note.updatedAt.formatted(date: .abbreviated, time: .omitted)
+        noteCardTimestampLabel(for: note.updatedAt)
     }
 
     private func jiggleState(at date: Date) -> (rotation: Double, offset: CGSize) {
@@ -2203,8 +3286,9 @@ private struct EmptyNoteCard: View {
     let isExpanded: Bool
     let isAddMorphActive: Bool
     let isVisible: Bool
+    let isDecorationReady: Bool
+    let isContentReady: Bool
     let onTap: () -> Void
-    @State private var showContent: Bool = true
     @State private var showStaticFadeCard = false
     @State private var staticFadeOpacity = 0.0
 
@@ -2229,18 +3313,6 @@ private struct EmptyNoteCard: View {
         .opacity(isVisible ? 1 : 0)
         .scaleEffect(isVisible ? 1 : 0.96)
         .animation(.easeInOut(duration: 0.22), value: isVisible)
-        .onChange(of: isExpanded) { _, nowExpanded in
-            if nowExpanded {
-                showContent = false
-            } else {
-                Task {
-                    try? await Task.sleep(nanoseconds: UInt64(noteMorphDuration * 1_000_000_000))
-                    withAnimation(.easeOut(duration: 0.22)) {
-                        showContent = true
-                    }
-                }
-            }
-        }
         .onChange(of: isAddMorphActive) { wasActive, isActive in
             if isActive {
                 showStaticFadeCard = false
@@ -2270,11 +3342,11 @@ private struct EmptyNoteCard: View {
         ZStack {
             if isMatched {
                 RoundedRectangle(cornerRadius: 30, style: .continuous)
-                    .fill(Color.white.opacity(0.93))
+                    .fill(noteSurfaceColor)
                     .matchedGeometryEffect(id: "new-thought-surface", in: transitionNamespace)
             } else {
                 RoundedRectangle(cornerRadius: 30, style: .continuous)
-                    .fill(Color.white.opacity(0.93))
+                    .fill(noteSurfaceColor)
             }
 
             if isMatched {
@@ -2286,25 +3358,20 @@ private struct EmptyNoteCard: View {
                     .stroke(.clear, lineWidth: 1)
             }
 
-            BilayerCardOutline(
-                phase: 0.7,
-                amplitude: 0.48,
-                innerColor: noteAccentColor,
-                innerOpacity: 0.08
-            )
-
             if isMatched {
                 RoundedRectangle(cornerRadius: 30, style: .continuous)
                     .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4, 6]))
                     .foregroundStyle(noteBorderColor.opacity(0.95))
                     .matchedGeometryEffect(id: "new-thought-dashed", in: transitionNamespace)
+                    .opacity(isDecorationReady ? 1 : 0)
             } else {
                 RoundedRectangle(cornerRadius: 30, style: .continuous)
                     .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4, 6]))
                     .foregroundStyle(noteBorderColor.opacity(0.95))
+                    .opacity(isDecorationReady ? 1 : 0)
             }
 
-            if showContent {
+            if isContentReady {
                 VStack(alignment: .leading, spacing: 14) {
                     HStack {
                         Image(systemName: "plus")
@@ -2337,7 +3404,7 @@ private struct MorphingAddedNoteTarget: View {
 
     var body: some View {
         RoundedRectangle(cornerRadius: 30, style: .continuous)
-            .fill(Color.white.opacity(0.93))
+            .fill(noteSurfaceColor)
             .matchedGeometryEffect(id: "new-thought-surface", in: transitionNamespace)
             .overlay {
                 RoundedRectangle(cornerRadius: 30, style: .continuous)
@@ -2368,105 +3435,111 @@ private struct MorphingAddedNoteTarget: View {
 }
 
 private struct RelatedNoteCluster: View {
-    let front: APINote
-    let back: APINote
-    let frontRotation: Double
-    let backRotation: Double
+    let notes: [APINote]
+    let columnWidth: CGFloat
+    let rotations: [Double]
     let activeDragNoteID: String?
+    let isDroppingDraggedNote: Bool
     let isInReorderMode: Bool
+    let requiresDragHoldBeforeDragging: Bool
     let dragTranslation: CGSize
     let phaseSeed: (String) -> Double
     let jiggleProgress: CGFloat
     let transitionNamespace: Namespace.ID
     let expandedNoteID: String?
+    let suppressedNoteOutlineIDs: Set<String>
+    let suppressedNoteContentIDs: Set<String>
     let animationDate: Date
     let onSelect: (String) -> Void
+    let onEnterReorderMode: () -> Void
     let onDragChanged: (String, CGSize) -> Void
     let onDragEnded: (String, CGSize) -> Void
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            NoteCard(
-                note: back,
-                rotation: backRotation,
-                isReordering: activeDragNoteID == back.id,
-                isInReorderMode: isInReorderMode,
-                phaseSeed: phaseSeed(back.id),
-                jiggleProgress: jiggleProgress,
-                transitionNamespace: transitionNamespace,
-                isExpanded: expandedNoteID == back.id,
-                isTransitionSource: expandedNoteID == back.id,
-                animationDate: animationDate
-            )
-                .padding(.top, 56)
-                .padding(.leading, 8)
-                .contentShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
-                .offset(activeDragNoteID == back.id ? dragTranslation : .zero)
-                .zIndex(activeDragNoteID == back.id ? 100 : 0)
-                .background(
-                    GeometryReader { proxy in
-                        Color.clear.preference(
-                            key: NoteFramePreferenceKey.self,
-                            value: [back.id: proxy.frame(in: .named("home-scroll"))]
-                        )
-                    }
-                )
-                .onTapGesture {
-                    if isInReorderMode {
-                        onDragEnded(back.id, .zero)
-                    } else {
-                        onSelect(back.id)
-                    }
-                }
-                .highPriorityGesture(enterReorderGesture(noteID: back.id))
-                .simultaneousGesture(clusterDragGesture(noteID: back.id))
-
-            NoteCard(
-                note: front,
-                rotation: frontRotation,
-                isReordering: activeDragNoteID == front.id,
-                isInReorderMode: isInReorderMode,
-                phaseSeed: phaseSeed(front.id),
-                jiggleProgress: jiggleProgress,
-                transitionNamespace: transitionNamespace,
-                isExpanded: expandedNoteID == front.id,
-                isTransitionSource: expandedNoteID == front.id,
-                animationDate: animationDate
-            )
-                .padding(.trailing, 8)
-                .contentShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
-                .offset(activeDragNoteID == front.id ? dragTranslation : .zero)
-                .zIndex(activeDragNoteID == front.id ? 100 : 1)
-                .background(
-                    GeometryReader { proxy in
-                        Color.clear.preference(
-                            key: NoteFramePreferenceKey.self,
-                            value: [front.id: proxy.frame(in: .named("home-scroll"))]
-                        )
-                    }
-                )
-                .onTapGesture {
-                    if isInReorderMode {
-                        onDragEnded(front.id, .zero)
-                    } else {
-                        onSelect(front.id)
-                    }
-                }
-                .highPriorityGesture(enterReorderGesture(noteID: front.id))
-                .simultaneousGesture(clusterDragGesture(noteID: front.id))
+            ForEach(Array(notes.enumerated()), id: \.element.id) { index, note in
+                clusterCard(note: note, index: index)
+                    .offset(
+                        x: clusterHorizontalOffset(for: index),
+                        y: stackedClusterTopOffset(notes: notes, index: index, columnWidth: columnWidth)
+                    )
+                    .zIndex(activeDragNoteID == note.id ? Double(notes.count + 1) : Double(index))
+            }
         }
-        .padding(.bottom, 8)
+        .padding(.bottom, stackedClusterBottomPadding(for: notes, columnWidth: columnWidth))
+    }
+
+    private func clusterCard(note: APINote, index: Int) -> some View {
+        let isDragged = activeDragNoteID == note.id
+
+        let placeholderCard = NoteCard(
+            note: note,
+            rotation: rotations.indices.contains(index) ? rotations[index] : 0,
+            isReordering: activeDragNoteID == note.id,
+            isInReorderMode: isInReorderMode,
+            phaseSeed: phaseSeed(note.id),
+            jiggleProgress: jiggleProgress,
+            transitionNamespace: transitionNamespace,
+            isExpanded: expandedNoteID == note.id,
+            isOutlineReady: !suppressedNoteOutlineIDs.contains(note.id),
+            isContentReady: !suppressedNoteContentIDs.contains(note.id),
+            isTransitionSource: expandedNoteID == note.id,
+            animationDate: animationDate,
+            isSurfaceTransitionEnabled: true
+        )
+            .opacity(isDragged ? 0.001 : 1)
+            .background(
+                GeometryReader { proxy in
+                    Color.clear.preference(
+                        key: NoteFramePreferenceKey.self,
+                        value: [note.id: proxy.frame(in: .named("home-scroll"))]
+                    )
+                }
+            )
+
+        let cardBody = ZStack(alignment: .topLeading) {
+            placeholderCard
+        }
+        .contentShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
+        .onTapGesture {
+            if !isInReorderMode {
+                onSelect(note.id)
+            }
+        }
+
+        if !isInReorderMode {
+            return AnyView(
+                cardBody.highPriorityGesture(enterReorderGesture(noteID: note.id))
+            )
+        }
+        return AnyView(cardBody)
+    }
+
+    private func activeClusterDragGesture(noteID: String) -> AnyGesture<Void> {
+        if requiresDragHoldBeforeDragging && isInReorderMode {
+            return AnyGesture(pressThenDragGesture(noteID: noteID).map { _ in () })
+        }
+
+        return AnyGesture(clusterDragGesture(noteID: noteID).map { _ in () })
+    }
+
+    private func clusterHorizontalOffset(for index: Int) -> CGFloat {
+        let direction: CGFloat = index.isMultiple(of: 2) ? -1 : 1
+        return direction * clusterAlternatingOffset
     }
 
     private func enterReorderGesture(noteID: String) -> some Gesture {
-        LongPressGesture(minimumDuration: 1.5)
+        LongPressGesture(minimumDuration: 0.65)
             .onEnded { _ in
-                onDragChanged(noteID, .zero)
+                onEnterReorderMode()
             }
     }
 
     private func clusterDragGesture(noteID: String) -> some Gesture {
-        DragGesture(coordinateSpace: .named("home-scroll"))
+        DragGesture(
+            minimumDistance: isInReorderMode ? 0 : 10_000,
+            coordinateSpace: .named("home-scroll")
+        )
             .onChanged { value in
                 onDragChanged(noteID, value.translation)
             }
@@ -2478,33 +3551,334 @@ private struct RelatedNoteCluster: View {
                 }
             }
     }
+
+    private func pressThenDragGesture(noteID: String) -> some Gesture {
+        LongPressGesture(minimumDuration: reorderScrollableDragHoldDuration)
+            .sequenced(before: DragGesture(coordinateSpace: .named("home-scroll")))
+            .onChanged { value in
+                guard isInReorderMode else { return }
+
+                switch value {
+                case .first(true):
+                    onDragChanged(noteID, .zero)
+                case .second(true, let drag?):
+                    onDragChanged(noteID, drag.translation)
+                default:
+                    break
+                }
+            }
+            .onEnded { value in
+                guard isInReorderMode else { return }
+
+                switch value {
+                case .second(true, let drag?):
+                    onDragEnded(noteID, drag.translation)
+                default:
+                    onDragEnded(noteID, .zero)
+                }
+            }
+    }
 }
 
-private struct AffinityCandidate {
-    let targetID: String
+private struct HoldToDragCaptureView: UIViewRepresentable {
+    let isEnabled: Bool
+    let minimumHoldDuration: TimeInterval
+    let onBegan: () -> Void
+    let onChanged: (CGSize) -> Void
+    let onEnded: (CGSize) -> Void
+    let onCancelled: () -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    func makeUIView(context: Context) -> CaptureView {
+        let view = CaptureView()
+        view.backgroundColor = .clear
+
+        let recognizer = UILongPressGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleLongPress(_:)))
+        recognizer.minimumPressDuration = minimumHoldDuration
+        recognizer.allowableMovement = 12
+        recognizer.cancelsTouchesInView = true
+        recognizer.delegate = context.coordinator
+        view.addGestureRecognizer(recognizer)
+        context.coordinator.recognizer = recognizer
+        return view
+    }
+
+    func updateUIView(_ uiView: CaptureView, context: Context) {
+        context.coordinator.parent = self
+        context.coordinator.recognizer?.minimumPressDuration = minimumHoldDuration
+        context.coordinator.recognizer?.isEnabled = isEnabled
+        uiView.isUserInteractionEnabled = isEnabled
+    }
+
+    final class CaptureView: UIView {}
+
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        var parent: HoldToDragCaptureView
+        weak var recognizer: UILongPressGestureRecognizer?
+        private var startPoint: CGPoint?
+
+        init(_ parent: HoldToDragCaptureView) {
+            self.parent = parent
+        }
+
+        @objc
+        func handleLongPress(_ recognizer: UILongPressGestureRecognizer) {
+            guard let view = recognizer.view else { return }
+            let coordinateView = view.window ?? view.superview ?? view
+            let point = recognizer.location(in: coordinateView)
+
+            switch recognizer.state {
+            case .began:
+                startPoint = point
+                parent.onBegan()
+                parent.onChanged(.zero)
+            case .changed:
+                guard let startPoint else { return }
+                parent.onChanged(
+                    CGSize(
+                        width: point.x - startPoint.x,
+                        height: point.y - startPoint.y
+                    )
+                )
+            case .ended:
+                guard let startPoint else {
+                    parent.onCancelled()
+                    return
+                }
+                parent.onEnded(
+                    CGSize(
+                        width: point.x - startPoint.x,
+                        height: point.y - startPoint.y
+                    )
+                )
+                self.startPoint = nil
+            case .cancelled, .failed:
+                startPoint = nil
+                parent.onCancelled()
+            default:
+                break
+            }
+        }
+
+        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+            true
+        }
+    }
+}
+
+private struct GlobalDragCaptureView: UIViewRepresentable {
+    let isEnabled: Bool
+    let minimumHoldDuration: TimeInterval
+    let onBegan: (CGPoint) -> Void
+    let onChanged: (CGPoint, CGSize) -> Void
+    let onEnded: (CGPoint, CGSize) -> Void
+    let onCancelled: () -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    func makeUIView(context: Context) -> CaptureView {
+        let view = CaptureView()
+        view.backgroundColor = .clear
+
+        let recognizer = UILongPressGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleLongPress(_:)))
+        recognizer.minimumPressDuration = minimumHoldDuration
+        recognizer.allowableMovement = 12
+        recognizer.cancelsTouchesInView = true
+        recognizer.delegate = context.coordinator
+        view.addGestureRecognizer(recognizer)
+        context.coordinator.recognizer = recognizer
+        return view
+    }
+
+    func updateUIView(_ uiView: CaptureView, context: Context) {
+        context.coordinator.parent = self
+        context.coordinator.recognizer?.minimumPressDuration = minimumHoldDuration
+        context.coordinator.recognizer?.isEnabled = isEnabled
+        uiView.isUserInteractionEnabled = isEnabled
+    }
+
+    final class CaptureView: UIView {}
+
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        var parent: GlobalDragCaptureView
+        weak var recognizer: UILongPressGestureRecognizer?
+        private var startPoint: CGPoint?
+
+        init(_ parent: GlobalDragCaptureView) {
+            self.parent = parent
+        }
+
+        @objc
+        func handleLongPress(_ recognizer: UILongPressGestureRecognizer) {
+            guard let view = recognizer.view else { return }
+            let localPoint = recognizer.location(in: view)
+            let coordinateView = view.window ?? view.superview ?? view
+            let point = recognizer.location(in: coordinateView)
+
+            switch recognizer.state {
+            case .began:
+                startPoint = point
+                parent.onBegan(localPoint)
+                parent.onChanged(localPoint, .zero)
+            case .changed:
+                guard let startPoint else { return }
+                parent.onChanged(
+                    localPoint,
+                    CGSize(
+                        width: point.x - startPoint.x,
+                        height: point.y - startPoint.y
+                    )
+                )
+            case .ended:
+                guard let startPoint else {
+                    parent.onCancelled()
+                    return
+                }
+                parent.onEnded(
+                    localPoint,
+                    CGSize(
+                        width: point.x - startPoint.x,
+                        height: point.y - startPoint.y
+                    )
+                )
+                self.startPoint = nil
+            case .cancelled, .failed:
+                startPoint = nil
+                parent.onCancelled()
+            default:
+                break
+            }
+        }
+
+        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+            true
+        }
+    }
+}
+
+private struct HoverCandidate {
+    let intent: HoverIntent
     let since: Date
+    let anchorPoint: CGPoint
+}
+
+private enum HoverIntent: Equatable {
+    case group(layout: ColumnLayout)
+    case reorder(layout: ColumnLayout)
+}
+
+private struct HoverResolution {
+    let intent: HoverIntent
+    let anchorPoint: CGPoint
+}
+
+private enum ColumnSide: Equatable {
+    case left
+    case right
+}
+
+private struct ColumnLocation: Equatable {
+    let side: ColumnSide
+    let index: Int
+}
+
+private enum ColumnLayoutItem: Equatable, Identifiable {
+    case note(String)
+    case group([String])
+
+    var id: String {
+        switch self {
+        case .note(let id):
+            return id
+        case .group(let ids):
+            return "group-" + ids.joined(separator: "-")
+        }
+    }
+
+    var noteIDs: [String] {
+        switch self {
+        case .note(let id):
+            return [id]
+        case .group(let ids):
+            return ids
+        }
+    }
+}
+
+private struct ColumnLayout: Equatable {
+    var left: [ColumnLayoutItem] = []
+    var right: [ColumnLayoutItem] = []
+
+    var isEmpty: Bool {
+        left.isEmpty && right.isEmpty
+    }
+
+    var groups: [AffinityGroup] {
+        (left + right).compactMap { item in
+            item.noteIDs.count >= 2 ? AffinityGroup(noteIDs: item.noteIDs) : nil
+        }
+    }
+
+    var flattenedOrder: [String] {
+        var result: [String] = []
+        let count = max(left.count, right.count)
+
+        for index in 0..<count {
+            if index < left.count {
+                result.append(contentsOf: left[index].noteIDs)
+            }
+            if index < right.count {
+                result.append(contentsOf: right[index].noteIDs)
+            }
+        }
+
+        return deduplicated(result)
+    }
+}
+
+private struct PositionedColumnItem: Identifiable, Equatable {
+    let item: ColumnLayoutItem
+    let indexSeed: Int
+    let origin: CGPoint
+    let height: CGFloat
+
+    var id: String {
+        item.id
+    }
 }
 
 private struct AffinityGroup: Equatable {
-    let frontID: String
-    let backID: String
+    let noteIDs: [String]
+
+    var anchorID: String? {
+        noteIDs.first
+    }
+
+    var noteIDSet: Set<String> {
+        Set(noteIDs)
+    }
 
     func contains(_ noteID: String) -> Bool {
-        noteID == frontID || noteID == backID
+        noteIDs.contains(noteID)
     }
 }
 
 private enum HomeItem: Identifiable {
     case note(APINote)
-    case group(front: APINote, back: APINote)
+    case group([APINote])
     case seed
 
     var id: String {
         switch self {
         case .note(let note):
             return note.id
-        case .group(let front, let back):
-            return "group-\(front.id)-\(back.id)"
+        case .group(let notes):
+            return "group-\(notes.map(\.id).joined(separator: "-"))"
         case .seed:
             return "seed"
         }
@@ -2514,8 +3888,8 @@ private enum HomeItem: Identifiable {
         switch self {
         case .note(let note):
             return .note(note)
-        case .group(let front, let back):
-            return .group(front: front, back: back)
+        case .group(let notes):
+            return .group(notes)
         case .seed:
             return .seed
         }
@@ -2524,10 +3898,9 @@ private enum HomeItem: Identifiable {
     var estimatedHeight: CGFloat {
         switch self {
         case .note(let note):
-            let lines = min(max(ceil(Double(note.text.count) / 18.0), 2), 5)
-            return 108 + CGFloat(lines) * 24
-        case .group:
-            return 360
+            return estimatedHomeNoteCardHeight(for: note)
+        case .group(let notes):
+            return estimatedStackedClusterHeight(for: notes)
         case .seed:
             return 156
         }
@@ -2535,7 +3908,7 @@ private enum HomeItem: Identifiable {
 
     enum Kind {
         case note(APINote)
-        case group(front: APINote, back: APINote)
+        case group([APINote])
         case seed
     }
 }
@@ -2575,6 +3948,13 @@ private struct HomeIndicatorHeightKey: PreferenceKey {
 private extension CGRect {
     var center: CGPoint {
         CGPoint(x: midX, y: midY)
+    }
+}
+
+private extension Array where Element == CGFloat {
+    var average: CGFloat? {
+        guard !isEmpty else { return nil }
+        return reduce(CGFloat.zero, +) / CGFloat(count)
     }
 }
 
