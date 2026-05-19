@@ -20,7 +20,8 @@ private let reorderHoverDwellDuration: TimeInterval = 0.7
 private let reorderHoverJitterTolerance: CGFloat = 14
 private let reorderGapActivationDistance: CGFloat = 42
 private let reorderMinimumTravelDistance: CGFloat = 12
-private let groupingOverlapThreshold: CGFloat = 0.75
+private let ungroupMinimumTravelDistance: CGFloat = 1
+private let groupingOverlapThreshold: CGFloat = 0.6
 private let ungroupingOverlapThreshold: CGFloat = 0.5
 private let noteAccentColor = Color(red: 0.53, green: 0.66, blue: 0.61)
 private let noteBorderColor = Color(red: 0.88, green: 0.88, blue: 0.86)
@@ -165,7 +166,63 @@ private func estimatedHomeNoteCardHeight(for note: APINote, columnWidth: CGFloat
 private let clusterReadableTopInset: CGFloat = 18
 private let clusterReadableLineAdvance: CGFloat = 24
 private let clusterVisibleBottomGap: CGFloat = 0
-private let clusterAlternatingOffset: CGFloat = 8
+private let clusterAlternatingOffset: CGFloat = 4
+
+private struct ClusterStackSlot {
+    let note: APINote
+    let isPlaceholder: Bool
+    let originalIndex: Int?
+    let topOffset: CGFloat
+
+    var id: String {
+        isPlaceholder ? "placeholder-\(note.id)" : note.id
+    }
+}
+
+private func stackedClusterSlots(
+    notes: [APINote],
+    columnWidth: CGFloat = fallbackHomeColumnWidth(),
+    previewPlaceholderNote: APINote? = nil,
+    previewPlaceholderIndex: Int? = nil
+) -> [ClusterStackSlot] {
+    let clampedPlaceholderIndex = previewPlaceholderIndex.map { max(0, min($0, notes.count)) }
+    let totalSlots = notes.count + (previewPlaceholderNote != nil ? 1 : 0)
+    var slots: [ClusterStackSlot] = []
+    var currentTop: CGFloat = 0
+    var noteCursor = 0
+
+    for slotIndex in 0..<totalSlots {
+        if let placeholderNote = previewPlaceholderNote,
+           let clampedPlaceholderIndex,
+           slotIndex == clampedPlaceholderIndex {
+            slots.append(
+                ClusterStackSlot(
+                    note: placeholderNote,
+                    isPlaceholder: true,
+                    originalIndex: nil,
+                    topOffset: currentTop
+                )
+            )
+            currentTop += stackedClusterVisibleStep(for: placeholderNote, columnWidth: columnWidth)
+            continue
+        }
+
+        guard notes.indices.contains(noteCursor) else { continue }
+        let note = notes[noteCursor]
+        slots.append(
+            ClusterStackSlot(
+                note: note,
+                isPlaceholder: false,
+                originalIndex: noteCursor,
+                topOffset: currentTop
+            )
+        )
+        currentTop += stackedClusterVisibleStep(for: note, columnWidth: columnWidth)
+        noteCursor += 1
+    }
+
+    return slots
+}
 
 private func stackedClusterVisibleStep(for note: APINote, columnWidth: CGFloat = fallbackHomeColumnWidth()) -> CGFloat {
     clusterReadableTopInset
@@ -173,30 +230,66 @@ private func stackedClusterVisibleStep(for note: APINote, columnWidth: CGFloat =
         + clusterVisibleBottomGap
 }
 
-private func stackedClusterTopOffset(notes: [APINote], index: Int, columnWidth: CGFloat = fallbackHomeColumnWidth()) -> CGFloat {
-    guard index > 0 else { return 0 }
-    return notes.prefix(index).reduce(CGFloat.zero) { partial, note in
-        partial + stackedClusterVisibleStep(for: note, columnWidth: columnWidth)
-    }
+private func stackedClusterTopOffset(
+    notes: [APINote],
+    index: Int,
+    columnWidth: CGFloat = fallbackHomeColumnWidth(),
+    previewPlaceholderNote: APINote? = nil,
+    previewPlaceholderIndex: Int? = nil
+) -> CGFloat {
+    let slots = stackedClusterSlots(
+        notes: notes,
+        columnWidth: columnWidth,
+        previewPlaceholderNote: previewPlaceholderNote,
+        previewPlaceholderIndex: previewPlaceholderIndex
+    )
+    return slots.first(where: { !$0.isPlaceholder && $0.originalIndex == index })?.topOffset ?? 0
 }
 
-private func stackedClusterBottomPadding(for notes: [APINote], columnWidth: CGFloat = fallbackHomeColumnWidth()) -> CGFloat {
-    guard !notes.isEmpty else { return 0 }
-    let tallestCard = notes.map { estimatedHomeNoteCardHeight(for: $0, columnWidth: columnWidth) }.max() ?? 0
-    let lowestBottom = notes.enumerated().reduce(CGFloat.zero) { partialResult, item in
-        let (index, note) = item
-        let candidateBottom = stackedClusterTopOffset(notes: notes, index: index, columnWidth: columnWidth)
-            + estimatedHomeNoteCardHeight(for: note, columnWidth: columnWidth)
+private func stackedClusterBottomPadding(
+    for notes: [APINote],
+    columnWidth: CGFloat = fallbackHomeColumnWidth(),
+    previewPlaceholderNote: APINote? = nil,
+    previewPlaceholderIndex: Int? = nil
+) -> CGFloat {
+    let slots = stackedClusterSlots(
+        notes: notes,
+        columnWidth: columnWidth,
+        previewPlaceholderNote: previewPlaceholderNote,
+        previewPlaceholderIndex: previewPlaceholderIndex
+    )
+    guard !slots.isEmpty else { return 0 }
+
+    let tallestCard = slots.map { estimatedHomeNoteCardHeight(for: $0.note, columnWidth: columnWidth) }.max() ?? 0
+    let lowestBottom = slots.reduce(CGFloat.zero) { partialResult, slot in
+        let candidateBottom = slot.topOffset
+            + estimatedHomeNoteCardHeight(for: slot.note, columnWidth: columnWidth)
         return max(partialResult, candidateBottom)
     }
 
     return max(lowestBottom - tallestCard, 0)
 }
 
-private func estimatedStackedClusterHeight(for notes: [APINote], columnWidth: CGFloat = fallbackHomeColumnWidth()) -> CGFloat {
-    guard !notes.isEmpty else { return 0 }
-    let maxHeight = notes.map { estimatedHomeNoteCardHeight(for: $0, columnWidth: columnWidth) }.max() ?? 0
-    return maxHeight + stackedClusterBottomPadding(for: notes, columnWidth: columnWidth)
+private func estimatedStackedClusterHeight(
+    for notes: [APINote],
+    columnWidth: CGFloat = fallbackHomeColumnWidth(),
+    previewPlaceholderNote: APINote? = nil,
+    previewPlaceholderIndex: Int? = nil
+) -> CGFloat {
+    let slots = stackedClusterSlots(
+        notes: notes,
+        columnWidth: columnWidth,
+        previewPlaceholderNote: previewPlaceholderNote,
+        previewPlaceholderIndex: previewPlaceholderIndex
+    )
+    guard !slots.isEmpty else { return 0 }
+    let maxHeight = slots.map { estimatedHomeNoteCardHeight(for: $0.note, columnWidth: columnWidth) }.max() ?? 0
+    return maxHeight + stackedClusterBottomPadding(
+        for: notes,
+        columnWidth: columnWidth,
+        previewPlaceholderNote: previewPlaceholderNote,
+        previewPlaceholderIndex: previewPlaceholderIndex
+    )
 }
 
 private func overlapRatio(of sourceFrame: CGRect, covering targetFrame: CGRect) -> CGFloat {
@@ -462,6 +555,7 @@ private struct HomeScreen: View {
     @State private var dragTranslation: CGSize = .zero
     @State private var noteFrames: [String: CGRect] = [:]
     @State private var noteHitFrames: [String: CGRect] = [:]
+    @State private var noteTapTargets: [String: NoteTapTarget] = [:]
     @State private var measuredItemHeights: [String: CGFloat] = [:]
     @State private var hoverCandidate: HoverCandidate?
     @State private var activePreviewIntent: HoverIntent?
@@ -473,6 +567,7 @@ private struct HomeScreen: View {
     @State private var dragBaseAffinityGroups: [AffinityGroup] = []
     @State private var columnLayout = ColumnLayout()
     @State private var dragBaseColumnLayout = ColumnLayout()
+    @State private var groupPreviewPlaceholder: GroupPreviewPlaceholder?
     @State private var dragStartFrame: CGRect? = nil
     @State private var isDroppingDraggedNote = false
     @State private var suppressedNoteOutlineIDs = Set<String>()
@@ -527,6 +622,14 @@ private struct HomeScreen: View {
                     .overlay(alignment: .topLeading) {
                         draggedNoteOverlay(animationDate: state.isFeedVisible ? Date() : frozenAnimationDate)
                     }
+                    .simultaneousGesture(
+                        SpatialTapGesture()
+                            .onEnded { value in
+                                guard !isReorderMode,
+                                      let noteID = preciseNoteID(at: value.location) else { return }
+                                handleTap(on: noteID)
+                            }
+                    )
                     .overlay {
                         if isReorderMode {
                             GlobalDragCaptureView(
@@ -571,6 +674,9 @@ private struct HomeScreen: View {
                 }
                 .onPreferenceChange(NoteHitFramePreferenceKey.self) { frames in
                     noteHitFrames = frames
+                }
+                .onPreferenceChange(NoteTapTargetPreferenceKey.self) { targets in
+                    noteTapTargets = targets
                 }
                 .onPreferenceChange(HomeItemHeightPreferenceKey.self) { heights in
                     guard !isReorderMode else { return }
@@ -705,6 +811,9 @@ private struct HomeScreen: View {
     private func debugIntentLabel(for intent: HoverIntent, dragID: String) -> String {
         switch intent {
         case .group:
+            if dragBaseAffinityGroups.contains(where: { $0.contains(dragID) }) {
+                return "ungroup and group"
+            }
             return "group and reorder"
         case .reorder:
             if dragBaseAffinityGroups.contains(where: { $0.contains(dragID) }) {
@@ -805,8 +914,8 @@ private struct HomeScreen: View {
         let spacing: CGFloat = 16
         let columnWidth = max((containerWidth - spacing) / 2, 0)
         let columns = resolvedColumnLayout(notesByID: notesByID, columnWidth: columnWidth)
-        let leftHeight = estimatedColumnHeight(columns.left, notesByID: notesByID, columnWidth: columnWidth)
-        let rightHeight = estimatedColumnHeight(columns.right, notesByID: notesByID, columnWidth: columnWidth)
+        let leftHeight = estimatedColumnHeight(columns.left, side: .left, notesByID: notesByID, columnWidth: columnWidth)
+        let rightHeight = estimatedColumnHeight(columns.right, side: .right, notesByID: notesByID, columnWidth: columnWidth)
         let seedInLeftColumn = leftHeight <= rightHeight
         let positionedItems = positionedColumnItems(
             columns: columns,
@@ -832,6 +941,7 @@ private struct HomeScreen: View {
                     notesByID: notesByID,
                     columnWidth: columnWidth,
                     indexSeed: placed.indexSeed,
+                    previewPlaceholder: placed.previewPlaceholder,
                     animationDate: animationDate,
                     requiresDragHoldBeforeDragging: requiresDragHoldBeforeDragging
                 )
@@ -883,26 +993,40 @@ private struct HomeScreen: View {
         var rightY: CGFloat = 0
 
         for (index, item) in columns.left.enumerated() {
-            let height = estimatedHeight(for: item, notesByID: notesByID, columnWidth: columnWidth)
+            let placeholder = groupPreviewPlaceholder?.side == .left && groupPreviewPlaceholder?.index == index
+                ? groupPreviewPlaceholder
+                : nil
+            if let placeholder, placeholder.memberIndex == nil {
+                leftY += placeholder.height + 16
+            }
+            let height = estimatedHeight(for: item, notesByID: notesByID, columnWidth: columnWidth, previewPlaceholder: placeholder)
             positioned.append(
                 PositionedColumnItem(
                     item: item,
                     indexSeed: index * 2,
                     origin: CGPoint(x: 0, y: leftY),
-                    height: height
+                    height: height,
+                    previewPlaceholder: placeholder
                 )
             )
             leftY += height + 16
         }
 
         for (index, item) in columns.right.enumerated() {
-            let height = estimatedHeight(for: item, notesByID: notesByID, columnWidth: columnWidth)
+            let placeholder = groupPreviewPlaceholder?.side == .right && groupPreviewPlaceholder?.index == index
+                ? groupPreviewPlaceholder
+                : nil
+            if let placeholder, placeholder.memberIndex == nil {
+                rightY += placeholder.height + 16
+            }
+            let height = estimatedHeight(for: item, notesByID: notesByID, columnWidth: columnWidth, previewPlaceholder: placeholder)
             positioned.append(
                 PositionedColumnItem(
                     item: item,
                     indexSeed: index * 2 + 1,
                     origin: CGPoint(x: columnWidth + columnSpacing, y: rightY),
-                    height: height
+                    height: height,
+                    previewPlaceholder: placeholder
                 )
             )
             rightY += height + 16
@@ -945,12 +1069,15 @@ private struct HomeScreen: View {
     }
 
     @ViewBuilder
-    private func itemView(_ item: ColumnLayoutItem, notesByID: [String: APINote], columnWidth: CGFloat, indexSeed: Int, animationDate: Date, requiresDragHoldBeforeDragging: Bool) -> some View {
-        if item.noteIDs.count == 1, let note = item.noteIDs.first.flatMap({ notesByID[$0] }) {
+    private func itemView(_ item: ColumnLayoutItem, notesByID: [String: APINote], columnWidth: CGFloat, indexSeed: Int, previewPlaceholder: GroupPreviewPlaceholder?, animationDate: Date, requiresDragHoldBeforeDragging: Bool) -> some View {
+        let notes = item.noteIDs.compactMap { notesByID[$0] }
+
+        if notes.count == 1,
+           let note = notes.first,
+           previewPlaceholder?.memberIndex == nil {
             noteCard(note, index: indexSeed, animationDate: animationDate, requiresDragHoldBeforeDragging: requiresDragHoldBeforeDragging)
         } else {
-            let notes = item.noteIDs.compactMap { notesByID[$0] }
-            if notes.count >= 2 {
+            if !notes.isEmpty {
             RelatedNoteCluster(
                 notes: notes,
                 columnWidth: columnWidth,
@@ -966,6 +1093,8 @@ private struct HomeScreen: View {
                 expandedNoteID: state.expandedNoteID,
                 suppressedNoteOutlineIDs: suppressedNoteOutlineIDs,
                 suppressedNoteContentIDs: suppressedNoteContentIDs,
+                previewPlaceholderNote: previewPlaceholder.flatMap { $0.memberIndex != nil ? notesByID[$0.noteID] : nil },
+                previewPlaceholderIndex: previewPlaceholder?.memberIndex,
                 animationDate: animationDate
             ) { noteID in
                 handleTap(on: noteID)
@@ -1064,12 +1193,40 @@ private struct HomeScreen: View {
             .key
     }
 
+    private func preciseNoteID(at point: CGPoint) -> String? {
+        noteTapTargets
+            .filter { id, target in
+                id != "seed" && rotatedRoundedRectContains(point: point, target: target)
+            }
+            .max { lhs, rhs in
+                layerPriority(for: lhs.key) < layerPriority(for: rhs.key)
+            }?
+            .key
+    }
+
     private func roundedRectContains(point: CGPoint, in rect: CGRect, cornerRadius: CGFloat = 30) -> Bool {
         guard !rect.isNull, !rect.isEmpty else { return false }
         return UIBezierPath(
             roundedRect: rect,
             cornerRadius: min(cornerRadius, min(rect.width, rect.height) * 0.5)
         ).contains(point)
+    }
+
+    private func rotatedRoundedRectContains(point: CGPoint, target: NoteTapTarget, cornerRadius: CGFloat = 30) -> Bool {
+        let radians = -target.rotationDegrees * .pi / 180
+        let translatedX = point.x - target.center.x
+        let translatedY = point.y - target.center.y
+        let unrotatedPoint = CGPoint(
+            x: translatedX * cos(radians) - translatedY * sin(radians) + target.center.x,
+            y: translatedX * sin(radians) + translatedY * cos(radians) + target.center.y
+        )
+        let rect = CGRect(
+            x: target.center.x - target.size.width * 0.5,
+            y: target.center.y - target.size.height * 0.5,
+            width: target.size.width,
+            height: target.size.height
+        )
+        return roundedRectContains(point: unrotatedPoint, in: rect, cornerRadius: cornerRadius)
     }
 
     private func layerPriority(for noteID: String) -> Double {
@@ -1110,28 +1267,32 @@ private struct HomeScreen: View {
 
         let placeholderCard = placeholderFace
             .opacity(isDragged ? 0.001 : baseOpacity)
-            .frame(maxWidth: .infinity)
             .background(
                 GeometryReader { proxy in
+                    let contentFrame = proxy.frame(in: .named("home-content"))
                     Color.clear.preference(
                         key: NoteFramePreferenceKey.self,
-                        value: [note.id: proxy.frame(in: .named("home-content"))]
+                        value: [note.id: contentFrame]
                     )
                     .preference(
                         key: NoteHitFramePreferenceKey.self,
                         value: [note.id: proxy.frame(in: .global)]
+                    )
+                    .preference(
+                        key: NoteTapTargetPreferenceKey.self,
+                        value: [
+                            note.id: NoteTapTarget(
+                                center: contentFrame.center,
+                                size: proxy.size,
+                                rotationDegrees: CGFloat(rotation(for: index))
+                            )
+                        ]
                     )
                 }
             )
 
         let card = placeholderCard
             .zIndex(layerPriority(for: note.id))
-            .onTapGesture {
-                debugNoteLog("tap note", note.id, "expanded:", state.expandedNoteID == note.id)
-                if !isReorderMode {
-                    handleTap(on: note.id)
-                }
-            }
 
         if !isReorderMode {
             card.highPriorityGesture(enterReorderGesture(noteID: note.id))
@@ -1203,7 +1364,7 @@ private struct HomeScreen: View {
         let items = buildLayoutItems(notesByID: notesByID, order: order, groups: groups)
 
         for item in items {
-            if estimatedColumnHeight(layout.left, notesByID: notesByID, columnWidth: columnWidth) <= estimatedColumnHeight(layout.right, notesByID: notesByID, columnWidth: columnWidth) {
+            if estimatedColumnHeight(layout.left, side: .left, notesByID: notesByID, columnWidth: columnWidth, previewPlaceholder: nil) <= estimatedColumnHeight(layout.right, side: .right, notesByID: notesByID, columnWidth: columnWidth, previewPlaceholder: nil) {
                 layout.left.append(item)
             } else {
                 layout.right.append(item)
@@ -1224,7 +1385,7 @@ private struct HomeScreen: View {
         }
 
         for item in missingItems {
-            if estimatedColumnHeight(reconciled.left, notesByID: notesByID, columnWidth: columnWidth) <= estimatedColumnHeight(reconciled.right, notesByID: notesByID, columnWidth: columnWidth) {
+            if estimatedColumnHeight(reconciled.left, side: .left, notesByID: notesByID, columnWidth: columnWidth, previewPlaceholder: nil) <= estimatedColumnHeight(reconciled.right, side: .right, notesByID: notesByID, columnWidth: columnWidth, previewPlaceholder: nil) {
                 reconciled.left.append(item)
             } else {
                 reconciled.right.append(item)
@@ -1248,23 +1409,46 @@ private struct HomeScreen: View {
         }
     }
 
-    private func estimatedColumnHeight(_ items: [ColumnLayoutItem], notesByID: [String: APINote], columnWidth: CGFloat = fallbackHomeColumnWidth()) -> CGFloat {
-        items.enumerated().reduce(CGFloat.zero) { partial, entry in
-            let (index, item) = entry
-            let itemHeight = estimatedHeight(for: item, notesByID: notesByID, columnWidth: columnWidth)
-            return partial + itemHeight + (index == items.count - 1 ? 0 : 16)
+    private func estimatedColumnHeight(_ items: [ColumnLayoutItem], side: ColumnSide, notesByID: [String: APINote], columnWidth: CGFloat = fallbackHomeColumnWidth(), previewPlaceholder: GroupPreviewPlaceholder? = nil) -> CGFloat {
+        let placeholder = previewPlaceholder ?? groupPreviewPlaceholder
+        var total: CGFloat = 0
+
+        for (index, item) in items.enumerated() {
+            let itemPlaceholder = placeholder?.side == side && placeholder?.index == index ? placeholder : nil
+            if let itemPlaceholder, itemPlaceholder.memberIndex == nil {
+                if total > 0 { total += 16 }
+                total += itemPlaceholder.height
+            }
+
+            if total > 0 { total += 16 }
+            total += estimatedHeight(for: item, notesByID: notesByID, columnWidth: columnWidth, previewPlaceholder: itemPlaceholder)
         }
+
+        if let placeholder, placeholder.memberIndex == nil, placeholder.side == side, placeholder.index >= items.count {
+            if total > 0 { total += 16 }
+            total += placeholder.height
+        }
+
+        return total
     }
 
-    private func estimatedHeight(for item: ColumnLayoutItem, notesByID: [String: APINote], columnWidth: CGFloat = fallbackHomeColumnWidth()) -> CGFloat {
+    private func estimatedHeight(for item: ColumnLayoutItem, notesByID: [String: APINote], columnWidth: CGFloat = fallbackHomeColumnWidth(), previewPlaceholder: GroupPreviewPlaceholder? = nil) -> CGFloat {
         if let measured = measuredItemHeights[item.id], measured > 0 {
             return measured
         }
         let notes = item.noteIDs.compactMap { notesByID[$0] }
-        if notes.count <= 1, let note = notes.first {
+        let placeholderNote = previewPlaceholder.flatMap { $0.memberIndex != nil ? notesByID[$0.noteID] : nil }
+        if notes.count <= 1,
+           let note = notes.first,
+           placeholderNote == nil {
             return estimatedHomeNoteCardHeight(for: note, columnWidth: columnWidth)
         }
-        return estimatedStackedClusterHeight(for: notes, columnWidth: columnWidth)
+        return estimatedStackedClusterHeight(
+            for: notes,
+            columnWidth: columnWidth,
+            previewPlaceholderNote: placeholderNote,
+            previewPlaceholderIndex: previewPlaceholder?.memberIndex
+        )
     }
 
     private func syncLayoutState(from layout: ColumnLayout) {
@@ -1298,6 +1482,7 @@ private struct HomeScreen: View {
         dragTranslation = .zero
         hoverCandidate = nil
         activePreviewIntent = nil
+        groupPreviewPlaceholder = nil
         dragStartFrame = nil
         dragBaseOrder = []
         dragBaseAffinityGroups = []
@@ -1310,6 +1495,7 @@ private struct HomeScreen: View {
         dragTranslation = .zero
         hoverCandidate = nil
         activePreviewIntent = nil
+        groupPreviewPlaceholder = nil
         dragStartFrame = nil
         dragBaseOrder = []
         dragBaseAffinityGroups = []
@@ -1331,6 +1517,7 @@ private struct HomeScreen: View {
         dragTranslation = .zero
         hoverCandidate = nil
         activePreviewIntent = nil
+        groupPreviewPlaceholder = nil
         dragStartFrame = nil
         dragBaseOrder = []
         dragBaseAffinityGroups = []
@@ -1338,6 +1525,27 @@ private struct HomeScreen: View {
         if jiggleProgress < 1 {
             withAnimation(.easeOut(duration: 0.16)) {
                 jiggleProgress = 1
+            }
+        }
+    }
+
+    private func settleGroupedDropWithWholeGroupMotion() {
+        activeDragNoteID = nil
+        isDroppingDraggedNote = false
+        dragTranslation = .zero
+        hoverCandidate = nil
+        dragStartFrame = nil
+
+        DispatchQueue.main.async {
+            withAnimation(reorderSpring) {
+                activePreviewIntent = nil
+                groupPreviewPlaceholder = nil
+                dragBaseOrder = []
+                dragBaseAffinityGroups = []
+                dragBaseColumnLayout = ColumnLayout()
+                if jiggleProgress < 1 {
+                    jiggleProgress = 1
+                }
             }
         }
     }
@@ -1361,6 +1569,11 @@ private struct HomeScreen: View {
 
         Task {
             await onPersistManualOrder(orderedNoteIDs)
+        }
+
+        if case .group(_, let placeholder?) = activePreviewIntent {
+            settleGroupedDropWithWholeGroupMotion()
+            return
         }
 
         if let startFrame = dragStartFrame,
@@ -1509,6 +1722,12 @@ private struct HomeScreen: View {
         }
     }
 
+    private func item(at location: ColumnLocation, in layout: ColumnLayout) -> ColumnLayoutItem? {
+        let columnItems = items(in: location.side, from: layout)
+        guard columnItems.indices.contains(location.index) else { return nil }
+        return columnItems[location.index]
+    }
+
     private func set(item: ColumnLayoutItem, at location: ColumnLocation, in layout: inout ColumnLayout) {
         switch location.side {
         case .left:
@@ -1630,12 +1849,28 @@ private struct HomeScreen: View {
         let baseOrder = dragBaseOrder.isEmpty ? orderedNoteIDs : dragBaseOrder
 
         if let baseGroup = dragBaseAffinityGroups.first(where: { $0.contains(noteID) }) {
+            let startFrame = dragStartFrame ?? noteFrames[noteID] ?? finalFrame
+            let travelDistance = distance(startFrame.center, finalFrame.center)
+            guard travelDistance >= ungroupMinimumTravelDistance else { return nil }
+
             let otherMembers = Set(baseGroup.noteIDs).subtracting([noteID])
             let stillTooClose = otherMembers.contains { memberID in
                 guard let memberFrame = noteFrames[memberID] else { return false }
                 return overlapActivationRatio(between: finalFrame, and: memberFrame) >= ungroupingOverlapThreshold
             }
             if stillTooClose { return nil }
+
+            if let target = bestOverlapTarget(for: noteID, finalFrame: finalFrame) {
+                let targetID = target.id
+                if !otherMembers.contains(targetID),
+                   let groupedPreview = groupedLayout(for: noteID, targetID: targetID, baseLayout: baseLayout) {
+                    let anchor = noteFrames[targetID]?.center ?? finalFrame.center
+                    return HoverResolution(
+                        intent: .group(layout: groupedPreview.layout, placeholder: groupedPreview.placeholder),
+                        anchorPoint: anchor
+                    )
+                }
+            }
 
             if let ungroupedLayout = reorderedLayoutForGroupedNote(noteID: noteID, finalFrame: finalFrame, baseLayout: baseLayout) {
                 return HoverResolution(intent: .reorder(layout: ungroupedLayout), anchorPoint: finalFrame.center)
@@ -1654,9 +1889,9 @@ private struct HomeScreen: View {
 
         if let target = bestOverlapTarget(for: noteID, finalFrame: finalFrame) {
             let targetID = target.id
-            if let groupedLayout = groupedLayout(for: noteID, targetID: targetID, baseLayout: baseLayout) {
+            if let groupedPreview = groupedLayout(for: noteID, targetID: targetID, baseLayout: baseLayout) {
                 let anchor = noteFrames[targetID]?.center ?? finalFrame.center
-                return HoverResolution(intent: .group(layout: groupedLayout), anchorPoint: anchor)
+                return HoverResolution(intent: .group(layout: groupedPreview.layout, placeholder: groupedPreview.placeholder), anchorPoint: anchor)
             }
         }
 
@@ -1681,8 +1916,12 @@ private struct HomeScreen: View {
         restoreDragBaseline()
 
         switch intent {
-        case .group(let layout), .reorder(let layout):
+        case .group(let layout, let placeholder):
             syncLayoutState(from: layout)
+            groupPreviewPlaceholder = placeholder
+        case .reorder(let layout):
+            syncLayoutState(from: layout)
+            groupPreviewPlaceholder = nil
         }
     }
 
@@ -1702,7 +1941,7 @@ private struct HomeScreen: View {
         return .reorder(layout: reorderedLayout)
     }
 
-    private func groupedLayout(for noteID: String, targetID: String, baseLayout: ColumnLayout) -> ColumnLayout? {
+    private func groupedLayout(for noteID: String, targetID: String, baseLayout: ColumnLayout) -> (layout: ColumnLayout, placeholder: GroupPreviewPlaceholder?)? {
         let removal = removing(noteID: noteID, from: baseLayout)
         guard let targetLocation = location(of: targetID, in: removal.layout) else { return nil }
         var layout = removal.layout
@@ -1711,7 +1950,28 @@ private struct HomeScreen: View {
         let targetItem = columnItems[targetLocation.index]
         let updatedGroupIDs = groupedNoteIDs(adding: noteID, below: targetID, in: targetItem.noteIDs)
         set(item: .group(updatedGroupIDs), at: targetLocation, in: &layout)
-        return layout
+        let placeholder = downwardGroupingPlaceholder(for: noteID, targetID: targetID, origin: removal.origin, baseLayout: baseLayout)
+        return (layout, placeholder)
+    }
+
+    private func downwardGroupingPlaceholder(for noteID: String, targetID: String, origin: ColumnLocation?, baseLayout: ColumnLayout) -> GroupPreviewPlaceholder? {
+        guard let origin,
+              let note = displayNotes.first(where: { $0.id == noteID }),
+              let startFrame = dragStartFrame ?? noteFrames[noteID],
+              let targetFrame = noteFrames[targetID],
+              targetFrame.midY > startFrame.midY else {
+            return nil
+        }
+
+        let placeholderHeight = measuredItemHeights[noteID] ?? estimatedHomeNoteCardHeight(for: note)
+        let memberIndex = item(at: origin, in: baseLayout)?.noteIDs.firstIndex(of: noteID)
+        return GroupPreviewPlaceholder(
+            side: origin.side,
+            index: origin.index,
+            height: placeholderHeight,
+            noteID: noteID,
+            memberIndex: memberIndex
+        )
     }
 
     private func reorderedLayoutForUngroupedNote(noteID: String, finalFrame: CGRect, baseLayout: ColumnLayout) -> ColumnLayout? {
@@ -1759,6 +2019,7 @@ private struct HomeScreen: View {
     }
 
     private func restoreDragBaseline() {
+        groupPreviewPlaceholder = nil
         if !dragBaseColumnLayout.isEmpty {
             syncLayoutState(from: dragBaseColumnLayout)
             return
@@ -2944,6 +3205,11 @@ private struct NoteCard: View {
         .padding(.horizontal, 18)
         .padding(.vertical, 18)
         .frame(maxWidth: .infinity, alignment: .topLeading)
+        .applyNoteSurfaceTransition(
+            id: "note-content-\(note.id)",
+            namespace: transitionNamespace,
+            isEnabled: isSurfaceTransitionEnabled
+        )
         .background {
             ZStack {
                 if !isExpanded {
@@ -3510,6 +3776,8 @@ private struct RelatedNoteCluster: View {
     let expandedNoteID: String?
     let suppressedNoteOutlineIDs: Set<String>
     let suppressedNoteContentIDs: Set<String>
+    let previewPlaceholderNote: APINote?
+    let previewPlaceholderIndex: Int?
     let animationDate: Date
     let onSelect: (String) -> Void
     let onEnterReorderMode: () -> Void
@@ -3517,17 +3785,35 @@ private struct RelatedNoteCluster: View {
     let onDragEnded: (String, CGSize) -> Void
 
     var body: some View {
+        let stackSlots = stackedClusterSlots(
+            notes: notes,
+            columnWidth: columnWidth,
+            previewPlaceholderNote: previewPlaceholderNote,
+            previewPlaceholderIndex: previewPlaceholderIndex
+        )
+        let visibleSlots = stackSlots.filter { !$0.isPlaceholder }
+
         ZStack(alignment: .topLeading) {
-            ForEach(Array(notes.enumerated()), id: \.element.id) { index, note in
-                clusterCard(note: note, index: index)
-                    .offset(
-                        x: clusterHorizontalOffset(for: index),
-                        y: stackedClusterTopOffset(notes: notes, index: index, columnWidth: columnWidth)
-                    )
-                    .zIndex(activeDragNoteID == note.id ? Double(notes.count + 1) : Double(index))
+            ForEach(visibleSlots, id: \.id) { slot in
+                if let index = slot.originalIndex {
+                    clusterCard(note: slot.note, index: index)
+                        .offset(
+                            x: clusterHorizontalOffset(for: index),
+                            y: slot.topOffset
+                        )
+                        .zIndex(activeDragNoteID == slot.note.id ? Double(notes.count + 1) : Double(index))
+                }
             }
         }
-        .padding(.bottom, stackedClusterBottomPadding(for: notes, columnWidth: columnWidth))
+        .padding(
+            .bottom,
+            stackedClusterBottomPadding(
+                for: notes,
+                columnWidth: columnWidth,
+                previewPlaceholderNote: previewPlaceholderNote,
+                previewPlaceholderIndex: previewPlaceholderIndex
+            )
+        )
     }
 
     private func clusterCard(note: APINote, index: Int) -> some View {
@@ -3551,23 +3837,29 @@ private struct RelatedNoteCluster: View {
             .opacity(isDragged ? 0.001 : 1)
             .background(
                 GeometryReader { proxy in
+                    let contentFrame = proxy.frame(in: .named("home-content"))
                     Color.clear.preference(
                         key: NoteFramePreferenceKey.self,
-                        value: [note.id: proxy.frame(in: .named("home-content"))]
+                        value: [note.id: contentFrame]
                     )
                     .preference(
                         key: NoteHitFramePreferenceKey.self,
                         value: [note.id: proxy.frame(in: .global)]
                     )
+                    .preference(
+                        key: NoteTapTargetPreferenceKey.self,
+                        value: [
+                            note.id: NoteTapTarget(
+                                center: contentFrame.center,
+                                size: proxy.size,
+                                rotationDegrees: CGFloat(rotations.indices.contains(index) ? rotations[index] : 0)
+                            )
+                        ]
+                    )
                 }
             )
 
         let cardBody = placeholderCard
-            .onTapGesture {
-                if !isInReorderMode {
-                    onSelect(note.id)
-                }
-            }
 
         if !isInReorderMode {
             return AnyView(
@@ -3829,7 +4121,7 @@ private struct HoverCandidate {
 }
 
 private enum HoverIntent: Equatable {
-    case group(layout: ColumnLayout)
+    case group(layout: ColumnLayout, placeholder: GroupPreviewPlaceholder?)
     case reorder(layout: ColumnLayout)
 }
 
@@ -3846,6 +4138,20 @@ private enum ColumnSide: Equatable {
 private struct ColumnLocation: Equatable {
     let side: ColumnSide
     let index: Int
+}
+
+private struct GroupPreviewPlaceholder: Equatable {
+    let side: ColumnSide
+    let index: Int
+    let height: CGFloat
+    let noteID: String
+    let memberIndex: Int?
+}
+
+private struct NoteTapTarget: Equatable {
+    let center: CGPoint
+    let size: CGSize
+    let rotationDegrees: CGFloat
 }
 
 private enum ColumnLayoutItem: Equatable, Identifiable {
@@ -3907,6 +4213,7 @@ private struct PositionedColumnItem: Identifiable, Equatable {
     let indexSeed: Int
     let origin: CGPoint
     let height: CGFloat
+    let previewPlaceholder: GroupPreviewPlaceholder?
 
     var id: String {
         item.id
@@ -3986,6 +4293,14 @@ private struct NoteHitFramePreferenceKey: PreferenceKey {
     static var defaultValue: [String: CGRect] = [:]
 
     static func reduce(value: inout [String: CGRect], nextValue: () -> [String: CGRect]) {
+        value.merge(nextValue(), uniquingKeysWith: { _, new in new })
+    }
+}
+
+private struct NoteTapTargetPreferenceKey: PreferenceKey {
+    static var defaultValue: [String: NoteTapTarget] = [:]
+
+    static func reduce(value: inout [String: NoteTapTarget], nextValue: () -> [String: NoteTapTarget]) {
         value.merge(nextValue(), uniquingKeysWith: { _, new in new })
     }
 }
