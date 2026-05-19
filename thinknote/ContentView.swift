@@ -94,7 +94,7 @@ private let noteCardBodySpacing: CGFloat = 14
 private let noteCardSummaryFontSize: CGFloat = 18
 private let noteCardSummaryLineSpacing: CGFloat = 2
 private let noteCardSummaryMaxLines = 5
-private let noteCardMetaFontSize: CGFloat = 11
+private let noteCardMetaFontSize: CGFloat = 10
 
 private func fallbackHomeColumnWidth() -> CGFloat {
     max((UIScreen.main.bounds.width - 52) * 0.5, 0)
@@ -112,6 +112,10 @@ private func noteCardSummaryUIFont() -> UIFont {
 private func noteCardMetaUIFont() -> UIFont {
     UIFont(name: "GeistMono-Regular", size: noteCardMetaFontSize)
     ?? UIFont.monospacedSystemFont(ofSize: noteCardMetaFontSize, weight: .regular)
+}
+
+private func noteCardMetaLineHeight() -> CGFloat {
+    ceil(noteCardMetaUIFont().lineHeight)
 }
 
 private func measuredHeadlineHeight(for note: APINote, columnWidth: CGFloat = fallbackHomeColumnWidth()) -> CGFloat {
@@ -145,6 +149,13 @@ private func measuredHeadlineHeight(for note: APINote, columnWidth: CGFloat = fa
     return min(max(ceil(boundingRect.height), oneLineHeight), maxHeight)
 }
 
+private func measuredHeadlineLineCount(for note: APINote, columnWidth: CGFloat = fallbackHomeColumnWidth()) -> Int {
+    let lineAdvance = noteCardSummaryUIFont().lineHeight + noteCardSummaryLineSpacing
+    guard lineAdvance > 0 else { return 1 }
+    let estimatedLines = Int(ceil((measuredHeadlineHeight(for: note, columnWidth: columnWidth) + noteCardSummaryLineSpacing) / lineAdvance))
+    return min(max(estimatedLines, 1), noteCardSummaryMaxLines)
+}
+
 private func estimatedHomeNoteCardHeight(for note: APINote, columnWidth: CGFloat = fallbackHomeColumnWidth()) -> CGFloat {
     let summaryHeight = measuredHeadlineHeight(for: note, columnWidth: columnWidth)
     let metaHeight = ceil(noteCardMetaUIFont().lineHeight)
@@ -152,12 +163,13 @@ private func estimatedHomeNoteCardHeight(for note: APINote, columnWidth: CGFloat
 }
 
 private let clusterReadableTopInset: CGFloat = 18
+private let clusterReadableLineAdvance: CGFloat = 24
 private let clusterVisibleBottomGap: CGFloat = 0
 private let clusterAlternatingOffset: CGFloat = 8
 
 private func stackedClusterVisibleStep(for note: APINote, columnWidth: CGFloat = fallbackHomeColumnWidth()) -> CGFloat {
     clusterReadableTopInset
-        + measuredHeadlineHeight(for: note, columnWidth: columnWidth)
+        + CGFloat(measuredHeadlineLineCount(for: note, columnWidth: columnWidth)) * clusterReadableLineAdvance
         + clusterVisibleBottomGap
 }
 
@@ -449,6 +461,8 @@ private struct HomeScreen: View {
     @State private var isReorderMode = false
     @State private var dragTranslation: CGSize = .zero
     @State private var noteFrames: [String: CGRect] = [:]
+    @State private var noteHitFrames: [String: CGRect] = [:]
+    @State private var measuredItemHeights: [String: CGFloat] = [:]
     @State private var hoverCandidate: HoverCandidate?
     @State private var activePreviewIntent: HoverIntent?
     @State private var jiggleProgress: CGFloat = 0
@@ -509,6 +523,7 @@ private struct HomeScreen: View {
                     .padding(.horizontal, 18)
                     .padding(.top, homeTopPadding)
                     .padding(.bottom, homeBottomPadding)
+                    .coordinateSpace(name: "home-content")
                     .overlay(alignment: .topLeading) {
                         draggedNoteOverlay(animationDate: state.isFeedVisible ? Date() : frozenAnimationDate)
                     }
@@ -553,6 +568,13 @@ private struct HomeScreen: View {
                 }
                 .onPreferenceChange(NoteFramePreferenceKey.self) { frames in
                     noteFrames = frames
+                }
+                .onPreferenceChange(NoteHitFramePreferenceKey.self) { frames in
+                    noteHitFrames = frames
+                }
+                .onPreferenceChange(HomeItemHeightPreferenceKey.self) { heights in
+                    guard !isReorderMode else { return }
+                    measuredItemHeights.merge(heights) { _, new in new }
                 }
                 .onPreferenceChange(HomeContentHeightPreferenceKey.self) { height in
                     homeContentHeight = height
@@ -814,6 +836,14 @@ private struct HomeScreen: View {
                     requiresDragHoldBeforeDragging: requiresDragHoldBeforeDragging
                 )
                 .frame(width: columnWidth, alignment: .topLeading)
+                .background(
+                    GeometryReader { proxy in
+                        Color.clear.preference(
+                            key: HomeItemHeightPreferenceKey.self,
+                            value: [placed.item.id: proxy.size.height]
+                        )
+                    }
+                )
                 .offset(x: placed.origin.x, y: placed.origin.y)
             }
 
@@ -971,7 +1001,11 @@ private struct HomeScreen: View {
             GeometryReader { proxy in
                 Color.clear.preference(
                     key: NoteFramePreferenceKey.self,
-                    value: ["seed": proxy.frame(in: .named("home-scroll"))]
+                    value: ["seed": proxy.frame(in: .named("home-content"))]
+                )
+                .preference(
+                    key: NoteHitFramePreferenceKey.self,
+                    value: ["seed": proxy.frame(in: .global)]
                 )
             }
         )
@@ -1020,14 +1054,22 @@ private struct HomeScreen: View {
     }
 
     private func noteID(at point: CGPoint) -> String? {
-        noteFrames
+        noteHitFrames
             .filter { id, frame in
-                id != "seed" && frame.contains(point)
+                id != "seed" && roundedRectContains(point: point, in: frame)
             }
             .max { lhs, rhs in
                 layerPriority(for: lhs.key) < layerPriority(for: rhs.key)
             }?
             .key
+    }
+
+    private func roundedRectContains(point: CGPoint, in rect: CGRect, cornerRadius: CGFloat = 30) -> Bool {
+        guard !rect.isNull, !rect.isEmpty else { return false }
+        return UIBezierPath(
+            roundedRect: rect,
+            cornerRadius: min(cornerRadius, min(rect.width, rect.height) * 0.5)
+        ).contains(point)
     }
 
     private func layerPriority(for noteID: String) -> Double {
@@ -1073,22 +1115,23 @@ private struct HomeScreen: View {
                 GeometryReader { proxy in
                     Color.clear.preference(
                         key: NoteFramePreferenceKey.self,
-                        value: [note.id: proxy.frame(in: .named("home-scroll"))]
+                        value: [note.id: proxy.frame(in: .named("home-content"))]
+                    )
+                    .preference(
+                        key: NoteHitFramePreferenceKey.self,
+                        value: [note.id: proxy.frame(in: .global)]
                     )
                 }
             )
 
-        let card = ZStack(alignment: .topLeading) {
-            placeholderCard
-        }
-        .contentShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
-        .zIndex(layerPriority(for: note.id))
-        .onTapGesture {
-            debugNoteLog("tap note", note.id, "expanded:", state.expandedNoteID == note.id)
-            if !isReorderMode {
-                handleTap(on: note.id)
+        let card = placeholderCard
+            .zIndex(layerPriority(for: note.id))
+            .onTapGesture {
+                debugNoteLog("tap note", note.id, "expanded:", state.expandedNoteID == note.id)
+                if !isReorderMode {
+                    handleTap(on: note.id)
+                }
             }
-        }
 
         if !isReorderMode {
             card.highPriorityGesture(enterReorderGesture(noteID: note.id))
@@ -1214,6 +1257,9 @@ private struct HomeScreen: View {
     }
 
     private func estimatedHeight(for item: ColumnLayoutItem, notesByID: [String: APINote], columnWidth: CGFloat = fallbackHomeColumnWidth()) -> CGFloat {
+        if let measured = measuredItemHeights[item.id], measured > 0 {
+            return measured
+        }
         let notes = item.noteIDs.compactMap { notesByID[$0] }
         if notes.count <= 1, let note = notes.first {
             return estimatedHomeNoteCardHeight(for: note, columnWidth: columnWidth)
@@ -2273,10 +2319,16 @@ private struct NoteFullPageScreen: View {
 
     private var metaStrip: some View {
         HStack(spacing: 16) {
-            Text(noteTimestamp)
-                .font(AppFont.meta(11))
-                .tracking(1.6)
-                .foregroundStyle(.black.opacity(0.5))
+            Color.clear
+                .frame(width: 0, height: noteCardMetaLineHeight())
+                .overlay(alignment: .leading) {
+                    Text(noteTimestamp)
+                        .font(AppFont.meta(10))
+                        .tracking(1.6)
+                        .foregroundStyle(.black.opacity(0.5))
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
+                }
         }
         .opacity(showPrimaryContent ? 1 : 0)
     }
@@ -2863,10 +2915,16 @@ private struct NoteCard: View {
             summaryText
 
             HStack(alignment: .center, spacing: 12) {
-                Text(noteTimestamp)
-                    .font(AppFont.meta(11))
-                    .tracking(1.2)
-                    .foregroundStyle(.black.opacity(0.5))
+                Color.clear
+                    .frame(width: 0, height: noteCardMetaLineHeight())
+                    .overlay(alignment: .leading) {
+                        Text(noteTimestamp)
+                            .font(AppFont.meta(10))
+                            .tracking(1.2)
+                            .foregroundStyle(.black.opacity(0.5))
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
+                    }
 
                 Spacer()
 
@@ -2876,6 +2934,9 @@ private struct NoteCard: View {
                         .tracking(1.2)
                         .textCase(.uppercase)
                         .foregroundStyle(hasAIResponse ? noteAccentColor : .black.opacity(0.62))
+                        .lineLimit(1)
+                        .allowsTightening(true)
+                        .minimumScaleFactor(0.82)
                 }
             }
         }
@@ -3492,20 +3553,21 @@ private struct RelatedNoteCluster: View {
                 GeometryReader { proxy in
                     Color.clear.preference(
                         key: NoteFramePreferenceKey.self,
-                        value: [note.id: proxy.frame(in: .named("home-scroll"))]
+                        value: [note.id: proxy.frame(in: .named("home-content"))]
+                    )
+                    .preference(
+                        key: NoteHitFramePreferenceKey.self,
+                        value: [note.id: proxy.frame(in: .global)]
                     )
                 }
             )
 
-        let cardBody = ZStack(alignment: .topLeading) {
-            placeholderCard
-        }
-        .contentShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
-        .onTapGesture {
-            if !isInReorderMode {
-                onSelect(note.id)
+        let cardBody = placeholderCard
+            .onTapGesture {
+                if !isInReorderMode {
+                    onSelect(note.id)
+                }
             }
-        }
 
         if !isInReorderMode {
             return AnyView(
@@ -3716,19 +3778,18 @@ private struct GlobalDragCaptureView: UIViewRepresentable {
         @objc
         func handleLongPress(_ recognizer: UILongPressGestureRecognizer) {
             guard let view = recognizer.view else { return }
-            let localPoint = recognizer.location(in: view)
             let coordinateView = view.window ?? view.superview ?? view
             let point = recognizer.location(in: coordinateView)
 
             switch recognizer.state {
             case .began:
                 startPoint = point
-                parent.onBegan(localPoint)
-                parent.onChanged(localPoint, .zero)
+                parent.onBegan(point)
+                parent.onChanged(point, .zero)
             case .changed:
                 guard let startPoint else { return }
                 parent.onChanged(
-                    localPoint,
+                    point,
                     CGSize(
                         width: point.x - startPoint.x,
                         height: point.y - startPoint.y
@@ -3740,7 +3801,7 @@ private struct GlobalDragCaptureView: UIViewRepresentable {
                     return
                 }
                 parent.onEnded(
-                    localPoint,
+                    point,
                     CGSize(
                         width: point.x - startPoint.x,
                         height: point.y - startPoint.y
@@ -3917,6 +3978,22 @@ private struct NoteFramePreferenceKey: PreferenceKey {
     static var defaultValue: [String: CGRect] = [:]
 
     static func reduce(value: inout [String: CGRect], nextValue: () -> [String: CGRect]) {
+        value.merge(nextValue(), uniquingKeysWith: { _, new in new })
+    }
+}
+
+private struct NoteHitFramePreferenceKey: PreferenceKey {
+    static var defaultValue: [String: CGRect] = [:]
+
+    static func reduce(value: inout [String: CGRect], nextValue: () -> [String: CGRect]) {
+        value.merge(nextValue(), uniquingKeysWith: { _, new in new })
+    }
+}
+
+private struct HomeItemHeightPreferenceKey: PreferenceKey {
+    static var defaultValue: [String: CGFloat] = [:]
+
+    static func reduce(value: inout [String: CGFloat], nextValue: () -> [String: CGFloat]) {
         value.merge(nextValue(), uniquingKeysWith: { _, new in new })
     }
 }
