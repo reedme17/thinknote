@@ -286,9 +286,9 @@ final class ContentViewModel: ObservableObject {
     private var hasBootstrapped = false
     private var isProcessingDeferredGrowth = false
 
-    init(notes: [APINote] = [], repository: ThinknoteRepository = .shared) {
+    init(notes: [APINote] = [], repository: ThinknoteRepository? = nil) {
         self.notes = notes
-        self.repository = repository
+        self.repository = repository ?? .shared
     }
 
     var currentNote: APINote? {
@@ -437,7 +437,7 @@ final class ContentViewModel: ObservableObject {
             activeError = nil
         } catch {
             presentError(
-                title: "Couldn’t save note",
+                title: "Couldn’t save thought",
                 message: "Your draft stayed local, but it couldn’t be saved right now."
             )
         }
@@ -496,8 +496,8 @@ final class ContentViewModel: ObservableObject {
             activeError = nil
         } catch {
             presentError(
-                title: "Couldn’t refresh note",
-                message: "Thinknote couldn’t load the latest version of this note."
+                title: "Couldn’t refresh thought",
+                message: "MOSSLOG couldn’t load the latest version of this thought."
             )
         }
     }
@@ -545,6 +545,27 @@ final class ContentViewModel: ObservableObject {
                 title: "Couldn’t reorder thoughts",
                 message: "The new order wasn’t saved. Try again."
             )
+        }
+    }
+
+    @discardableResult
+    func deleteNote(noteID: String) async -> Bool {
+        do {
+            notes = try await repository.deleteNote(noteID: noteID)
+            reorderSourceID = nil
+            if selectedNoteID == noteID {
+                selectedNoteID = nil
+                showTimeline = false
+                screen = .home
+            }
+            activeError = nil
+            return true
+        } catch {
+            presentError(
+                title: "Couldn’t trash thought",
+                message: "That thought is still here. Try again."
+            )
+            return false
         }
     }
 
@@ -601,7 +622,7 @@ final class ContentViewModel: ObservableObject {
         } catch {
             presentError(
                 title: "Background growth paused",
-                message: friendlyMessage(for: error, fallback: "Thinknote couldn’t reach its AI service in the background."),
+                message: friendlyMessage(for: error, fallback: "MOSSLOG couldn’t reach its AI service in the background."),
                 actionTitle: "retry",
                 action: .retryDeferredGrowth
             )
@@ -611,14 +632,14 @@ final class ContentViewModel: ObservableObject {
     private func presentStorageError() {
         presentError(
             title: "Storage unavailable",
-            message: "Thinknote couldn’t open its local store right now."
+            message: "MOSSLOG couldn’t open its local store right now."
         )
     }
 
     private func presentResponseError(for noteID: String, error: Error) {
         presentError(
             title: friendlyTitle(for: error),
-            message: friendlyMessage(for: error, fallback: "Thinknote couldn’t get a response right now."),
+            message: friendlyMessage(for: error, fallback: "MOSSLOG couldn’t get a response right now."),
             actionTitle: "retry",
             action: .retryEnrichment(noteID: noteID)
         )
@@ -884,10 +905,7 @@ struct ThinknoteAPIClient {
     private let encoder: JSONEncoder
     private let baseURL: URL
 
-    static let runtimeConfiguration = ThinknoteRuntimeConfiguration.current
-    static let defaultBaseURL = runtimeConfiguration.baseURL
-
-    init(baseURL: URL = ThinknoteAPIClient.defaultBaseURL) {
+    init(baseURL: URL? = nil) {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         self.decoder = decoder
@@ -895,7 +913,7 @@ struct ThinknoteAPIClient {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         self.encoder = encoder
-        self.baseURL = baseURL
+        self.baseURL = baseURL ?? ThinknoteRuntimeConfiguration.current.baseURL
     }
 
     func fetchNotes() async throws -> [APINote] {

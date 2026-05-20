@@ -11,18 +11,21 @@ import UIKit
 
 private let noteTransitionAnimation = Animation.timingCurve(0.2, 0.9, 0.1, 1.0, duration: 0.55)
 private let noteMorphDuration: Double = 0.55
+private let trashLabelText = "TRASH CAN"
 private let detailDismissTopThreshold: CGFloat = 0.5
 private let detailDismissCornerRadiusStart: CGFloat = 42
 private let detailDismissCornerRadiusTravel: CGFloat = 96
 private let detailPrimaryScrollAnchorID = "thought-label"
 private let reorderScrollableDragHoldDuration: Double = 0.2
-private let reorderHoverDwellDuration: TimeInterval = 0.7
+private let reorderHoverDwellDuration: TimeInterval = 0.59
 private let reorderHoverJitterTolerance: CGFloat = 14
 private let reorderGapActivationDistance: CGFloat = 42
 private let reorderMinimumTravelDistance: CGFloat = 12
 private let ungroupMinimumTravelDistance: CGFloat = 1
 private let groupingOverlapThreshold: CGFloat = 0.6
 private let ungroupingOverlapThreshold: CGFloat = 0.5
+private let reorderExitSwipeMinimumDistance: CGFloat = 22
+private let reorderExitSwipeMaximumHorizontalDrift: CGFloat = 88
 private let noteAccentColor = Color(red: 0.53, green: 0.66, blue: 0.61)
 private let noteBorderColor = Color(red: 0.88, green: 0.88, blue: 0.86)
 private let noteShadowColor = Color.black.opacity(0.08)
@@ -98,7 +101,14 @@ private let noteCardSummaryMaxLines = 5
 private let noteCardMetaFontSize: CGFloat = 10
 
 private func fallbackHomeColumnWidth() -> CGFloat {
-    max((UIScreen.main.bounds.width - 52) * 0.5, 0)
+    max((currentUIScreenBounds().width - 52) * 0.5, 0)
+}
+
+private func currentUIScreenBounds() -> CGRect {
+    UIApplication.shared.connectedScenes
+        .compactMap { $0 as? UIWindowScene }
+        .map(\.screen.bounds)
+        .first ?? CGRect(x: 0, y: 0, width: 390, height: 844)
 }
 
 private func noteCardContentWidth(for columnWidth: CGFloat) -> CGFloat {
@@ -318,17 +328,26 @@ private struct GlassCapsuleButtonChrome: ViewModifier {
             .background {
                 ZStack {
                     Capsule()
-                        .fill(noteSurfaceColor.opacity(0.82))
+                        .fill(Color.white.opacity(0.78))
 
                     Capsule()
-                        .fill(.ultraThinMaterial)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.74),
+                                    noteSurfaceColor.opacity(0.94)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
                 }
             }
             .overlay {
                 Capsule()
-                    .stroke(Color.white.opacity(0.62), lineWidth: 1)
+                    .stroke(Color.white.opacity(0.88), lineWidth: 1)
             }
-            .shadow(color: .black.opacity(0.035), radius: 8, x: 0, y: 5)
+            .shadow(color: .black.opacity(0.028), radius: 8, x: 0, y: 5)
     }
 }
 
@@ -338,17 +357,26 @@ private struct GlassCircleButtonChrome: ViewModifier {
             .background {
                 ZStack {
                     Circle()
-                        .fill(noteSurfaceColor.opacity(0.82))
+                        .fill(Color.white.opacity(0.78))
 
                     Circle()
-                        .fill(.ultraThinMaterial)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.74),
+                                    noteSurfaceColor.opacity(0.94)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
                 }
             }
             .overlay {
                 Circle()
-                    .stroke(Color.white.opacity(0.58), lineWidth: 1)
+                    .stroke(Color.white.opacity(0.84), lineWidth: 1)
             }
-            .shadow(color: .black.opacity(0.04), radius: 10, x: 0, y: 6)
+            .shadow(color: .black.opacity(0.03), radius: 10, x: 0, y: 6)
     }
 }
 
@@ -409,6 +437,9 @@ struct ContentView: View {
                 },
                 onPersistManualOrder: { noteIDs in
                     await viewModel.persistManualOrder(noteIDs)
+                },
+                onDeleteNote: { noteID in
+                    await viewModel.deleteNote(noteID: noteID)
                 },
                 onShowAssistant: {
                     isAssistantPresented = true
@@ -547,12 +578,15 @@ private struct HomeScreen: View {
     let onOpenNote: (String) -> Void
     let onOpenNewNote: () -> Void
     let onPersistManualOrder: ([String]) async -> Void
+    let onDeleteNote: (String) async -> Bool
     let onShowAssistant: () -> Void
     @State private var orderedNoteIDs: [String] = []
     @State private var affinityGroups: [AffinityGroup] = []
     @State private var activeDragNoteID: String?
     @State private var isReorderMode = false
     @State private var dragTranslation: CGSize = .zero
+    @State private var dragScaleAnchor: UnitPoint = .center
+    @State private var dragTouchPointGlobal: CGPoint?
     @State private var noteFrames: [String: CGRect] = [:]
     @State private var noteHitFrames: [String: CGRect] = [:]
     @State private var noteTapTargets: [String: NoteTapTarget] = [:]
@@ -577,6 +611,18 @@ private struct HomeScreen: View {
     @State private var pendingOutlineRevealTask: Task<Void, Never>?
     @State private var pendingContentRevealTask: Task<Void, Never>?
     @State private var pendingSeedRevealTask: Task<Void, Never>?
+    @State private var pendingExpandedCardZResetTask: Task<Void, Never>?
+    @State private var elevatedTransitionNoteID: String?
+    @State private var homeHeaderFrame: CGRect = .null
+    @State private var trashTargetFrame: CGRect = .null
+    @State private var frozenTrashTargetTopInset: CGFloat?
+    @State private var deletePreviewProgress: CGFloat = 0
+    @State private var isDeleteCommitReady = false
+    @State private var deletingNoteID: String?
+    @State private var deletingNoteSnapshot: APINote?
+    @State private var pendingDeleteNoteID: String?
+    @State private var isDeleteConfirmationPresented = false
+    @State private var isDeleteConfirmationBusy = false
 
     var body: some View {
         GeometryReader { geometry in
@@ -584,9 +630,11 @@ private struct HomeScreen: View {
             let homeBottomPadding: CGFloat = isReorderMode ? 170 : 120
             let requiresDragHoldBeforeDragging = true
             let isScrollLockedForActiveDrag = isReorderMode && activeDragNoteID != nil
+            let homeModalBlurRadius: CGFloat = isDeleteConfirmationPresented ? 12 : 0
 
             ZStack(alignment: .bottomTrailing) {
                 HomeBackgroundView()
+                    .blur(radius: homeModalBlurRadius)
 
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 0) {
@@ -637,19 +685,23 @@ private struct HomeScreen: View {
                                 minimumHoldDuration: reorderScrollableDragHoldDuration,
                                 onBegan: { point in
                                     guard let noteID = noteID(at: point) else { return }
-                                    beginDragging(noteID)
+                                    beginDragging(noteID, touchPoint: point)
+                                    dragTouchPointGlobal = point
                                     dragTranslation = .zero
                                 },
-                                onChanged: { _, translation in
+                                onChanged: { point, translation in
                                     guard let noteID = activeDragNoteID else { return }
+                                    dragTouchPointGlobal = point
                                     dragTranslation = translation
                                     updateHoverIntent(for: noteID, translation: translation)
                                 },
-                                onEnded: { _, translation in
+                                onEnded: { point, translation in
                                     guard let noteID = activeDragNoteID else { return }
+                                    dragTouchPointGlobal = point
                                     endDragging(noteID: noteID, translation: translation)
                                 },
                                 onCancelled: {
+                                    dragTouchPointGlobal = nil
                                     guard let noteID = activeDragNoteID else { return }
                                     endDragging(noteID: noteID, translation: dragTranslation)
                                 }
@@ -663,12 +715,24 @@ private struct HomeScreen: View {
                 .onAppear {
                     synchronizeOrderingIfNeeded()
                 }
-                .onChange(of: state.notes.map(\.id)) { _, _ in
+                .onChange(of: state.notes.map(\.id)) { _, noteIDs in
+                    let visibleIDs = Set(noteIDs)
+                    if let deletingNoteID, !visibleIDs.contains(deletingNoteID) {
+                        withAnimation(deleteCompactionSpring) {
+                            deletingNoteSnapshot = nil
+                            synchronizeOrderingIfNeeded()
+                            suppressedNoteOutlineIDs = suppressedNoteOutlineIDs.intersection(visibleIDs)
+                            suppressedNoteContentIDs = suppressedNoteContentIDs.intersection(visibleIDs)
+                        }
+                        self.deletingNoteID = nil
+                        return
+                    }
+
                     synchronizeOrderingIfNeeded()
-                    let visibleIDs = Set(state.notes.map(\.id))
                     suppressedNoteOutlineIDs = suppressedNoteOutlineIDs.intersection(visibleIDs)
                     suppressedNoteContentIDs = suppressedNoteContentIDs.intersection(visibleIDs)
                 }
+                .blur(radius: homeModalBlurRadius)
                 .onPreferenceChange(NoteFramePreferenceKey.self) { frames in
                     noteFrames = frames
                 }
@@ -677,6 +741,13 @@ private struct HomeScreen: View {
                 }
                 .onPreferenceChange(NoteTapTargetPreferenceKey.self) { targets in
                     noteTapTargets = targets
+                }
+                .onPreferenceChange(HomeHeaderFramePreferenceKey.self) { frame in
+                    guard !frame.isNull else { return }
+                    homeHeaderFrame = frame
+                    if !isReorderMode {
+                        frozenTrashTargetTopInset = frame.minY
+                    }
                 }
                 .onPreferenceChange(HomeItemHeightPreferenceKey.self) { heights in
                     guard !isReorderMode else { return }
@@ -690,20 +761,24 @@ private struct HomeScreen: View {
                     pendingOutlineRevealTask = nil
                     pendingContentRevealTask?.cancel()
                     pendingContentRevealTask = nil
+                    pendingExpandedCardZResetTask?.cancel()
+                    pendingExpandedCardZResetTask = nil
 
                     if let expandedID = newValue {
+                        elevatedTransitionNoteID = expandedID
                         suppressedNoteOutlineIDs.insert(expandedID)
                         suppressedNoteContentIDs.insert(expandedID)
                         return
                     }
 
                     guard let closingID = oldValue else { return }
+                    elevatedTransitionNoteID = closingID
 
                     pendingOutlineRevealTask = Task {
                         try? await Task.sleep(nanoseconds: UInt64((noteMorphDuration + 0.08) * 1_000_000_000))
                         guard !Task.isCancelled else { return }
                         await MainActor.run {
-                            withAnimation(.easeOut(duration: 0.18)) {
+                            _ = withAnimation(.easeOut(duration: 0.18)) {
                                 suppressedNoteOutlineIDs.remove(closingID)
                             }
                             pendingOutlineRevealTask = nil
@@ -714,10 +789,19 @@ private struct HomeScreen: View {
                         try? await Task.sleep(nanoseconds: UInt64((noteMorphDuration + 0.18) * 1_000_000_000))
                         guard !Task.isCancelled else { return }
                         await MainActor.run {
-                            withAnimation(.easeOut(duration: 0.22)) {
+                            _ = withAnimation(.easeOut(duration: 0.22)) {
                                 suppressedNoteContentIDs.remove(closingID)
                             }
                             pendingContentRevealTask = nil
+                        }
+                    }
+
+                    pendingExpandedCardZResetTask = Task {
+                        try? await Task.sleep(nanoseconds: UInt64((noteMorphDuration + 0.22) * 1_000_000_000))
+                        guard !Task.isCancelled else { return }
+                        await MainActor.run {
+                            elevatedTransitionNoteID = nil
+                            pendingExpandedCardZResetTask = nil
                         }
                     }
                 }
@@ -748,6 +832,12 @@ private struct HomeScreen: View {
                         frozenAnimationDate = Date()
                     }
                 }
+                .onChange(of: isReorderMode) { _, isActive in
+                    if !isActive {
+                        frozenTrashTargetTopInset = nil
+                        trashTargetFrame = .null
+                    }
+                }
                 .onTapGesture {
                     if isReorderMode {
                         cancelDragging()
@@ -765,27 +855,65 @@ private struct HomeScreen: View {
                 }
                 .padding(.trailing, 22)
                 .padding(.bottom, isReorderMode ? 148 : 26)
+                .blur(radius: homeModalBlurRadius)
 
-                if isReorderMode {
-                    reorderInstruction(bottomInset: geometry.safeAreaInsets.bottom)
+                if isDeleteConfirmationPresented {
+                    Color.white.opacity(0.025)
+                        .ignoresSafeArea()
+                        .allowsHitTesting(false)
+                        .transition(.opacity)
                 }
 
-                if isReorderMode {
-                    TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
-                        Text("DEBUG: \(debugJudgmentLabel(at: timeline.date))")
-                            .font(AppFont.meta(12))
-                            .foregroundStyle(.red)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 4)
-                            .background(Color.white.opacity(0.85))
-                            .clipShape(RoundedRectangle(cornerRadius: 6))
-                            .frame(maxWidth: .infinity, alignment: .center)
-                            .padding(.bottom, max(geometry.safeAreaInsets.bottom, 10) + 60)
-                            .frame(maxHeight: .infinity, alignment: .bottom)
-                            .allowsHitTesting(false)
+                if isDeleteConfirmationPresented {
+                    deleteConfirmationOverlay(
+                        containerSize: geometry.size,
+                        safeAreaInsets: geometry.safeAreaInsets
+                    )
+                    .transition(.opacity)
+                }
+
+                if isReorderMode && !isDeleteConfirmationPresented {
+                    reorderExitSwipeCapture(bottomInset: geometry.safeAreaInsets.bottom)
+                }
+
+//                if isReorderMode {
+//                    reorderInstruction(bottomInset: geometry.safeAreaInsets.bottom)
+//                }
+//
+//                if isReorderMode {
+//                    TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
+//                        Text("DEBUG: \(debugJudgmentLabel(at: timeline.date))")
+//                            .font(AppFont.meta(12))
+//                            .foregroundStyle(.red)
+//                            .padding(.horizontal, 10)
+//                            .padding(.vertical, 4)
+//                            .background(Color.white.opacity(0.85))
+//                            .clipShape(RoundedRectangle(cornerRadius: 6))
+//                            .frame(maxWidth: .infinity, alignment: .center)
+//                            .padding(.bottom, max(geometry.safeAreaInsets.bottom, 10) + 60)
+//                            .frame(maxHeight: .infinity, alignment: .bottom)
+//                            .allowsHitTesting(false)
+//                    }
+//                }
+
+            }
+            .overlay(alignment: .topLeading) {
+                if isReorderMode || trashVisibilityProgress > 0.001 {
+                    ZStack(alignment: .topTrailing) {
+                        Color.clear
+                        trashTargetLabel
+                            .padding(.top, homeTopPadding)
+                            .padding(.trailing, 18)
                     }
+                    .frame(width: geometry.size.width, height: geometry.size.height)
+                    .opacity(trashVisibilityProgress)
+                    .blur(radius: homeModalBlurRadius)
+                    .allowsHitTesting(false)
                 }
-
+            }
+            .coordinateSpace(name: "home-root")
+            .onPreferenceChange(TrashTargetFramePreferenceKey.self) { frame in
+                trashTargetFrame = frame
             }
         }
     }
@@ -820,6 +948,8 @@ private struct HomeScreen: View {
                 return "ungroup and reorder"
             }
             return "reorder"
+        case .delete:
+            return "delete"
         }
     }
 
@@ -859,6 +989,10 @@ private struct HomeScreen: View {
         .spring(response: 0.38, dampingFraction: 0.82)
     }
 
+    private var deleteCompactionSpring: Animation {
+        .spring(response: 0.49, dampingFraction: 0.86)
+    }
+
     private var dropSettleSpring: Animation {
         .spring(response: 0.32, dampingFraction: 0.72)
     }
@@ -880,15 +1014,14 @@ private struct HomeScreen: View {
 
     private var homeHeader: some View {
         HStack(alignment: .center, spacing: 12) {
-            Text("moss garden")
+            Text("MOSSLOG")
                 .font(AppFont.meta(11))
                 .tracking(1.8)
-                .textCase(.uppercase)
                 .foregroundStyle(.black.opacity(0.5))
 
             Spacer(minLength: 0)
 
-            if !state.isPresentingNewNote {
+            if !state.isPresentingNewNote && !isReorderMode {
                 HStack(spacing: 6) {
                     Circle()
                         .fill(noteAccentColor)
@@ -907,6 +1040,98 @@ private struct HomeScreen: View {
             guard isReorderMode else { return }
             pollHoverCandidateActivation()
         }
+        .background(
+            GeometryReader { proxy in
+                Color.clear.preference(
+                    key: HomeHeaderFramePreferenceKey.self,
+                    value: proxy.frame(in: .named("home-root"))
+                )
+            }
+        )
+    }
+
+    private var trashTargetLabel: some View {
+        ZStack(alignment: .trailing) {
+            Text(idleTrashLabelText)
+                .opacity(0)
+
+            Text(isDeletePreviewActive ? trashMaskText : idleTrashLabelText)
+                .foregroundStyle(Color(red: 0.74, green: 0.17, blue: 0.14))
+        }
+        .font(AppFont.meta(11))
+        .tracking(1.8)
+        .textCase(.uppercase)
+        .background(
+            GeometryReader { proxy in
+                Color.clear.preference(
+                    key: TrashTargetFramePreferenceKey.self,
+                    value: proxy.frame(in: .global)
+                )
+            }
+        )
+    }
+
+    private func pinnedTrashTarget(fallbackTopInset: CGFloat) -> some View {
+        trashTargetLabel
+            .padding(.top, fallbackTopInset)
+            .padding(.trailing, 18)
+            .allowsHitTesting(false)
+    }
+
+    private var idleTrashLabelText: String {
+        "[\(trashLabelText)]"
+    }
+
+    private var trashVisibilityProgress: Double {
+        Double(min(max(jiggleProgress, 0), 1))
+    }
+
+    private func reorderExitSwipeCapture(bottomInset: CGFloat) -> some View {
+        Color.clear
+            .contentShape(Rectangle())
+            .frame(height: max(bottomInset, 10) + 86)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+            .gesture(
+                DragGesture(minimumDistance: 6)
+                    .onEnded { value in
+                        guard isReorderMode else { return }
+                        guard activeDragNoteID == nil else { return }
+                        guard value.translation.height <= -reorderExitSwipeMinimumDistance else { return }
+                        guard abs(value.translation.width) <= reorderExitSwipeMaximumHorizontalDrift else { return }
+                        triggerReorderExitHaptic()
+                        cancelDragging()
+                    }
+            )
+            .zIndex(24_000)
+    }
+
+    private var trashMaskText: String {
+        "[" + String(repeating: " ", count: trashLabelText.count) + "]"
+    }
+
+    private var isDeletePreviewActive: Bool {
+        if case .delete? = activePreviewIntent {
+            return true
+        }
+        return false
+    }
+
+    private var deletePreviewScale: CGFloat {
+        1 - (deletePreviewProgress * 0.5)
+    }
+
+    private var shouldCommitDeleteOnRelease: Bool {
+        deletePreviewScale <= 0.51
+    }
+
+    private func noteVisibilityOpacity(noteID: String, isDragged: Bool, baseOpacity: Double = 1) -> Double {
+        if isDragged {
+            return 0.001
+        }
+        if deletingNoteID == noteID {
+            return 0.001
+        }
+        return baseOpacity
     }
 
     private func homeLayout(containerWidth: CGFloat, animationDate: Date, requiresDragHoldBeforeDragging: Bool) -> some View {
@@ -957,27 +1182,25 @@ private struct HomeScreen: View {
                 .offset(x: placed.origin.x, y: placed.origin.y)
             }
 
-            if !isReorderMode {
-                seedCard()
-                    .frame(width: columnWidth, alignment: .topLeading)
-                    .offset(
-                        x: seedOrigin(
-                            placeInLeftColumn: seedInLeftColumn,
-                            leftHeight: leftHeight,
-                            rightHeight: rightHeight,
-                            columnWidth: columnWidth,
-                            columnSpacing: spacing
-                        ).x,
-                        y: seedOrigin(
-                            placeInLeftColumn: seedInLeftColumn,
-                            leftHeight: leftHeight,
-                            rightHeight: rightHeight,
-                            columnWidth: columnWidth,
-                            columnSpacing: spacing
-                        ).y
-                    )
-                    .zIndex(0)
-            }
+            seedCard()
+                .frame(width: columnWidth, alignment: .topLeading)
+                .offset(
+                    x: seedOrigin(
+                        placeInLeftColumn: seedInLeftColumn,
+                        leftHeight: leftHeight,
+                        rightHeight: rightHeight,
+                        columnWidth: columnWidth,
+                        columnSpacing: spacing
+                    ).x,
+                    y: seedOrigin(
+                        placeInLeftColumn: seedInLeftColumn,
+                        leftHeight: leftHeight,
+                        rightHeight: rightHeight,
+                        columnWidth: columnWidth,
+                        columnSpacing: spacing
+                    ).y
+                )
+                .zIndex(1_000)
         }
         .frame(width: containerWidth, height: contentHeight, alignment: .topLeading)
     }
@@ -1048,9 +1271,12 @@ private struct HomeScreen: View {
         return CGPoint(x: columnWidth + columnSpacing, y: rightHeight + (rightHeight > 0 ? 16 : 0))
     }
 
-    private func rotation(for index: Int) -> Double {
-        let values: [Double] = [-1.1, 0.7, -0.6, 0.9, -0.75, 1.0]
-        return values[index % values.count]
+    private func rotation(for noteID: String) -> Double {
+        let scalarSum = noteID.unicodeScalars.reduce(0) { partialResult, scalar in
+            partialResult &* 31 &+ Int(scalar.value)
+        }
+        let normalized = Double(abs(scalarSum % 1000)) / 999.0
+        return -1.1 + (normalized * 2.2)
     }
 
     private func handleTap(on noteID: String) {
@@ -1061,7 +1287,12 @@ private struct HomeScreen: View {
     }
 
     private var displayNotes: [APINote] {
-        state.notes
+        guard let deletingNoteSnapshot,
+              !state.notes.contains(where: { $0.id == deletingNoteSnapshot.id }) else {
+            return state.notes
+        }
+
+        return state.notes + [deletingNoteSnapshot]
     }
 
     private var growingSeedCount: Int {
@@ -1075,13 +1306,13 @@ private struct HomeScreen: View {
         if notes.count == 1,
            let note = notes.first,
            previewPlaceholder?.memberIndex == nil {
-            noteCard(note, index: indexSeed, animationDate: animationDate, requiresDragHoldBeforeDragging: requiresDragHoldBeforeDragging)
+            noteCard(note, animationDate: animationDate, requiresDragHoldBeforeDragging: requiresDragHoldBeforeDragging)
         } else {
             if !notes.isEmpty {
             RelatedNoteCluster(
                 notes: notes,
                 columnWidth: columnWidth,
-                rotations: notes.indices.map { rotation(for: indexSeed + $0) },
+                rotations: notes.map { rotation(for: $0.id) },
                 activeDragNoteID: activeDragNoteID,
                 isDroppingDraggedNote: isDroppingDraggedNote,
                 isInReorderMode: isReorderMode,
@@ -1093,6 +1324,7 @@ private struct HomeScreen: View {
                 expandedNoteID: state.expandedNoteID,
                 suppressedNoteOutlineIDs: suppressedNoteOutlineIDs,
                 suppressedNoteContentIDs: suppressedNoteContentIDs,
+                deletingNoteID: deletingNoteID,
                 previewPlaceholderNote: previewPlaceholder.flatMap { $0.memberIndex != nil ? notesByID[$0.noteID] : nil },
                 previewPlaceholderIndex: previewPlaceholder?.memberIndex,
                 animationDate: animationDate
@@ -1149,7 +1381,7 @@ private struct HomeScreen: View {
 
             NoteCard(
                 note: note,
-                rotation: rotation(for: orderedNoteIDs.firstIndex(of: note.id) ?? 0),
+                rotation: rotation(for: note.id),
                 isReordering: true,
                 isInReorderMode: isReorderMode,
                 phaseSeed: phaseSeed(for: note.id),
@@ -1164,10 +1396,11 @@ private struct HomeScreen: View {
             )
             .overlay {
                 if isAddMorphTarget {
-                    MorphingAddedNoteTarget(note: note, rotation: rotation(for: orderedNoteIDs.firstIndex(of: note.id) ?? 0), transitionNamespace: newThoughtNamespace)
+                    MorphingAddedNoteTarget(note: note, rotation: rotation(for: note.id), transitionNamespace: newThoughtNamespace)
                 }
             }
             .frame(width: startFrame.width)
+            .scaleEffect(deletePreviewScale, anchor: dragScaleAnchor)
             .offset(
                 x: startFrame.minX + dragTranslation.width,
                 y: startFrame.minY + dragTranslation.height
@@ -1175,7 +1408,7 @@ private struct HomeScreen: View {
             .allowsHitTesting(false)
             .zIndex(20_000)
             .transaction { t in
-                if !isDroppingDraggedNote {
+                if !isDroppingDraggedNote && !isDeletePreviewActive {
                     t.animation = nil
                 }
             }
@@ -1230,6 +1463,9 @@ private struct HomeScreen: View {
     }
 
     private func layerPriority(for noteID: String) -> Double {
+        if elevatedTransitionNoteID == noteID {
+            return 15_000
+        }
         if isVisuallyDragging(noteID) {
             return 10_000
         }
@@ -1239,14 +1475,14 @@ private struct HomeScreen: View {
     }
 
     @ViewBuilder
-    private func noteCard(_ note: APINote, index: Int, animationDate: Date, requiresDragHoldBeforeDragging: Bool) -> some View {
+    private func noteCard(_ note: APINote, animationDate: Date, requiresDragHoldBeforeDragging: Bool) -> some View {
         let isAddMorphTarget = state.addMorphTargetNoteID == note.id
         let isDragged = activeDragNoteID == note.id
         let baseOpacity = isAddMorphTarget ? 0.001 : 1.0
 
         let placeholderFace = NoteCard(
             note: note,
-            rotation: rotation(for: index),
+            rotation: rotation(for: note.id),
             isReordering: isVisuallyDragging(note.id),
             isInReorderMode: isReorderMode,
             phaseSeed: phaseSeed(for: note.id),
@@ -1261,12 +1497,13 @@ private struct HomeScreen: View {
         )
         .overlay {
             if isAddMorphTarget {
-                MorphingAddedNoteTarget(note: note, rotation: rotation(for: index), transitionNamespace: newThoughtNamespace)
+                MorphingAddedNoteTarget(note: note, rotation: rotation(for: note.id), transitionNamespace: newThoughtNamespace)
             }
         }
 
         let placeholderCard = placeholderFace
-            .opacity(isDragged ? 0.001 : baseOpacity)
+            .opacity(noteVisibilityOpacity(noteID: note.id, isDragged: isDragged, baseOpacity: baseOpacity))
+            .animation(.easeOut(duration: 0.18), value: deletingNoteID)
             .background(
                 GeometryReader { proxy in
                     let contentFrame = proxy.frame(in: .named("home-content"))
@@ -1284,7 +1521,7 @@ private struct HomeScreen: View {
                             note.id: NoteTapTarget(
                                 center: contentFrame.center,
                                 size: proxy.size,
-                                rotationDegrees: CGFloat(rotation(for: index))
+                                rotationDegrees: CGFloat(rotation(for: note.id))
                             )
                         ]
                     )
@@ -1457,13 +1694,14 @@ private struct HomeScreen: View {
         orderedNoteIDs = layout.flattenedOrder
     }
 
-    private func beginDragging(_ noteID: String) {
+    private func beginDragging(_ noteID: String, touchPoint: CGPoint? = nil) {
         if activeDragNoteID == nil {
             activeDragNoteID = noteID
             isDroppingDraggedNote = false
             if dragStartFrame == nil {
                 dragStartFrame = noteFrames[noteID]
             }
+            dragScaleAnchor = resolvedDragScaleAnchor(for: noteID, touchPoint: touchPoint)
             if dragBaseColumnLayout.isEmpty {
                 dragBaseColumnLayout = columnLayout
             }
@@ -1480,8 +1718,11 @@ private struct HomeScreen: View {
         activeDragNoteID = nil
         isDroppingDraggedNote = false
         dragTranslation = .zero
+        dragScaleAnchor = .center
+        dragTouchPointGlobal = nil
         hoverCandidate = nil
         activePreviewIntent = nil
+        resetDeletePreviewState()
         groupPreviewPlaceholder = nil
         dragStartFrame = nil
         dragBaseOrder = []
@@ -1493,8 +1734,11 @@ private struct HomeScreen: View {
         activeDragNoteID = nil
         isDroppingDraggedNote = false
         dragTranslation = .zero
+        dragScaleAnchor = .center
+        dragTouchPointGlobal = nil
         hoverCandidate = nil
         activePreviewIntent = nil
+        resetDeletePreviewState()
         groupPreviewPlaceholder = nil
         dragStartFrame = nil
         dragBaseOrder = []
@@ -1515,8 +1759,11 @@ private struct HomeScreen: View {
         activeDragNoteID = nil
         isDroppingDraggedNote = false
         dragTranslation = .zero
+        dragScaleAnchor = .center
+        dragTouchPointGlobal = nil
         hoverCandidate = nil
         activePreviewIntent = nil
+        resetDeletePreviewState()
         groupPreviewPlaceholder = nil
         dragStartFrame = nil
         dragBaseOrder = []
@@ -1533,12 +1780,15 @@ private struct HomeScreen: View {
         activeDragNoteID = nil
         isDroppingDraggedNote = false
         dragTranslation = .zero
+        dragScaleAnchor = .center
+        dragTouchPointGlobal = nil
         hoverCandidate = nil
         dragStartFrame = nil
 
         DispatchQueue.main.async {
             withAnimation(reorderSpring) {
                 activePreviewIntent = nil
+                resetDeletePreviewState()
                 groupPreviewPlaceholder = nil
                 dragBaseOrder = []
                 dragBaseAffinityGroups = []
@@ -1567,11 +1817,23 @@ private struct HomeScreen: View {
             return
         }
 
+        if case .delete? = activePreviewIntent {
+            let shouldCommitDelete = shouldCommitDeleteOnRelease
+            withAnimation(reorderSpring) {
+                restoreDragBaseline()
+                keepReorderModeAfterDrop()
+            }
+            if shouldCommitDelete {
+                presentDeleteConfirmation(for: noteID)
+            }
+            return
+        }
+
         Task {
             await onPersistManualOrder(orderedNoteIDs)
         }
 
-        if case .group(_, let placeholder?) = activePreviewIntent {
+        if case .group(_, _) = activePreviewIntent {
             settleGroupedDropWithWholeGroupMotion()
             return
         }
@@ -1607,7 +1869,15 @@ private struct HomeScreen: View {
                 }
                 activePreviewIntent = nil
             }
+            resetDeletePreviewState()
             return
+        }
+
+        if case .delete = resolution.intent {
+            deletePreviewProgress = resolution.deletePreviewProgress
+            isDeleteCommitReady = resolution.isDeleteCommitReady
+        } else {
+            resetDeletePreviewState()
         }
 
         let now = Date()
@@ -1848,6 +2118,10 @@ private struct HomeScreen: View {
 
         let baseOrder = dragBaseOrder.isEmpty ? orderedNoteIDs : dragBaseOrder
 
+        if let trashResolution = trashHoverResolution(for: noteID, finalFrame: finalFrame) {
+            return trashResolution
+        }
+
         if let baseGroup = dragBaseAffinityGroups.first(where: { $0.contains(noteID) }) {
             let startFrame = dragStartFrame ?? noteFrames[noteID] ?? finalFrame
             let travelDistance = distance(startFrame.center, finalFrame.center)
@@ -1903,7 +2177,7 @@ private struct HomeScreen: View {
     }
 
     private func maybeActivatePreview(for noteID: String, candidate: HoverCandidate, finalFrame: CGRect) {
-        guard Date().timeIntervalSince(candidate.since) >= reorderHoverDwellDuration else { return }
+        guard Date().timeIntervalSince(candidate.since) >= previewActivationDelay(for: candidate.intent) else { return }
         guard activePreviewIntent != candidate.intent else { return }
 
         withAnimation(reorderSpring) {
@@ -1922,7 +2196,167 @@ private struct HomeScreen: View {
         case .reorder(let layout):
             syncLayoutState(from: layout)
             groupPreviewPlaceholder = nil
+        case .delete:
+            groupPreviewPlaceholder = nil
         }
+    }
+
+    private func previewActivationDelay(for intent: HoverIntent) -> TimeInterval {
+        switch intent {
+        case .delete:
+            return 0
+        case .group, .reorder:
+            return reorderHoverDwellDuration
+        }
+    }
+
+    private func trashHoverResolution(for noteID: String, finalFrame: CGRect) -> HoverResolution? {
+        guard isReorderMode,
+              !trashTargetFrame.isNull,
+              let pointer = dragTouchPointGlobal ?? noteHitFrames[noteID]?.center else {
+            return nil
+        }
+
+        let commitFrame = trashTargetFrame.insetBy(dx: -10, dy: -20)
+        let previewFrame = commitFrame.insetBy(dx: -14, dy: -12)
+        guard previewFrame.contains(pointer) else { return nil }
+
+        let previewBandDistance: CGFloat = 18
+        let distanceToCommit = distance(from: pointer, to: commitFrame)
+        let progress = max(0, min(1, 1 - (distanceToCommit / previewBandDistance)))
+        let isCommitReady = progress >= 0.999
+
+        return HoverResolution(
+            intent: .delete,
+            anchorPoint: trashTargetFrame.center,
+            deletePreviewProgress: progress,
+            isDeleteCommitReady: isCommitReady
+        )
+    }
+
+    private func resetDeletePreviewState() {
+        deletePreviewProgress = 0
+        isDeleteCommitReady = false
+    }
+
+    private func resolvedDragScaleAnchor(for noteID: String, touchPoint: CGPoint?) -> UnitPoint {
+        guard let touchPoint,
+              let frame = noteHitFrames[noteID],
+              frame.width > 0,
+              frame.height > 0 else {
+            return .center
+        }
+
+        let normalizedX = min(max((touchPoint.x - frame.minX) / frame.width, 0), 1)
+        let normalizedY = min(max((touchPoint.y - frame.minY) / frame.height, 0), 1)
+        return UnitPoint(x: normalizedX, y: normalizedY)
+    }
+
+    private func presentDeleteConfirmation(for noteID: String) {
+        pendingDeleteNoteID = noteID
+        isDeleteConfirmationBusy = false
+        withAnimation(.spring(response: 0.26, dampingFraction: 0.86)) {
+            isDeleteConfirmationPresented = true
+        }
+    }
+
+    private func dismissDeleteConfirmation() {
+        guard !isDeleteConfirmationBusy else { return }
+        withAnimation(.easeOut(duration: 0.16)) {
+            isDeleteConfirmationPresented = false
+        }
+        pendingDeleteNoteID = nil
+    }
+
+    private func confirmDelete() {
+        guard let noteID = pendingDeleteNoteID, !isDeleteConfirmationBusy else { return }
+        isDeleteConfirmationBusy = true
+        deletingNoteSnapshot = state.notes.first(where: { $0.id == noteID })
+        let fadeDuration: Double = 0.18
+
+        withAnimation(.easeOut(duration: fadeDuration)) {
+            deletingNoteID = noteID
+            isDeleteConfirmationPresented = false
+        }
+        pendingDeleteNoteID = nil
+
+        Task {
+            try? await Task.sleep(nanoseconds: UInt64(fadeDuration * 1_000_000_000))
+            let deleted = await onDeleteNote(noteID)
+            await MainActor.run {
+                isDeleteConfirmationBusy = false
+                if !deleted {
+                    withAnimation(.easeOut(duration: 0.16)) {
+                        deletingNoteID = nil
+                        deletingNoteSnapshot = nil
+                    }
+                }
+            }
+        }
+    }
+
+    private func deleteConfirmationOverlay(containerSize: CGSize, safeAreaInsets: EdgeInsets) -> some View {
+        let cardWidth = min(containerSize.width - 36, 296)
+        let anchorX = trashTargetFrame.isNull
+            ? containerSize.width - 18 - (cardWidth * 0.5)
+            : min(
+                max(trashTargetFrame.maxX - (cardWidth * 0.5), 18 + (cardWidth * 0.5)),
+                containerSize.width - 18 - (cardWidth * 0.5)
+            )
+        let anchorY = trashTargetFrame.isNull
+            ? safeAreaInsets.top + 78
+            : max(trashTargetFrame.maxY + 42, safeAreaInsets.top + 78)
+
+        return ZStack {
+            Color.black.opacity(0.08)
+                .ignoresSafeArea()
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    dismissDeleteConfirmation()
+                }
+
+            VStack(alignment: .leading, spacing: 16) {
+                Text("throw this thought into the trash can?")
+                    .font(AppFont.body(18))
+                    .foregroundStyle(.black.opacity(0.88))
+
+                HStack {
+                    Button("cancel") {
+                        dismissDeleteConfirmation()
+                    }
+                    .font(AppFont.meta(11))
+                    .tracking(1.2)
+                    .foregroundStyle(.black.opacity(0.56))
+                    .buttonStyle(.plain)
+
+                    Spacer(minLength: 0)
+
+                    Button(action: confirmDelete) {
+                        Text(isDeleteConfirmationBusy ? "trashing..." : "trash it")
+                            .font(AppFont.meta(11))
+                            .tracking(1.2)
+                            .foregroundStyle(Color(red: 0.74, green: 0.17, blue: 0.14))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isDeleteConfirmationBusy)
+                }
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 18)
+            .frame(width: cardWidth, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(noteSurfaceColor)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(noteBorderColor.opacity(0.94), lineWidth: 1)
+            }
+            .shadow(color: .black.opacity(0.08), radius: 18, x: 0, y: 10)
+            .position(x: anchorX, y: anchorY)
+            .transition(.scale(scale: 0.84, anchor: .topTrailing).combined(with: .opacity))
+        }
+        .transition(.opacity)
     }
 
     private func reorderIntentForUngroupedNote(noteID: String, finalFrame: CGRect, baseLayout: ColumnLayout) -> HoverIntent? {
@@ -2050,9 +2484,18 @@ private struct HomeScreen: View {
         hypot(lhs.x - rhs.x, lhs.y - rhs.y)
     }
 
+    private func distance(from point: CGPoint, to rect: CGRect) -> CGFloat {
+        let clampedX = min(max(point.x, rect.minX), rect.maxX)
+        let clampedY = min(max(point.y, rect.minY), rect.maxY)
+        return distance(point, CGPoint(x: clampedX, y: clampedY))
+    }
+
     private func enterReorderMode() {
         guard !isReorderMode else { return }
         triggerReorderEntryHaptic()
+        if !homeHeaderFrame.isNull {
+            frozenTrashTargetTopInset = homeHeaderFrame.minY
+        }
         isReorderMode = true
         withAnimation(.easeOut(duration: 0.22)) {
             jiggleProgress = 1
@@ -2070,6 +2513,12 @@ private struct HomeScreen: View {
         let generator = UIImpactFeedbackGenerator(style: .light)
         generator.prepare()
         generator.impactOccurred(intensity: 0.7)
+    }
+
+    private func triggerReorderExitHaptic() {
+        let generator = UISelectionFeedbackGenerator()
+        generator.prepare()
+        generator.selectionChanged()
     }
 
     private func dragGesture(noteID: String) -> some Gesture {
@@ -2132,25 +2581,25 @@ private struct HomeScreen: View {
         return direction * magnitude
     }
 
-    private func reorderInstruction(bottomInset: CGFloat) -> some View {
-        ReorderMarqueeView(
-            message: "drag to reorder · overlap another card to create an affinity group · swipe up to exit ·"
-        )
-        .frame(height: 46)
-        .frame(maxWidth: .infinity)
-        .padding(.horizontal, 18)
-        .padding(.bottom, max(bottomInset, 10))
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-        .gesture(
-            DragGesture(minimumDistance: 6)
-                .onEnded { value in
-                    if value.translation.height < -18 {
-                        cancelDragging()
-                    }
-                }
-        )
-        .transition(.move(edge: .bottom).combined(with: .opacity))
-    }
+//    private func reorderInstruction(bottomInset: CGFloat) -> some View {
+//        ReorderMarqueeView(
+//            message: "drag to reorder · overlap another card to create an affinity group · swipe up to exit ·"
+//        )
+//        .frame(height: 46)
+//        .frame(maxWidth: .infinity)
+//        .padding(.horizontal, 18)
+//        .padding(.bottom, max(bottomInset, 10))
+//        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+//        .gesture(
+//            DragGesture(minimumDistance: 6)
+//                .onEnded { value in
+//                    if value.translation.height < -18 {
+//                        cancelDragging()
+//                    }
+//                }
+//        )
+//        .transition(.move(edge: .bottom).combined(with: .opacity))
+//    }
 }
 
 extension HomeScreen: Equatable {
@@ -2159,56 +2608,56 @@ extension HomeScreen: Equatable {
     }
 }
 
-private struct ReorderMarqueeView: View {
-    let message: String
-    @State private var segmentWidth: CGFloat = 1
+//private struct ReorderMarqueeView: View {
+//    let message: String
+//    @State private var segmentWidth: CGFloat = 1
+//
+//    var body: some View {
+//        GeometryReader { geometry in
+//            TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
+//                let distance = CGFloat(timeline.date.timeIntervalSinceReferenceDate) * 42
+//                let wrapWidth = max(segmentWidth + 24, 1)
+//                let xOffset = -(distance.truncatingRemainder(dividingBy: wrapWidth))
+//
+//                HStack(spacing: 24) {
+//                    marqueeSegment
+//                        .background(
+//                            GeometryReader { proxy in
+//                                Color.clear.preference(key: MarqueeWidthPreferenceKey.self, value: proxy.size.width)
+//                            }
+//                        )
+//                    marqueeSegment
+//                    marqueeSegment
+//                }
+//                .offset(x: xOffset)
+//                .frame(width: geometry.size.width, alignment: .leading)
+//            }
+//            .clipped()
+//            .onPreferenceChange(MarqueeWidthPreferenceKey.self) { width in
+//                if width > 0 {
+//                    segmentWidth = width
+//                }
+//            }
+//        }
+//    }
+//
+//    private var marqueeSegment: some View {
+//        Text(message)
+//            .font(AppFont.meta(12))
+//            .tracking(1.4)
+//            .textCase(.uppercase)
+//            .foregroundStyle(.black.opacity(0.72))
+//            .fixedSize()
+//    }
+//}
 
-    var body: some View {
-        GeometryReader { geometry in
-            TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
-                let distance = CGFloat(timeline.date.timeIntervalSinceReferenceDate) * 42
-                let wrapWidth = max(segmentWidth + 24, 1)
-                let xOffset = -(distance.truncatingRemainder(dividingBy: wrapWidth))
-
-                HStack(spacing: 24) {
-                    marqueeSegment
-                        .background(
-                            GeometryReader { proxy in
-                                Color.clear.preference(key: MarqueeWidthPreferenceKey.self, value: proxy.size.width)
-                            }
-                        )
-                    marqueeSegment
-                    marqueeSegment
-                }
-                .offset(x: xOffset)
-                .frame(width: geometry.size.width, alignment: .leading)
-            }
-            .clipped()
-            .onPreferenceChange(MarqueeWidthPreferenceKey.self) { width in
-                if width > 0 {
-                    segmentWidth = width
-                }
-            }
-        }
-    }
-
-    private var marqueeSegment: some View {
-        Text(message)
-            .font(AppFont.meta(12))
-            .tracking(1.4)
-            .textCase(.uppercase)
-            .foregroundStyle(.black.opacity(0.72))
-            .fixedSize()
-    }
-}
-
-private struct MarqueeWidthPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = max(value, nextValue())
-    }
-}
+//private struct MarqueeWidthPreferenceKey: PreferenceKey {
+//    static var defaultValue: CGFloat = 0
+//
+//    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+//        value = max(value, nextValue())
+//    }
+//}
 
 private struct HomeBackgroundView: View {
     var body: some View {
@@ -2237,6 +2686,7 @@ private struct NewNoteScreen: View {
     let transitionNamespace: Namespace.ID
     @FocusState private var isEditorFocused: Bool
     @State private var showContent: Bool = false
+    @State private var isClosing: Bool = false
 
     var body: some View {
         GeometryReader { geometry in
@@ -2245,10 +2695,7 @@ private struct NewNoteScreen: View {
                     .fill(Color.white.opacity(0.001))
                     .ignoresSafeArea()
                     .onTapGesture {
-                        isEditorFocused = false
-                        withAnimation(noteTransitionAnimation) {
-                            viewModel.discardDraft()
-                        }
+                        closeNewNote()
                     }
 
                 VStack {
@@ -2266,7 +2713,7 @@ private struct NewNoteScreen: View {
                             .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4, 6]))
                             .foregroundStyle(noteBorderColor.opacity(0.95))
                             .matchedGeometryEffect(id: "new-thought-dashed", in: transitionNamespace)
-                            .opacity(showContent ? 0 : 1)
+                            .opacity(showContent || isClosing ? 0 : 1)
 
                         VStack(alignment: .leading, spacing: 0) {
                             if showContent {
@@ -2294,6 +2741,26 @@ private struct NewNoteScreen: View {
         }
     }
 
+    private func closeNewNote() {
+        guard !isClosing else { return }
+        isClosing = true
+        isEditorFocused = false
+
+        withAnimation(.easeOut(duration: 0.14)) {
+            showContent = false
+        }
+
+        Task {
+            try? await Task.sleep(nanoseconds: 110_000_000)
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                withAnimation(noteTransitionAnimation) {
+                    viewModel.discardDraft()
+                }
+            }
+        }
+    }
+
     private var newNoteContent: some View {
         VStack(alignment: .leading, spacing: 0) {
             ZStack(alignment: .topLeading) {
@@ -2318,10 +2785,7 @@ private struct NewNoteScreen: View {
 
             HStack {
                 Button("cancel") {
-                    isEditorFocused = false
-                    withAnimation(noteTransitionAnimation) {
-                        viewModel.discardDraft()
-                    }
+                    closeNewNote()
                 }
                 .font(AppFont.meta(11))
                 .tracking(1.2)
@@ -2518,6 +2982,11 @@ private struct NoteFullPageScreen: View {
                         divider
                             .padding(.top, 30)
 
+                        if shouldShowCenteredCreepingSection {
+                            centeredCreepingSection
+                                .padding(.top, 28)
+                        }
+
                         if hasAIGrowthParagraphs {
                             aiGrowthSection
                                 .padding(.top, 26)
@@ -2600,7 +3069,7 @@ private struct NoteFullPageScreen: View {
                 Text(paragraph)
                     .font(AppFont.body(19))
                     .lineSpacing(4)
-                    .foregroundStyle(.black)
+                    .foregroundStyle(.black.opacity(0.82))
             }
         }
         .opacity(showGrowthContent ? 1 : 0)
@@ -2618,7 +3087,7 @@ private struct NoteFullPageScreen: View {
                     Button {
                         Task { await requestResponse() }
                     } label: {
-                        Text("continue this thought")
+                        Text("continue creeping")
                             .font(AppFont.meta(11))
                             .tracking(1.2)
                             .foregroundStyle(noteAccentColor)
@@ -2649,7 +3118,7 @@ private struct NoteFullPageScreen: View {
                     Text(prompt)
                         .font(AppFont.body(17))
                         .lineSpacing(3)
-                        .foregroundStyle(.black.opacity(0.9))
+                        .foregroundStyle(.black.opacity(0.82))
                         .frame(maxWidth: .infinity, alignment: .leading)
 
                     Button {
@@ -2887,10 +3356,34 @@ private struct NoteFullPageScreen: View {
         !growthParagraphs.isEmpty
     }
 
+    private var shouldShowCenteredCreepingSection: Bool {
+        guard !hasAIGrowthParagraphs else { return false }
+        guard pendingFollowUpText == nil else { return false }
+        guard (note.latestChatReply?.isEmpty ?? true) else { return false }
+        guard note.prompts.isEmpty else { return false }
+        guard note.sources.isEmpty else { return false }
+        guard ["queued", "running", "retrying"].contains(note.status) else { return false }
+        return Date().timeIntervalSince(note.createdAt) < 24 * 60 * 60
+    }
+
     private var centeredExploringSection: some View {
         HStack {
             Spacer()
             ExploringLoadingLabel()
+            Spacer()
+        }
+    }
+
+    private var centeredCreepingSection: some View {
+        HStack {
+            Spacer()
+            AnimatedLoadingLabel(
+                baseText: "creeping",
+                color: noteAccentColor,
+                trailingText: nil
+            )
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
             Spacer()
         }
     }
@@ -3053,15 +3546,35 @@ private struct NoteFullPageScreen: View {
 }
 
 private struct ExploringLoadingLabel: View {
+    var body: some View {
+        AnimatedLoadingLabel(
+            baseText: "exploring",
+            color: noteAccentColor,
+            trailingText: "check back later"
+        )
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+    }
+}
+
+private struct AnimatedLoadingLabel: View {
+    let baseText: String
+    let color: Color
+    let trailingText: String?
     @State private var dotCount = 1
 
     var body: some View {
-        Text("exploring" + String(repeating: ".", count: dotCount) + " check back later")
+        Text(
+            baseText
+            + String(repeating: ".", count: dotCount)
+            + (trailingText.map { " " + $0 } ?? "")
+        )
             .font(AppFont.meta(11))
             .tracking(1.2)
-            .foregroundStyle(noteAccentColor)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
+            .foregroundStyle(color)
+            .lineLimit(1)
+            .allowsTightening(true)
+            .minimumScaleFactor(0.82)
             .task {
                 while !Task.isCancelled {
                     try? await Task.sleep(for: .seconds(1))
@@ -3091,7 +3604,7 @@ private struct AssistantSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     if let note = viewModel.currentNote {
-                        Text("Current note")
+                        Text("Current thought")
                             .font(AppFont.heading(18, weight: .semibold))
                         Text(note.text)
                             .font(AppFont.body(18))
@@ -3103,7 +3616,7 @@ private struct AssistantSheet: View {
                     TextField("Ask about this idea...", text: $assistantDraft, axis: .vertical)
                         .textFieldStyle(.roundedBorder)
 
-                    Button("Save as note") {
+                    Button("Save as thought") {
                         Task {
                             let text = assistantDraft.trimmingCharacters(in: .whitespacesAndNewlines)
                             guard await viewModel.createNoteFromAssistant(text: text) else { return }
@@ -3329,9 +3842,6 @@ private struct NoteCard: View {
         }
         if note.status == "enriched" {
             return nil
-        }
-        if note.status == "captured" {
-            return "noted"
         }
         if note.status == "failed" {
             return "AI unavailable"
@@ -3776,6 +4286,7 @@ private struct RelatedNoteCluster: View {
     let expandedNoteID: String?
     let suppressedNoteOutlineIDs: Set<String>
     let suppressedNoteContentIDs: Set<String>
+    let deletingNoteID: String?
     let previewPlaceholderNote: APINote?
     let previewPlaceholderIndex: Int?
     let animationDate: Date
@@ -3834,7 +4345,8 @@ private struct RelatedNoteCluster: View {
             animationDate: animationDate,
             isSurfaceTransitionEnabled: true
         )
-            .opacity(isDragged ? 0.001 : 1)
+            .opacity(clusterCardOpacity(noteID: note.id, isDragged: isDragged))
+            .animation(.easeOut(duration: 0.18), value: deletingNoteID)
             .background(
                 GeometryReader { proxy in
                     let contentFrame = proxy.frame(in: .named("home-content"))
@@ -3867,6 +4379,16 @@ private struct RelatedNoteCluster: View {
             )
         }
         return AnyView(cardBody)
+    }
+
+    private func clusterCardOpacity(noteID: String, isDragged: Bool) -> Double {
+        if isDragged {
+            return 0.001
+        }
+        if deletingNoteID == noteID {
+            return 0.001
+        }
+        return 1
     }
 
     private func activeClusterDragGesture(noteID: String) -> AnyGesture<Void> {
@@ -4123,11 +4645,14 @@ private struct HoverCandidate {
 private enum HoverIntent: Equatable {
     case group(layout: ColumnLayout, placeholder: GroupPreviewPlaceholder?)
     case reorder(layout: ColumnLayout)
+    case delete
 }
 
 private struct HoverResolution {
     let intent: HoverIntent
     let anchorPoint: CGPoint
+    var deletePreviewProgress: CGFloat = 0
+    var isDeleteCommitReady: Bool = false
 }
 
 private enum ColumnSide: Equatable {
@@ -4310,6 +4835,28 @@ private struct HomeItemHeightPreferenceKey: PreferenceKey {
 
     static func reduce(value: inout [String: CGFloat], nextValue: () -> [String: CGFloat]) {
         value.merge(nextValue(), uniquingKeysWith: { _, new in new })
+    }
+}
+
+private struct HomeHeaderFramePreferenceKey: PreferenceKey {
+    static var defaultValue: CGRect = .null
+
+    static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
+        let next = nextValue()
+        if !next.isNull {
+            value = next
+        }
+    }
+}
+
+private struct TrashTargetFramePreferenceKey: PreferenceKey {
+    static var defaultValue: CGRect = .null
+
+    static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
+        let next = nextValue()
+        if !next.isNull {
+            value = next
+        }
     }
 }
 

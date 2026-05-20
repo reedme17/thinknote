@@ -430,15 +430,12 @@ final class TimelineEventRecord {
 }
 
 enum StoredJSONCodec {
-    private static let encoder = JSONEncoder()
-    private static let decoder = JSONDecoder()
-
     static func encode<T: Encodable>(_ value: T) -> Data? {
-        try? encoder.encode(value)
+        try? JSONEncoder().encode(value)
     }
 
     static func decode<T: Decodable>(_ type: T.Type, from data: Data?) -> T? {
         guard let data else { return nil }
-        return try? decoder.decode(type, from: data)
+        return try? JSONDecoder().decode(type, from: data)
     }
 }

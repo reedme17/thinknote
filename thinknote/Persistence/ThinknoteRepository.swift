@@ -33,8 +33,8 @@ actor NoopThinknoteRemoteService: ThinknoteRemoteServing {
 actor ThinknoteBackendRemoteService: ThinknoteRemoteServing {
     private let client: ThinknoteAPIClient
 
-    init(client: ThinknoteAPIClient = ThinknoteAPIClient()) {
-        self.client = client
+    init(client: ThinknoteAPIClient? = nil) {
+        self.client = client ?? ThinknoteAPIClient()
     }
 
     func upsert(note: APINote) async throws {
@@ -90,6 +90,10 @@ final class ThinknoteRepository: @unchecked Sendable {
         let reordered = try await localStore.reorderNotes(noteIDs: noteIDs)
         await remoteSync.enqueue(.noteReordered(noteIDs: noteIDs))
         return reordered
+    }
+
+    func deleteNote(noteID: String) async throws -> [APINote] {
+        try await localStore.deleteNote(noteID: noteID)
     }
 
     func markNoteViewed(noteID: String, viewedAt: Date = .now) async throws -> APINote? {

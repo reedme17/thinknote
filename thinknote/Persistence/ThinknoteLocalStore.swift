@@ -2,7 +2,15 @@ import Foundation
 import SwiftData
 
 actor ThinknoteLocalStore {
-    static let shared = ThinknoteLocalStore(container: ThinknotePersistence.sharedContainer)
+    static let shared: ThinknoteLocalStore = {
+        let container: ModelContainer
+        do {
+            container = try ThinknotePersistence.makeContainer()
+        } catch {
+            fatalError("Failed to create local SwiftData container: \(error)")
+        }
+        return ThinknoteLocalStore(container: container)
+    }()
 
     private let container: ModelContainer
     private let sortSpacing: Double = 1_024
@@ -92,7 +100,7 @@ actor ThinknoteLocalStore {
             let revision = RevisionRecord(
                 createdAt: now,
                 kind: .userCapture,
-                summary: "Initial note capture",
+                summary: "Initial thought capture",
                 text: text,
                 provider: "user",
                 note: created
@@ -101,7 +109,7 @@ actor ThinknoteLocalStore {
 
             appendTimelineEvent(
                 type: .noteCreated,
-                summary: "Note created",
+                summary: "Thought created",
                 note: created,
                 createdAt: now,
                 in: context
@@ -148,6 +156,17 @@ actor ThinknoteLocalStore {
 
         try context.save()
         return ordered.map { makeAPINote(from: $0) }
+    }
+
+    func deleteNote(noteID: String) throws -> [APINote] {
+        let context = ModelContext(container)
+        guard let note = try fetchNoteRecord(noteID: noteID, in: context) else {
+            throw LocalStoreError.noteNotFound(noteID)
+        }
+
+        context.delete(note)
+        try context.save()
+        return try orderedNotes(in: context).map { makeAPINote(from: $0) }
     }
 
     func markNoteViewed(noteID: String, viewedAt: Date = .now) throws -> APINote? {
@@ -345,7 +364,7 @@ actor ThinknoteLocalStore {
             id: "\(note.id)-seed-user",
             createdAt: note.createdAt,
             kind: .userCapture,
-            summary: "Initial note capture",
+            summary: "Initial thought capture",
             text: note.text,
             provider: "user",
             note: record
@@ -667,7 +686,7 @@ actor ThinknoteLocalStore {
 
         let assistantMessage = MessageRecord(
             role: .assistant,
-            text: "A useful next step is to turn that follow-up into a sharper question, then compare it against the note's current interpretation.",
+            text: "A useful next step is to turn that follow-up into a sharper question, then compare it against the thought's current interpretation.",
             provider: "local",
             createdAt: now,
             thread: thread
@@ -1048,7 +1067,7 @@ enum LocalStoreError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .noteNotFound(let noteID):
-            return "Could not find note \(noteID)."
+            return "Could not find thought \(noteID)."
         }
     }
 }
