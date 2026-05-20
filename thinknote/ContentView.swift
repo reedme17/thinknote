@@ -82,7 +82,26 @@ private func noteCardTimestampLabel(for date: Date, referenceDate: Date = Date()
 }
 
 private func noteDetailTimestampLabel(for date: Date, referenceDate: Date = Date(), calendar: Calendar = .current) -> String {
-    let shortLabel = noteCardTimestampLabel(for: date, referenceDate: referenceDate, calendar: calendar)
+    let shortLabel: String
+    if calendar.isDateInToday(date) {
+        shortLabel = "today"
+    } else if calendar.isDateInYesterday(date) {
+        shortLabel = "yesterday"
+    } else {
+        let components = calendar.dateComponents([.year, .month, .day], from: date)
+        guard let year = components.year,
+              let month = components.month,
+              let day = components.day else {
+            return "thought today \(date.formatted(date: .omitted, time: .shortened).lowercased())"
+        }
+
+        if year == calendar.component(.year, from: referenceDate) {
+            shortLabel = "\(month)/\(day)"
+        } else {
+            shortLabel = "\(year)/\(month)/\(day)"
+        }
+    }
+
     let timeLabel = date.formatted(date: .omitted, time: .shortened).lowercased()
 
     if calendar.isDateInToday(date) || calendar.isDateInYesterday(date) {
@@ -596,6 +615,7 @@ private struct HomeScreen: View {
     @State private var jiggleProgress: CGFloat = 0
     @State private var homeContentHeight: CGFloat = 0
     @State private var homeDragOffset: CGFloat = 0
+    @State private var homeScrollOffsetBaseline: CGFloat?
     @State private var frozenAnimationDate = Date()
     @State private var dragBaseOrder: [String] = []
     @State private var dragBaseAffinityGroups: [AffinityGroup] = []
@@ -631,15 +651,40 @@ private struct HomeScreen: View {
             let requiresDragHoldBeforeDragging = true
             let isScrollLockedForActiveDrag = isReorderMode && activeDragNoteID != nil
             let homeModalBlurRadius: CGFloat = isDeleteConfirmationPresented ? 12 : 0
+            let homeHeaderHeight = homeHeaderFrame.isNull ? 14 : homeHeaderFrame.height
+            let homeHeaderReserveHeight = homeHeaderHeight + 18
+            let homeHeaderDisplacement = max(homeDragOffset, 0)
+            let homeHeaderBlurProgress = min(max((homeHeaderDisplacement - 8) / 36, 0), 1)
+            let homeHeaderFadeProgress = min(max((homeHeaderDisplacement - 22) / 24, 0), 1)
+            let homeHeaderBlurRadius = homeHeaderBlurProgress * 12
+            let homeHeaderOpacity = 1 - homeHeaderFadeProgress
 
             ZStack(alignment: .bottomTrailing) {
                 HomeBackgroundView()
                     .blur(radius: homeModalBlurRadius)
 
+                homeHeader
+                    .padding(.horizontal, 18)
+                    .padding(.top, homeTopPadding)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .opacity(homeHeaderOpacity)
+                    .blur(radius: max(homeModalBlurRadius, homeHeaderBlurRadius))
+                    .allowsHitTesting(false)
+
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 0) {
-                        homeHeader
-                            .padding(.bottom, 18)
+                        ScrollOffsetObserverView { offset in
+                            if let baseline = homeScrollOffsetBaseline {
+                                homeDragOffset = offset - baseline
+                            } else {
+                                homeScrollOffsetBaseline = offset
+                                homeDragOffset = 0
+                            }
+                        }
+                        .frame(height: 0)
+
+                        Color.clear
+                            .frame(height: homeHeaderReserveHeight)
 
                         if state.isFeedVisible {
                             TimelineView(.animation(minimumInterval: 1.0 / 24.0)) { timeline in
@@ -659,7 +704,8 @@ private struct HomeScreen: View {
                     }
                     .background {
                         GeometryReader { proxy in
-                            Color.clear.preference(key: HomeContentHeightPreferenceKey.self, value: proxy.size.height)
+                            Color.clear
+                                .preference(key: HomeContentHeightPreferenceKey.self, value: proxy.size.height)
                         }
                     }
                     .frame(maxWidth: .infinity, minHeight: max(geometry.size.height - homeTopPadding - homeBottomPadding, 0), alignment: .topLeading)
@@ -709,10 +755,12 @@ private struct HomeScreen: View {
                         }
                     }
                 }
-                .scrollBounceBehavior(.basedOnSize)
+                .scrollBounceBehavior(.always)
                 .scrollDisabled(isScrollLockedForActiveDrag)
                 .coordinateSpace(name: "home-scroll")
                 .onAppear {
+                    homeScrollOffsetBaseline = nil
+                    homeDragOffset = 0
                     synchronizeOrderingIfNeeded()
                 }
                 .onChange(of: state.notes.map(\.id)) { _, noteIDs in
@@ -3685,7 +3733,7 @@ private struct NoteCard: View {
         let edgeAmplitude = livingEdgeAmplitude
         let cometProgress = runningStrokeProgress(at: animationDate)
 
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 10) {
             summaryText
 
             HStack(alignment: .center, spacing: 12) {
@@ -4632,6 +4680,65 @@ private struct GlobalDragCaptureView: UIViewRepresentable {
 
         func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
             true
+        }
+    }
+}
+
+private struct ScrollOffsetObserverView: UIViewRepresentable {
+    let onChange: (CGFloat) -> Void
+
+    func makeUIView(context: Context) -> ObserverView {
+        let view = ObserverView()
+        view.backgroundColor = .clear
+        view.onChange = onChange
+        return view
+    }
+
+    func updateUIView(_ uiView: ObserverView, context: Context) {
+        uiView.onChange = onChange
+        uiView.attachIfNeeded()
+    }
+
+    final class ObserverView: UIView {
+        var onChange: ((CGFloat) -> Void)?
+        private weak var observedScrollView: UIScrollView?
+        private var observation: NSKeyValueObservation?
+
+        override func didMoveToSuperview() {
+            super.didMoveToSuperview()
+            attachIfNeeded()
+        }
+
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            attachIfNeeded()
+        }
+
+        func attachIfNeeded() {
+            guard let scrollView = enclosingScrollView(), scrollView !== observedScrollView else { return }
+
+            observation?.invalidate()
+            observedScrollView = scrollView
+            observation = scrollView.observe(\.contentOffset, options: [.initial, .new]) { [weak self] scrollView, _ in
+                DispatchQueue.main.async {
+                    self?.onChange?(scrollView.contentOffset.y)
+                }
+            }
+        }
+
+        private func enclosingScrollView() -> UIScrollView? {
+            var view = superview
+            while let current = view {
+                if let scrollView = current as? UIScrollView {
+                    return scrollView
+                }
+                view = current.superview
+            }
+            return nil
+        }
+
+        deinit {
+            observation?.invalidate()
         }
     }
 }

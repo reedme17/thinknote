@@ -11,9 +11,9 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>mossgarden</string>
+	<string>MOSSLOG</string>
 	<key>CFBundleDisplayName</key>
-	<string>mossgarden</string>
+	<string>MOSSLOG</string>
 	<key>CFBundlePackageType</key>
 	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
 	<key>CFBundleShortVersionString</key>
