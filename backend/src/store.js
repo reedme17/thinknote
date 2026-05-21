@@ -6,6 +6,7 @@ export async function createStore({ config, logger }) {
 
     let state = await loadState(config.storePath, config, logger);
     let persistChain = Promise.resolve();
+    let indexes = buildIndexes(state);
 
     const store = {
         getState() {
@@ -17,22 +18,21 @@ export async function createStore({ config, logger }) {
         },
         async transaction(mutator) {
             const result = mutator(state);
+            indexes = buildIndexes(state);
             await store.save();
             return result;
         },
         getNote(noteId) {
-            return state.notes.find((note) => note.id === noteId) || null;
+            return indexes.notesById.get(noteId) || null;
         },
         getJob(jobId) {
-            return state.jobs.find((job) => job.id === jobId) || null;
+            return indexes.jobsById.get(jobId) || null;
         },
         getThread(threadId) {
-            return state.threads.find((thread) => thread.id === threadId) || null;
+            return indexes.threadsById.get(threadId) || null;
         },
         listThreadMessages(threadId) {
-            return state.messages
-                .filter((message) => message.threadId === threadId)
-                .sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+            return indexes.messagesByThreadId.get(threadId) || [];
         },
         createTimelineEvent(note, type, summary, extra = {}) {
             note.timeline.unshift({
@@ -49,6 +49,33 @@ export async function createStore({ config, logger }) {
     };
 
     return store;
+}
+
+function buildIndexes(state) {
+    const notesById = new Map(state.notes.map((note) => [note.id, note]));
+    const jobsById = new Map(state.jobs.map((job) => [job.id, job]));
+    const threadsById = new Map(state.threads.map((thread) => [thread.id, thread]));
+    const messagesByThreadId = new Map();
+
+    for (const message of state.messages) {
+        const threadMessages = messagesByThreadId.get(message.threadId);
+        if (threadMessages) {
+            threadMessages.push(message);
+        } else {
+            messagesByThreadId.set(message.threadId, [message]);
+        }
+    }
+
+    for (const messages of messagesByThreadId.values()) {
+        messages.sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+    }
+
+    return {
+        notesById,
+        jobsById,
+        threadsById,
+        messagesByThreadId
+    };
 }
 
 async function loadState(storePath, config, logger) {

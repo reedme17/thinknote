@@ -128,7 +128,7 @@ async function handleHealth({ res, services }) {
 
 async function handleListNotes({ res, services, url }) {
     const notes = [...services.store.getState().notes]
-        .sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime())
+        .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
         .map((note) => decorateNote(note, services.store, url.searchParams.get("includeThreads") === "true"));
     sendJson(res, 200, { notes });
 }
@@ -557,26 +557,29 @@ function decorateNote(note, store, includeThreads) {
         return null;
     }
 
+    const state = store.getState();
     const decorated = {
         ...note,
         relatedNotes: note.links
-            .map((link) => ({
-                ...link,
-                note: store.getNote(link.noteId)
-                    ? {
-                          id: store.getNote(link.noteId).id,
-                          title: store.getNote(link.noteId).title,
-                          status: store.getNote(link.noteId).status,
-                          updatedAt: store.getNote(link.noteId).updatedAt
-                      }
-                    : null
-            }))
+            .map((link) => {
+                const relatedNote = store.getNote(link.noteId);
+                return {
+                    ...link,
+                    note: relatedNote
+                        ? {
+                              id: relatedNote.id,
+                              title: relatedNote.title,
+                              status: relatedNote.status,
+                              updatedAt: relatedNote.updatedAt
+                          }
+                        : null
+                };
+            })
             .filter((link) => link.note)
     };
 
     if (includeThreads) {
-        decorated.threads = store
-            .getState()
+        decorated.threads = state
             .threads.filter((thread) => thread.noteId === note.id || thread.relatedNoteIds.includes(note.id))
             .map((thread) => decorateThread(thread, store));
     }

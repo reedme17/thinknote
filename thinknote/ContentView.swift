@@ -134,14 +134,23 @@ private func noteCardContentWidth(for columnWidth: CGFloat) -> CGFloat {
     max(columnWidth - noteCardHorizontalPadding * 2, 0)
 }
 
-private func noteCardSummaryUIFont() -> UIFont {
+private let cachedNoteCardSummaryUIFont: UIFont =
     UIFont(name: "DavidLibre-Regular", size: noteCardSummaryFontSize)
     ?? UIFont.systemFont(ofSize: noteCardSummaryFontSize)
+
+private let cachedNoteCardMetaUIFont: UIFont =
+    UIFont(name: "GeistMono-Regular", size: noteCardMetaFontSize)
+    ?? UIFont.monospacedSystemFont(ofSize: noteCardMetaFontSize, weight: .regular)
+
+private let noteHeadlineMeasurementCache = NSCache<NSString, NSNumber>()
+private let reorderActivationTimer = Timer.publish(every: 1.0 / 30.0, on: .main, in: .common).autoconnect()
+
+private func noteCardSummaryUIFont() -> UIFont {
+    cachedNoteCardSummaryUIFont
 }
 
 private func noteCardMetaUIFont() -> UIFont {
-    UIFont(name: "GeistMono-Regular", size: noteCardMetaFontSize)
-    ?? UIFont.monospacedSystemFont(ofSize: noteCardMetaFontSize, weight: .regular)
+    cachedNoteCardMetaUIFont
 }
 
 private func noteCardMetaLineHeight() -> CGFloat {
@@ -152,6 +161,11 @@ private func measuredHeadlineHeight(for note: APINote, columnWidth: CGFloat = fa
     let font = noteCardSummaryUIFont()
     let availableWidth = noteCardContentWidth(for: columnWidth)
     guard availableWidth > 0 else { return ceil(font.lineHeight) }
+
+    let cacheKey = "\(note.id)|\(note.displayHeadline)|\(availableWidth.rounded(.toNearestOrAwayFromZero))" as NSString
+    if let cachedHeight = noteHeadlineMeasurementCache.object(forKey: cacheKey) {
+        return CGFloat(cachedHeight.doubleValue)
+    }
 
     let paragraphStyle = NSMutableParagraphStyle()
     paragraphStyle.lineBreakMode = .byWordWrapping
@@ -176,7 +190,9 @@ private func measuredHeadlineHeight(for note: APINote, columnWidth: CGFloat = fa
         + CGFloat(max(noteCardSummaryMaxLines - 1, 0)) * noteCardSummaryLineSpacing
     )
 
-    return min(max(ceil(boundingRect.height), oneLineHeight), maxHeight)
+    let measuredHeight = min(max(ceil(boundingRect.height), oneLineHeight), maxHeight)
+    noteHeadlineMeasurementCache.setObject(NSNumber(value: Double(measuredHeight)), forKey: cacheKey)
+    return measuredHeight
 }
 
 private func measuredHeadlineLineCount(for note: APINote, columnWidth: CGFloat = fallbackHomeColumnWidth()) -> Int {
@@ -686,21 +702,11 @@ private struct HomeScreen: View {
                         Color.clear
                             .frame(height: homeHeaderReserveHeight)
 
-                        if state.isFeedVisible {
-                            TimelineView(.animation(minimumInterval: 1.0 / 24.0)) { timeline in
-                                homeLayout(
-                                    containerWidth: max(geometry.size.width - 36, 0),
-                                    animationDate: timeline.date,
-                                    requiresDragHoldBeforeDragging: requiresDragHoldBeforeDragging
-                                )
-                            }
-                        } else {
-                            homeLayout(
-                                containerWidth: max(geometry.size.width - 36, 0),
-                                animationDate: frozenAnimationDate,
-                                requiresDragHoldBeforeDragging: requiresDragHoldBeforeDragging
-                            )
-                        }
+                        homeLayout(
+                            containerWidth: max(geometry.size.width - 36, 0),
+                            isFeedVisible: state.isFeedVisible,
+                            requiresDragHoldBeforeDragging: requiresDragHoldBeforeDragging
+                        )
                     }
                     .background {
                         GeometryReader { proxy in
@@ -714,7 +720,10 @@ private struct HomeScreen: View {
                     .padding(.bottom, homeBottomPadding)
                     .coordinateSpace(name: "home-content")
                     .overlay(alignment: .topLeading) {
-                        draggedNoteOverlay(animationDate: state.isFeedVisible ? Date() : frozenAnimationDate)
+                        draggedNoteOverlay(
+                            frozenAnimationDate: frozenAnimationDate,
+                            isFeedVisible: state.isFeedVisible
+                        )
                     }
                     .simultaneousGesture(
                         SpatialTapGesture()
@@ -1084,7 +1093,7 @@ private struct HomeScreen: View {
                 .transition(.identity)
             }
         }
-        .onReceive(Timer.publish(every: 1.0 / 30.0, on: .main, in: .common).autoconnect()) { _ in
+        .onReceive(reorderActivationTimer) { _ in
             guard isReorderMode else { return }
             pollHoverCandidateActivation()
         }
@@ -1182,14 +1191,21 @@ private struct HomeScreen: View {
         return baseOpacity
     }
 
-    private func homeLayout(containerWidth: CGFloat, animationDate: Date, requiresDragHoldBeforeDragging: Bool) -> some View {
-        let notesByID = Dictionary(uniqueKeysWithValues: displayNotes.map { ($0.id, $0) })
+    private func homeLayout(containerWidth: CGFloat, isFeedVisible: Bool, requiresDragHoldBeforeDragging: Bool) -> some View {
+        let notesByID = displayedNotesByID
         let spacing: CGFloat = 16
         let columnWidth = max((containerWidth - spacing) / 2, 0)
         let columns = resolvedColumnLayout(notesByID: notesByID, columnWidth: columnWidth)
         let leftHeight = estimatedColumnHeight(columns.left, side: .left, notesByID: notesByID, columnWidth: columnWidth)
         let rightHeight = estimatedColumnHeight(columns.right, side: .right, notesByID: notesByID, columnWidth: columnWidth)
         let seedInLeftColumn = leftHeight <= rightHeight
+        let seedPoint = seedOrigin(
+            placeInLeftColumn: seedInLeftColumn,
+            leftHeight: leftHeight,
+            rightHeight: rightHeight,
+            columnWidth: columnWidth,
+            columnSpacing: spacing
+        )
         let positionedItems = positionedColumnItems(
             columns: columns,
             columnWidth: columnWidth,
@@ -1198,13 +1214,7 @@ private struct HomeScreen: View {
         )
         let contentHeight = max(
             positionedItems.map { $0.origin.y + $0.height }.max() ?? 0,
-            seedOrigin(
-                placeInLeftColumn: seedInLeftColumn,
-                leftHeight: leftHeight,
-                rightHeight: rightHeight,
-                columnWidth: columnWidth,
-                columnSpacing: spacing
-            ).y + 156
+            seedPoint.y + 156
         )
 
         return ZStack(alignment: .topLeading) {
@@ -1215,7 +1225,8 @@ private struct HomeScreen: View {
                     columnWidth: columnWidth,
                     indexSeed: placed.indexSeed,
                     previewPlaceholder: placed.previewPlaceholder,
-                    animationDate: animationDate,
+                    frozenAnimationDate: frozenAnimationDate,
+                    isFeedVisible: isFeedVisible,
                     requiresDragHoldBeforeDragging: requiresDragHoldBeforeDragging
                 )
                 .frame(width: columnWidth, alignment: .topLeading)
@@ -1232,22 +1243,7 @@ private struct HomeScreen: View {
 
             seedCard()
                 .frame(width: columnWidth, alignment: .topLeading)
-                .offset(
-                    x: seedOrigin(
-                        placeInLeftColumn: seedInLeftColumn,
-                        leftHeight: leftHeight,
-                        rightHeight: rightHeight,
-                        columnWidth: columnWidth,
-                        columnSpacing: spacing
-                    ).x,
-                    y: seedOrigin(
-                        placeInLeftColumn: seedInLeftColumn,
-                        leftHeight: leftHeight,
-                        rightHeight: rightHeight,
-                        columnWidth: columnWidth,
-                        columnSpacing: spacing
-                    ).y
-                )
+                .offset(x: seedPoint.x, y: seedPoint.y)
                 .zIndex(1_000)
         }
         .frame(width: containerWidth, height: contentHeight, alignment: .topLeading)
@@ -1343,18 +1339,27 @@ private struct HomeScreen: View {
         return state.notes + [deletingNoteSnapshot]
     }
 
+    private var displayedNotesByID: [String: APINote] {
+        Dictionary(uniqueKeysWithValues: displayNotes.map { ($0.id, $0) })
+    }
+
     private var growingSeedCount: Int {
         state.notes.filter { ["queued", "retrying", "running"].contains($0.status) }.count
     }
 
     @ViewBuilder
-    private func itemView(_ item: ColumnLayoutItem, notesByID: [String: APINote], columnWidth: CGFloat, indexSeed: Int, previewPlaceholder: GroupPreviewPlaceholder?, animationDate: Date, requiresDragHoldBeforeDragging: Bool) -> some View {
+    private func itemView(_ item: ColumnLayoutItem, notesByID: [String: APINote], columnWidth: CGFloat, indexSeed: Int, previewPlaceholder: GroupPreviewPlaceholder?, frozenAnimationDate: Date, isFeedVisible: Bool, requiresDragHoldBeforeDragging: Bool) -> some View {
         let notes = item.noteIDs.compactMap { notesByID[$0] }
 
         if notes.count == 1,
            let note = notes.first,
            previewPlaceholder?.memberIndex == nil {
-            noteCard(note, animationDate: animationDate, requiresDragHoldBeforeDragging: requiresDragHoldBeforeDragging)
+            noteCard(
+                note,
+                frozenAnimationDate: frozenAnimationDate,
+                isFeedVisible: isFeedVisible,
+                requiresDragHoldBeforeDragging: requiresDragHoldBeforeDragging
+            )
         } else {
             if !notes.isEmpty {
             RelatedNoteCluster(
@@ -1375,7 +1380,8 @@ private struct HomeScreen: View {
                 deletingNoteID: deletingNoteID,
                 previewPlaceholderNote: previewPlaceholder.flatMap { $0.memberIndex != nil ? notesByID[$0.noteID] : nil },
                 previewPlaceholderIndex: previewPlaceholder?.memberIndex,
-                animationDate: animationDate
+                frozenAnimationDate: frozenAnimationDate,
+                isFeedVisible: isFeedVisible
             ) { noteID in
                 handleTap(on: noteID)
             } onEnterReorderMode: {
@@ -1421,9 +1427,9 @@ private struct HomeScreen: View {
     }
 
     @ViewBuilder
-    private func draggedNoteOverlay(animationDate: Date) -> some View {
+    private func draggedNoteOverlay(frozenAnimationDate: Date, isFeedVisible: Bool) -> some View {
         if let dragID = activeDragNoteID,
-           let note = displayNotes.first(where: { $0.id == dragID }),
+           let note = displayedNotesByID[dragID],
            let startFrame = dragStartFrame ?? noteFrames[dragID] {
             let isAddMorphTarget = state.addMorphTargetNoteID == note.id
 
@@ -1439,7 +1445,8 @@ private struct HomeScreen: View {
                 isOutlineReady: !suppressedNoteOutlineIDs.contains(note.id),
                 isContentReady: !suppressedNoteContentIDs.contains(note.id),
                 isTransitionSource: state.expandedNoteID == note.id,
-                animationDate: animationDate,
+                frozenAnimationDate: frozenAnimationDate,
+                isAnimatingContinuously: isFeedVisible,
                 isSurfaceTransitionEnabled: false
             )
             .overlay {
@@ -1523,7 +1530,7 @@ private struct HomeScreen: View {
     }
 
     @ViewBuilder
-    private func noteCard(_ note: APINote, animationDate: Date, requiresDragHoldBeforeDragging: Bool) -> some View {
+    private func noteCard(_ note: APINote, frozenAnimationDate: Date, isFeedVisible: Bool, requiresDragHoldBeforeDragging: Bool) -> some View {
         let isAddMorphTarget = state.addMorphTargetNoteID == note.id
         let isDragged = activeDragNoteID == note.id
         let baseOpacity = isAddMorphTarget ? 0.001 : 1.0
@@ -1540,7 +1547,8 @@ private struct HomeScreen: View {
             isOutlineReady: !suppressedNoteOutlineIDs.contains(note.id),
             isContentReady: !suppressedNoteContentIDs.contains(note.id),
             isTransitionSource: state.expandedNoteID == note.id,
-            animationDate: animationDate,
+            frozenAnimationDate: frozenAnimationDate,
+            isAnimatingContinuously: isFeedVisible,
             isSurfaceTransitionEnabled: true
         )
         .overlay {
@@ -1603,7 +1611,7 @@ private struct HomeScreen: View {
             let remaining = group.noteIDs.filter { visible.contains($0) }
             return remaining.count >= 2 ? AffinityGroup(noteIDs: remaining) : nil
         }
-        let notesByID = Dictionary(uniqueKeysWithValues: displayNotes.map { ($0.id, $0) })
+        let notesByID = displayedNotesByID
         if columnLayout.isEmpty {
             let layout = buildColumnLayoutFromModel(notesByID: notesByID)
             syncLayoutState(from: layout)
@@ -1647,12 +1655,18 @@ private struct HomeScreen: View {
     private func buildColumnLayoutFromModel(notesByID: [String: APINote], order: [String]? = nil, groups: [AffinityGroup]? = nil, columnWidth: CGFloat = fallbackHomeColumnWidth()) -> ColumnLayout {
         var layout = ColumnLayout()
         let items = buildLayoutItems(notesByID: notesByID, order: order, groups: groups)
+        var leftHeight: CGFloat = 0
+        var rightHeight: CGFloat = 0
 
         for item in items {
-            if estimatedColumnHeight(layout.left, side: .left, notesByID: notesByID, columnWidth: columnWidth, previewPlaceholder: nil) <= estimatedColumnHeight(layout.right, side: .right, notesByID: notesByID, columnWidth: columnWidth, previewPlaceholder: nil) {
+            let itemHeight = estimatedHeight(for: item, notesByID: notesByID, columnWidth: columnWidth)
+
+            if leftHeight <= rightHeight {
                 layout.left.append(item)
+                leftHeight += itemHeight + (layout.left.count > 1 ? 16 : 0)
             } else {
                 layout.right.append(item)
+                rightHeight += itemHeight + (layout.right.count > 1 ? 16 : 0)
             }
         }
 
@@ -1665,15 +1679,21 @@ private struct HomeScreen: View {
             right: reconcileColumn(layout.right, notesByID: notesByID)
         )
         let usedIDs = Set(reconciled.left.flatMap(\.noteIDs) + reconciled.right.flatMap(\.noteIDs))
+        var leftHeight = estimatedColumnHeight(reconciled.left, side: .left, notesByID: notesByID, columnWidth: columnWidth, previewPlaceholder: nil)
+        var rightHeight = estimatedColumnHeight(reconciled.right, side: .right, notesByID: notesByID, columnWidth: columnWidth, previewPlaceholder: nil)
         let missingItems = buildLayoutItems(notesByID: notesByID).filter { item in
             !item.noteIDs.contains(where: usedIDs.contains)
         }
 
         for item in missingItems {
-            if estimatedColumnHeight(reconciled.left, side: .left, notesByID: notesByID, columnWidth: columnWidth, previewPlaceholder: nil) <= estimatedColumnHeight(reconciled.right, side: .right, notesByID: notesByID, columnWidth: columnWidth, previewPlaceholder: nil) {
+            let itemHeight = estimatedHeight(for: item, notesByID: notesByID, columnWidth: columnWidth)
+
+            if leftHeight <= rightHeight {
                 reconciled.left.append(item)
+                leftHeight += itemHeight + (reconciled.left.count > 1 ? 16 : 0)
             } else {
                 reconciled.right.append(item)
+                rightHeight += itemHeight + (reconciled.right.count > 1 ? 16 : 0)
             }
         }
 
@@ -2199,7 +2219,7 @@ private struct HomeScreen: View {
             }
             let reordered = reorderedIDs(noteID: noteID, finalFrame: finalFrame, using: baseOrder)
             let fallbackLayout = buildColumnLayoutFromModel(
-                notesByID: Dictionary(uniqueKeysWithValues: displayNotes.map { ($0.id, $0) }),
+                notesByID: displayedNotesByID,
                 order: reordered,
                 groups: dragBaseAffinityGroups.compactMap { group in
                     let remaining = group.noteIDs.filter { $0 != noteID }
@@ -2438,7 +2458,7 @@ private struct HomeScreen: View {
 
     private func downwardGroupingPlaceholder(for noteID: String, targetID: String, origin: ColumnLocation?, baseLayout: ColumnLayout) -> GroupPreviewPlaceholder? {
         guard let origin,
-              let note = displayNotes.first(where: { $0.id == noteID }),
+              let note = displayedNotesByID[noteID],
               let startFrame = dragStartFrame ?? noteFrames[noteID],
               let targetFrame = noteFrames[targetID],
               targetFrame.midY > startFrame.midY else {
@@ -3030,7 +3050,7 @@ private struct NoteFullPageScreen: View {
                         divider
                             .padding(.top, 30)
 
-                        if shouldShowCenteredCreepingSection {
+                        if shouldShowCenteredCreepingSection && !isEnriching {
                             centeredCreepingSection
                                 .padding(.top, 28)
                         }
@@ -3694,7 +3714,8 @@ private struct NoteCard: View {
     let isOutlineReady: Bool
     let isContentReady: Bool
     let isTransitionSource: Bool
-    let animationDate: Date
+    let frozenAnimationDate: Date
+    let isAnimatingContinuously: Bool
     let isSurfaceTransitionEnabled: Bool
 
     init(
@@ -3709,7 +3730,8 @@ private struct NoteCard: View {
         isOutlineReady: Bool,
         isContentReady: Bool,
         isTransitionSource: Bool,
-        animationDate: Date,
+        frozenAnimationDate: Date,
+        isAnimatingContinuously: Bool,
         isSurfaceTransitionEnabled: Bool = true
     ) {
         self.note = note
@@ -3723,17 +3745,37 @@ private struct NoteCard: View {
         self.isOutlineReady = isOutlineReady
         self.isContentReady = isContentReady
         self.isTransitionSource = isTransitionSource
-        self.animationDate = animationDate
+        self.frozenAnimationDate = frozenAnimationDate
+        self.isAnimatingContinuously = isAnimatingContinuously
         self.isSurfaceTransitionEnabled = isSurfaceTransitionEnabled
     }
 
     var body: some View {
+        animatedContent
+    }
+
+    @ViewBuilder
+    private var animatedContent: some View {
+        if shouldAnimateContinuously {
+            TimelineView(.animation(minimumInterval: 1.0 / 24.0)) { timeline in
+                cardContent(animationDate: timeline.date)
+            }
+        } else {
+            cardContent(animationDate: frozenAnimationDate)
+        }
+    }
+
+    private var shouldAnimateContinuously: Bool {
+        isAnimatingContinuously && !isExpanded
+    }
+
+    private func cardContent(animationDate: Date) -> some View {
         let jiggle = jiggleState(at: animationDate)
         let edgePhase = livingEdgePhase(at: animationDate)
         let edgeAmplitude = livingEdgeAmplitude
         let cometProgress = runningStrokeProgress(at: animationDate)
 
-        VStack(alignment: .leading, spacing: 10) {
+        return VStack(alignment: .leading, spacing: 10) {
             summaryText
 
             HStack(alignment: .center, spacing: 12) {
@@ -4337,7 +4379,8 @@ private struct RelatedNoteCluster: View {
     let deletingNoteID: String?
     let previewPlaceholderNote: APINote?
     let previewPlaceholderIndex: Int?
-    let animationDate: Date
+    let frozenAnimationDate: Date
+    let isFeedVisible: Bool
     let onSelect: (String) -> Void
     let onEnterReorderMode: () -> Void
     let onDragChanged: (String, CGSize) -> Void
@@ -4390,7 +4433,8 @@ private struct RelatedNoteCluster: View {
             isOutlineReady: !suppressedNoteOutlineIDs.contains(note.id),
             isContentReady: !suppressedNoteContentIDs.contains(note.id),
             isTransitionSource: expandedNoteID == note.id,
-            animationDate: animationDate,
+            frozenAnimationDate: frozenAnimationDate,
+            isAnimatingContinuously: isFeedVisible,
             isSurfaceTransitionEnabled: true
         )
             .opacity(clusterCardOpacity(noteID: note.id, isDragged: isDragged))

@@ -180,15 +180,6 @@ actor ThinknoteLocalStore {
         return makeAPINote(from: note)
     }
 
-    func processEligibleJobs(now: Date = .now, limit: Int = 3) throws -> [APINote] {
-        let context = ModelContext(container)
-        let updatedNotes = try processEligibleJobs(in: context, now: now, noteID: nil, limit: limit)
-        if !updatedNotes.isEmpty {
-            try context.save()
-        }
-        return updatedNotes.map { makeAPINote(from: $0) }
-    }
-
     func appendMockChat(noteID: String, message: String) throws -> APINote {
         let context = ModelContext(container)
         guard let note = try fetchNoteRecord(noteID: noteID, in: context) else {
@@ -560,23 +551,6 @@ actor ThinknoteLocalStore {
         }
     }
 
-    private func processEligibleJobs(
-        in context: ModelContext,
-        now: Date,
-        noteID: String?,
-        limit: Int
-    ) throws -> [NoteRecord] {
-        let eligibleJobs = try eligibleEnrichmentJobs(in: context, now: now, noteID: noteID, limit: limit)
-
-        var updatedNotes: [NoteRecord] = []
-        for job in eligibleJobs {
-            guard let note = job.note else { continue }
-            executeMockEnrichment(job: job, note: note, now: now, in: context)
-            updatedNotes.append(note)
-        }
-        return updatedNotes
-    }
-
     private func eligibleEnrichmentJobs(
         in context: ModelContext,
         now: Date,
@@ -596,115 +570,6 @@ actor ThinknoteLocalStore {
             .sorted(by: eligibleJobComparator)
             .prefix(limit)
             .map { $0 }
-    }
-
-    private func executeMockEnrichment(
-        job: JobRecord,
-        note: NoteRecord,
-        now: Date,
-        in context: ModelContext
-    ) {
-        job.status = .running
-        job.updatedAt = now
-        job.startedAt = job.startedAt ?? now
-        job.lastAttemptAt = now
-        job.runCount += 1
-
-        note.status = .queued
-        note.updatedAt = now
-
-        let source = SourceRecord(
-            title: "Public article",
-            urlString: "https://example.com/idea",
-            snippet: "Background research attached to the current AI interpretation.",
-            publisher: "example.com",
-            query: "product thinking",
-            score: 0.72,
-            retrievedAt: now,
-            note: note,
-            sourceJob: job
-        )
-        context.insert(source)
-
-        let revision = RevisionRecord(
-            createdAt: now,
-            kind: .aiEnrichment,
-            summary: "AI interpretation refreshed",
-            text: "This thought can be developed further by turning the fragment into a clearer argument and checking it against outside knowledge.",
-            provider: "local",
-            note: note,
-            sourceJob: job
-        )
-        context.insert(revision)
-
-        note.status = .enriched
-        note.title = polishedDisplayHeadline(from: note.rawText)
-        note.updatedAt = now
-        note.lastEnrichedAt = now
-        note.promptSuggestions = [
-            "What is the strongest version of this idea?",
-            "What evidence would make this more believable?"
-        ]
-
-        job.status = .completed
-        job.updatedAt = now
-        job.completedAt = now
-        job.outputData = StoredJSONCodec.encode([
-            "revisionId": revision.id,
-            "sourceId": source.id
-        ])
-
-        appendTimelineEvent(
-            type: .noteEnriched,
-            summary: "AI interpretation refreshed",
-            note: note,
-            createdAt: now,
-            payload: ["revisionId": revision.id, "jobId": job.id, "provider": "local"],
-            in: context
-        )
-
-        appendTimelineEvent(
-            type: .jobCompleted,
-            summary: "Background growth completed",
-            note: note,
-            createdAt: now,
-            payload: ["jobId": job.id],
-            in: context
-        )
-    }
-
-    private func answerPendingFollowUp(for note: NoteRecord, in context: ModelContext) throws {
-        let now = Date()
-        guard let thread = try fetchThread(for: note.id, in: context) else {
-            return
-        }
-
-        let orderedMessages = thread.messages.sorted { $0.createdAt < $1.createdAt }
-        guard let latestMessage = orderedMessages.last, latestMessage.role == .user else {
-            return
-        }
-
-        let assistantMessage = MessageRecord(
-            role: .assistant,
-            text: "A useful next step is to turn that follow-up into a sharper question, then compare it against the thought's current interpretation.",
-            provider: "local",
-            createdAt: now,
-            thread: thread
-        )
-        context.insert(assistantMessage)
-
-        thread.updatedAt = now
-        note.latestChatReply = assistantMessage.text
-        note.updatedAt = now
-
-        appendTimelineEvent(
-            type: .chatUpdated,
-            summary: "AI conversation advanced",
-            note: note,
-            createdAt: now,
-            payload: ["threadId": thread.id, "messageId": assistantMessage.id, "provider": "local"],
-            in: context
-        )
     }
 
     @discardableResult
@@ -1008,44 +873,12 @@ actor ThinknoteLocalStore {
         return normalized.isEmpty ? "Untitled" : normalized
     }
 
-    private func polishedDisplayHeadline(from text: String) -> String {
-        let normalized = normalizeHeadlineSource(text)
-        guard !normalized.isEmpty else { return "Untitled" }
-
-        let sentenceCased = sentenceCase(normalized)
-        return shortenHeadline(sentenceCased, maxLength: 72)
-    }
-
     private func normalizeHeadlineSource(_ text: String) -> String {
         text
             .components(separatedBy: .whitespacesAndNewlines)
             .filter { !$0.isEmpty }
             .joined(separator: " ")
             .trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    private func sentenceCase(_ text: String) -> String {
-        guard let first = text.first else { return text }
-        return first.uppercased() + text.dropFirst()
-    }
-
-    private func shortenHeadline(_ text: String, maxLength: Int) -> String {
-        guard text.count > maxLength else { return text }
-
-        var candidate = ""
-        for word in text.split(separator: " ") {
-            let next = candidate.isEmpty ? String(word) : candidate + " " + word
-            if next.count > maxLength {
-                break
-            }
-            candidate = next
-        }
-
-        if !candidate.isEmpty {
-            return candidate
-        }
-
-        return String(text.prefix(maxLength)).trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private func sortComparator(_ lhs: NoteRecord, _ rhs: NoteRecord) -> Bool {
