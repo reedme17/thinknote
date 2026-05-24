@@ -660,13 +660,21 @@ actor ThinknoteLocalStore {
 
     @discardableResult
     private func mergeRemoteEnrichments(into note: NoteRecord, remoteNote: APINote, in context: ModelContext) -> [String] {
-        let existingAIRevisions = note.revisions.filter { $0.kind == .aiEnrichment }
-        for revision in existingAIRevisions {
-            context.delete(revision)
-        }
+        let existingByID = Dictionary(
+            uniqueKeysWithValues: note.revisions
+                .filter { $0.kind == .aiEnrichment }
+                .map { ($0.id, $0) }
+        )
 
         var insertedIDs: [String] = []
         for enrichment in remoteNote.enrichments.sorted(by: { $0.createdAt > $1.createdAt }) {
+            if let existing = existingByID[enrichment.id] {
+                existing.createdAt = enrichment.createdAt
+                existing.text = enrichment.expansion
+                existing.provider = enrichment.provider
+                existing.followUpContext = enrichment.followUpContext
+                continue
+            }
             let revision = RevisionRecord(
                 id: enrichment.id,
                 createdAt: enrichment.createdAt,

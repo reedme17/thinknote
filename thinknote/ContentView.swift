@@ -3306,6 +3306,7 @@ private struct NoteFullPageScreen: View {
                 .foregroundStyle(.black.opacity(0.82)) +
             Text(highlight)
                 .foregroundStyle(noteAccentColor)
+                .baselineOffset(2)
                 .underline(true, pattern: .dot, color: noteAccentColor) +
             Text(suffix.isEmpty ? "" : " \(suffix)")
                 .foregroundStyle(.black.opacity(0.82))

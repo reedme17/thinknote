@@ -573,18 +573,24 @@ function buildEnrichmentPrompt({ note, focus, relatedNotes, retrievalBundle, fol
         "Rules:",
         "- Never rewrite or replace the user's raw note text.",
         "- `headline` should be a lightly polished top line, close to the original wording, under 90 characters, and never use an ellipsis.",
-        "- `growthParagraphs` should be 1 to 3 appended paragraphs of development.",
+        "- Voice: the entire page (headline + raw note + growth + any follow-up sections) must read as a single finished article whose title is the headline. Write in the author's own voice as if it were always one essay.",
+        "- Never refer to the artifact you are inside. Forbidden phrases include 'this note', 'the note', 'this thought', 'this idea above', 'the user', 'the writer', 'as mentioned'. Do not meta-narrate that something is being developed, expanded, captured, or grown.",
+        "- Do not summarize or paraphrase the raw note back at the reader. Continue the argument forward instead.",
+        "- `growthParagraphs` must be short: 1 to 2 paragraphs total, each paragraph no more than 3 sentences and under ~280 characters. The combined growth should comfortably fit within a single mobile screen — be concise, not exhaustive.",
         "- `timelineSummary` should be a short phrase describing what changed.",
         "- `prompts` should contain 2 to 3 concrete open-ended follow-up questions that deepen the note instead of repeating it.",
         "- Only return an empty `prompts` array if the note is too trivial or too complete to extend meaningfully.",
         hasFollowUpGuidance
-            ? "- This note has a pending user follow-up. Treat it as steering guidance for the next section of the same article, not as a chat reply."
+            ? "- A user follow-up is steering the next section. Treat the existing headline + raw note + any prior growth as fixed earlier sections of the same article that you cannot rewrite. Your job is to add the next section so the whole page still reads as one coherent essay."
             : "- If there is no follow-up guidance, `followUpContext` must be null.",
         hasFollowUpGuidance
-            ? "- When follow-up guidance is present, `followUpContext` must be a natural bridge into the next section. `highlight` must quote or closely paraphrase the user's follow-up in concise form. `prefix` and `suffix` must make the sentence read naturally around that highlighted phrase."
+            ? "- The new section must open a fresh sub-topic, sub-argument, or new angle — not restate what came before. Assume the reader has already read the prior sections; build on them without recapping."
             : "- Do not fabricate a follow-up bridge if none was provided.",
         hasFollowUpGuidance
-            ? "- When follow-up guidance is present, `growthParagraphs` must feel like the next section of the article. Do not answer in Q&A format and do not mention 'the user' or 'this question' mechanically."
+            ? "- `followUpContext` is the first sentence of the new section, written in the same essay voice. `highlight` quotes or paraphrases the user's follow-up as a noun phrase woven into that sentence (not a question, not addressed to anyone). `prefix` and `suffix` make the sentence read naturally around the highlight, with no meta-references."
+            : "- Do not fabricate a follow-up bridge if none was provided.",
+        hasFollowUpGuidance
+            ? "- `growthParagraphs` continues directly after the `followUpContext` sentence as the rest of that new section. Never use Q&A format. Never mention 'the question', 'the follow-up', or 'the user'."
             : "- Keep the development in essay form.",
         `Focus area: ${focus || "general idea development"}`,
         `Note title: ${note.title}`,
@@ -769,9 +775,10 @@ function normalizeFollowUpContext(value, followUpGuidance = "") {
     }
 
     const prefix = typeof value.prefix === "string" ? value.prefix : "";
-    const highlight = typeof value.highlight === "string" ? value.highlight : fallbackHighlight;
+    const rawHighlight = typeof value.highlight === "string" ? value.highlight : "";
+    const initialHighlight = rawHighlight.trim().replace(/\s+/g, " ");
+    const compactHighlight = initialHighlight || fallbackHighlight;
     const suffix = typeof value.suffix === "string" ? value.suffix : "";
-    const compactHighlight = highlight.trim().replace(/\s+/g, " ");
 
     if (!compactHighlight) {
         return null;
