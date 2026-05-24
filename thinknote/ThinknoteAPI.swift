@@ -132,6 +132,12 @@ struct APINote: Identifiable, Codable, Hashable, Sendable {
     }
 }
 
+struct APIFollowUpContext: Codable, Hashable, Sendable {
+    let prefix: String
+    let highlight: String
+    let suffix: String
+}
+
 struct APIEnrichment: Identifiable, Codable, Hashable, Sendable {
     let id: String
     let createdAt: Date
@@ -141,6 +147,7 @@ struct APIEnrichment: Identifiable, Codable, Hashable, Sendable {
     let prompts: [String]
     let links: [APILink]
     let sources: [APISource]
+    let followUpContext: APIFollowUpContext?
 }
 
 struct APILink: Identifiable, Codable, Hashable, Sendable {
@@ -285,6 +292,7 @@ final class ContentViewModel: ObservableObject {
     private let repository: ThinknoteRepository
     private var hasBootstrapped = false
     private var isProcessingDeferredGrowth = false
+    private var deferredGrowthWakeTask: Task<Void, Never>?
 
     init(notes: [APINote] = [], repository: ThinknoteRepository? = nil) {
         self.notes = notes
@@ -321,6 +329,7 @@ final class ContentViewModel: ObservableObject {
             notes = try await repository.bootstrap(seedNotes: Self.demoNotes)
             hasBootstrapped = true
             await processDeferredGrowthIfNeeded()
+            scheduleDeferredGrowthWake()
             activeError = nil
         } catch {
             if notes.isEmpty {
@@ -333,6 +342,7 @@ final class ContentViewModel: ObservableObject {
     func loadNotes() async {
         do {
             notes = try await repository.loadNotes()
+            scheduleDeferredGrowthWake()
             activeError = nil
         } catch {
             if notes.isEmpty {
@@ -619,6 +629,7 @@ final class ContentViewModel: ObservableObject {
         do {
             _ = try await repository.processEligibleJobs()
             await loadNotes()
+            scheduleDeferredGrowthWake()
         } catch {
             presentError(
                 title: "Background growth paused",
@@ -626,6 +637,24 @@ final class ContentViewModel: ObservableObject {
                 actionTitle: "retry",
                 action: .retryDeferredGrowth
             )
+        }
+    }
+
+    private func scheduleDeferredGrowthWake() {
+        deferredGrowthWakeTask?.cancel()
+        deferredGrowthWakeTask = Task { [weak self] in
+            guard let self else { return }
+            guard let wakeDate = try? await self.repository.nextDeferredGrowthDate() else { return }
+
+            let delay = max(wakeDate.timeIntervalSinceNow, 0)
+            if delay > 0 {
+                let cappedDelay = min(delay, 60 * 60 * 24 * 30)
+                let nanoseconds = UInt64(cappedDelay * 1_000_000_000)
+                try? await Task.sleep(nanoseconds: nanoseconds)
+            }
+
+            guard !Task.isCancelled else { return }
+            await self.processDeferredGrowthIfNeeded()
         }
     }
 
@@ -769,7 +798,8 @@ private func seededPrototypeNote(
         relatedIdeas: [],
         prompts: prompts,
         links: [],
-        sources: sources
+        sources: sources,
+        followUpContext: nil
     )
 
     return APINote(
@@ -943,7 +973,8 @@ struct ThinknoteAPIClient {
         triggerSource: String = "manual",
         wait: Bool = true,
         priority: String? = nil,
-        earliestRunAt: Date? = nil
+        earliestRunAt: Date? = nil,
+        followUpGuidance: String? = nil
     ) async throws -> APINote {
         let body = EnrichNoteRequest(
             focus: "product thinking",
@@ -951,7 +982,8 @@ struct ThinknoteAPIClient {
             wait: wait,
             triggerSource: triggerSource,
             priority: priority,
-            earliestRunAt: earliestRunAt
+            earliestRunAt: earliestRunAt,
+            followUpGuidance: followUpGuidance
         )
         let response: EnrichResponse = try await request(path: "api/notes/\(noteID)/enrich", method: "POST", body: body)
         return response.note
@@ -1037,6 +1069,7 @@ private struct EnrichNoteRequest: Encodable {
     let triggerSource: String
     let priority: String?
     let earliestRunAt: Date?
+    let followUpGuidance: String?
 }
 
 private struct ChatRequest: Encodable {

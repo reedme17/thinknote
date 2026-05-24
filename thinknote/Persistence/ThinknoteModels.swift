@@ -5,6 +5,7 @@ enum NoteStatus: String, Codable, CaseIterable, Sendable {
     case captured
     case edited
     case queued
+    case retrying
     case enriched
     case failed
 }
@@ -127,6 +128,7 @@ final class RevisionRecord {
     var summary: String
     var text: String
     var provider: String
+    @Attribute(.externalStorage) var followUpContextData: Data?
 
     var note: NoteRecord?
     var sourceJob: JobRecord?
@@ -138,6 +140,7 @@ final class RevisionRecord {
         summary: String,
         text: String,
         provider: String = "user",
+        followUpContext: APIFollowUpContext? = nil,
         note: NoteRecord? = nil,
         sourceJob: JobRecord? = nil
     ) {
@@ -147,6 +150,7 @@ final class RevisionRecord {
         self.summary = summary
         self.text = text
         self.provider = provider
+        self.followUpContextData = StoredJSONCodec.encode(followUpContext)
         self.note = note
         self.sourceJob = sourceJob
     }
@@ -154,6 +158,11 @@ final class RevisionRecord {
     var kind: RevisionKind {
         get { RevisionKind(rawValue: kindRaw) ?? .userCapture }
         set { kindRaw = newValue.rawValue }
+    }
+
+    var followUpContext: APIFollowUpContext? {
+        get { StoredJSONCodec.decode(APIFollowUpContext.self, from: followUpContextData) }
+        set { followUpContextData = StoredJSONCodec.encode(newValue) }
     }
 }
 

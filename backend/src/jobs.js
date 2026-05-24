@@ -158,16 +158,16 @@ export function createJobProcessor({ config, store, logger, ai }) {
                 currentJob.lastError = message;
                 currentJob.updatedAt = new Date().toISOString();
 
-                if (currentJob.retryCount <= currentJob.maxRetries) {
+                if (shouldRetryJob(currentJob)) {
                     currentJob.status = "retrying";
-                    currentJob.nextRunAt = new Date(now.getTime() + currentJob.retryCount * 1500).toISOString();
+                    currentJob.nextRunAt = new Date(Date.now() + retryDelayMs(currentJob.retryCount)).toISOString();
                 } else {
                     currentJob.status = "failed";
                     currentJob.completedAt = new Date().toISOString();
                 }
 
                 if (note) {
-                    note.status = currentJob.status === "failed" ? "failed" : "queued";
+                    note.status = currentJob.status === "failed" ? "failed" : currentJob.status;
                     note.updatedAt = new Date().toISOString();
                     store.createTimelineEvent(
                         note,
@@ -209,6 +209,7 @@ export function createJobProcessor({ config, store, logger, ai }) {
             note,
             focus: typeof job.payload.focus === "string" ? job.payload.focus : "",
             includeWeb: job.payload.includeWeb !== false,
+            followUpGuidance: typeof job.payload.followUpGuidance === "string" ? job.payload.followUpGuidance : "",
             relatedNotes
         });
         const growthParagraphs = normalizeGrowthParagraphs(enrichment.growthParagraphs);
@@ -237,6 +238,7 @@ export function createJobProcessor({ config, store, logger, ai }) {
             currentNote.title = headline;
             currentNote.updatedAt = completedAt;
             currentNote.lastEnrichedAt = completedAt;
+            currentNote.latestChatReply = enrichment.followUpContext ? null : currentNote.latestChatReply;
             currentNote.prompts = enrichment.prompts;
             currentNote.sources = enrichment.sources;
             currentNote.links = relatedLinks;
@@ -252,7 +254,8 @@ export function createJobProcessor({ config, store, logger, ai }) {
                 relatedIdeas: enrichment.relatedIdeas,
                 prompts: enrichment.prompts,
                 links: relatedLinks,
-                sources: enrichment.sources
+                sources: enrichment.sources,
+                followUpContext: enrichment.followUpContext || null
             });
             currentNote.revisions.unshift(revision);
             store.createTimelineEvent(currentNote, "note_enriched", timelineSummary, {
@@ -292,6 +295,18 @@ export function createJobProcessor({ config, store, logger, ai }) {
         if (waiter) {
             waiter(job);
         }
+    }
+
+    function shouldRetryJob(job) {
+        return job.maxRetries < 0 || job.retryCount <= job.maxRetries;
+    }
+
+    function retryDelayMs(retryCount) {
+        const baseMs = normalizePositiveInteger(config.jobRetryBaseMs, 1500);
+        const maxDelayMs = normalizePositiveInteger(config.jobRetryMaxDelayMs, 300000);
+        const exponential = baseMs * 2 ** Math.min(Math.max(retryCount - 1, 0), 8);
+        const jitter = Math.floor(Math.random() * baseMs);
+        return Math.min(exponential + jitter, maxDelayMs);
     }
 
     return processor;

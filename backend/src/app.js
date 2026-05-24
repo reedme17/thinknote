@@ -312,7 +312,8 @@ async function handleEnrichNote({ res, params, body, services, url }) {
         note.id,
         {
             focus: typeof body?.focus === "string" ? body.focus.trim() : "",
-            includeWeb: body?.includeWeb !== false
+            includeWeb: body?.includeWeb !== false,
+            followUpGuidance: typeof body?.followUpGuidance === "string" ? body.followUpGuidance.trim() : ""
         },
         typeof body?.triggerSource === "string" && body.triggerSource.trim() ? body.triggerSource.trim() : "manual",
         {
@@ -333,9 +334,10 @@ async function handleEnrichNote({ res, params, body, services, url }) {
         const refreshed = services.store.getNote(note.id);
 
         if (!completedJob) {
-            sendJson(res, 504, {
-                error: "AI response timed out.",
-                detail: "The enrichment job did not finish in time."
+            sendJson(res, 202, {
+                note: decorateNote(refreshed, services.store, true),
+                job: services.store.getJob(job.id),
+                detail: "The enrichment job is still queued."
             });
             return;
         }
@@ -355,7 +357,10 @@ async function handleEnrichNote({ res, params, body, services, url }) {
         return;
     }
 
-    sendJson(res, 202, { job });
+    sendJson(res, 202, {
+        note: decorateNote(services.store.getNote(note.id), services.store, true),
+        job
+    });
 }
 
 async function handleListJobs({ res, services }) {

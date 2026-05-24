@@ -115,6 +115,9 @@ private let noteCardHorizontalPadding: CGFloat = 18
 private let noteCardVerticalPadding: CGFloat = 18
 private let noteCardBodySpacing: CGFloat = 14
 private let noteCardSummaryFontSize: CGFloat = 18
+private let noteCardChineseSummaryFontSize: CGFloat = 17
+private let noteDetailPrimaryFontSize: CGFloat = 25
+private let noteDetailChinesePrimaryFontSize: CGFloat = 24
 private let noteCardSummaryLineSpacing: CGFloat = 2
 private let noteCardSummaryMaxLines = 5
 private let noteCardMetaFontSize: CGFloat = 10
@@ -135,8 +138,10 @@ private func noteCardContentWidth(for columnWidth: CGFloat) -> CGFloat {
 }
 
 private let cachedNoteCardSummaryUIFont: UIFont =
-    UIFont(name: "DavidLibre-Regular", size: noteCardSummaryFontSize)
-    ?? UIFont.systemFont(ofSize: noteCardSummaryFontSize)
+    noteCardSummaryUIFont(size: noteCardSummaryFontSize)
+
+private let cachedChineseNoteCardSummaryUIFont: UIFont =
+    noteCardSummaryUIFont(size: noteCardChineseSummaryFontSize)
 
 private let cachedNoteCardMetaUIFont: UIFont =
     UIFont(name: "GeistMono-Regular", size: noteCardMetaFontSize)
@@ -149,6 +154,23 @@ private func noteCardSummaryUIFont() -> UIFont {
     cachedNoteCardSummaryUIFont
 }
 
+private func noteCardSummaryUIFont(for text: String) -> UIFont {
+    NoteCardHeadlinePolicy.containsCJKCharacters(text) ? cachedChineseNoteCardSummaryUIFont : cachedNoteCardSummaryUIFont
+}
+
+private func noteCardSummaryFontSize(for text: String) -> CGFloat {
+    NoteCardHeadlinePolicy.containsCJKCharacters(text) ? noteCardChineseSummaryFontSize : noteCardSummaryFontSize
+}
+
+private func noteDetailPrimaryFontSize(for text: String) -> CGFloat {
+    NoteCardHeadlinePolicy.containsCJKCharacters(text) ? noteDetailChinesePrimaryFontSize : noteDetailPrimaryFontSize
+}
+
+private func noteCardSummaryUIFont(size: CGFloat) -> UIFont {
+    UIFont(name: "DavidLibre-Regular", size: size)
+    ?? UIFont.systemFont(ofSize: size)
+}
+
 private func noteCardMetaUIFont() -> UIFont {
     cachedNoteCardMetaUIFont
 }
@@ -158,7 +180,7 @@ private func noteCardMetaLineHeight() -> CGFloat {
 }
 
 private func measuredHeadlineHeight(for note: APINote, columnWidth: CGFloat = fallbackHomeColumnWidth()) -> CGFloat {
-    let font = noteCardSummaryUIFont()
+    let font = noteCardSummaryUIFont(for: note.displayHeadline)
     let availableWidth = noteCardContentWidth(for: columnWidth)
     guard availableWidth > 0 else { return ceil(font.lineHeight) }
 
@@ -196,7 +218,7 @@ private func measuredHeadlineHeight(for note: APINote, columnWidth: CGFloat = fa
 }
 
 private func measuredHeadlineLineCount(for note: APINote, columnWidth: CGFloat = fallbackHomeColumnWidth()) -> Int {
-    let lineAdvance = noteCardSummaryUIFont().lineHeight + noteCardSummaryLineSpacing
+    let lineAdvance = noteCardSummaryUIFont(for: note.displayHeadline).lineHeight + noteCardSummaryLineSpacing
     guard lineAdvance > 0 else { return 1 }
     let estimatedLines = Int(ceil((measuredHeadlineHeight(for: note, columnWidth: columnWidth) + noteCardSummaryLineSpacing) / lineAdvance))
     return min(max(estimatedLines, 1), noteCardSummaryMaxLines)
@@ -3039,8 +3061,8 @@ private struct NoteFullPageScreen: View {
                             .detailDebugAnchor(id: "meta-strip")
                             .padding(.top, 22)
 
-                        Text(note.displayHeadline)
-                            .font(AppFont.heading(26))
+                        Text(note.text)
+                            .font(AppFont.heading(noteDetailPrimaryFontSize(for: note.text)))
                             .lineSpacing(4)
                             .foregroundStyle(.black)
                             .detailDebugAnchor(id: "thought-body")
@@ -3058,11 +3080,11 @@ private struct NoteFullPageScreen: View {
                         if hasAIGrowthParagraphs {
                             aiGrowthSection
                                 .padding(.top, 26)
+                        }
 
-                            if shouldShowInlineContinueThoughtCTA {
-                                inlineContinueThoughtCTA
-                                    .padding(.top, 28)
-                            }
+                        if !followUpEnrichments.isEmpty {
+                            followUpGrowthSections
+                                .padding(.top, hasAIGrowthParagraphs ? 28 : 26)
                         }
 
                         if !note.sources.isEmpty {
@@ -3070,12 +3092,14 @@ private struct NoteFullPageScreen: View {
                                 .padding(.top, 28)
                         }
 
-                        if !note.prompts.isEmpty {
+                        if !note.prompts.isEmpty && pendingFollowUpText == nil {
                             openAnglesSection
                                 .padding(.top, 28)
                         }
 
-                        if let latestReply = note.latestChatReply, !latestReply.isEmpty {
+                        if followUpEnrichments.isEmpty,
+                           let latestReply = note.latestChatReply,
+                           !latestReply.isEmpty {
                             latestReplySection(latestReply)
                                 .padding(.top, 28)
                         }
@@ -3133,7 +3157,7 @@ private struct NoteFullPageScreen: View {
 
     private var aiGrowthSection: some View {
         VStack(alignment: .leading, spacing: 20) {
-            ForEach(Array(growthParagraphs.enumerated()), id: \.offset) { _, paragraph in
+            ForEach(Array(baseGrowthParagraphs.enumerated()), id: \.offset) { _, paragraph in
                 Text(paragraph)
                     .font(AppFont.body(19))
                     .lineSpacing(4)
@@ -3144,27 +3168,24 @@ private struct NoteFullPageScreen: View {
         .offset(y: showGrowthContent ? 0 : 12)
     }
 
-    private var inlineContinueThoughtCTA: some View {
-        Group {
-            if isEnriching {
-                centeredExploringSection
-            } else {
-                HStack {
-                    Spacer()
-
-                    Button {
-                        Task { await requestResponse() }
-                    } label: {
-                        Text("continue creeping")
-                            .font(AppFont.meta(11))
-                            .tracking(1.2)
-                            .foregroundStyle(noteAccentColor)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 10)
-                            .glassCapsuleButtonChrome()
+    private var followUpGrowthSections: some View {
+        VStack(alignment: .leading, spacing: 26) {
+            ForEach(Array(followUpEnrichments.enumerated()), id: \.element.id) { index, enrichment in
+                VStack(alignment: .leading, spacing: 20) {
+                    if index > 0 || hasAIGrowthParagraphs {
+                        divider
                     }
 
-                    Spacer()
+                    if let context = enrichment.followUpContext {
+                        followUpBridgeText(context)
+                    }
+
+                    ForEach(Array(paragraphs(from: enrichment.expansion).enumerated()), id: \.offset) { _, paragraph in
+                        Text(paragraph)
+                            .font(AppFont.body(19))
+                            .lineSpacing(4)
+                            .foregroundStyle(.black.opacity(0.82))
+                    }
                 }
             }
         }
@@ -3221,7 +3242,6 @@ private struct NoteFullPageScreen: View {
                                 Text(sourceHost(source.url))
                                     .font(AppFont.meta(11))
                                     .tracking(1.2)
-                                    .textCase(.uppercase)
                                     .foregroundStyle(.black.opacity(0.46))
 
                                 Text(source.title)
@@ -3276,6 +3296,24 @@ private struct NoteFullPageScreen: View {
         .offset(y: showGrowthContent ? 0 : 12)
     }
 
+    private func followUpBridgeText(_ context: APIFollowUpContext) -> some View {
+        let prefix = context.prefix.trimmingCharacters(in: .whitespacesAndNewlines)
+        let highlight = context.highlight.trimmingCharacters(in: .whitespacesAndNewlines)
+        let suffix = context.suffix.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        return (
+            Text(prefix.isEmpty ? "" : "\(prefix) ")
+                .foregroundStyle(.black.opacity(0.82)) +
+            Text(highlight)
+                .foregroundStyle(noteAccentColor)
+                .underline(true, pattern: .dot, color: noteAccentColor) +
+            Text(suffix.isEmpty ? "" : " \(suffix)")
+                .foregroundStyle(.black.opacity(0.82))
+        )
+        .font(AppFont.body(19))
+        .lineSpacing(4)
+    }
+
     private func pendingFollowUpSection(_ followUp: String) -> some View {
         VStack(alignment: .leading, spacing: 20) {
             divider
@@ -3285,7 +3323,7 @@ private struct NoteFullPageScreen: View {
                     Text(paragraph)
                         .font(AppFont.body(19))
                         .lineSpacing(4)
-                        .foregroundStyle(noteAccentColor.opacity(0.78))
+                        .foregroundStyle(noteAccentColor)
                 }
             }
         }
@@ -3326,7 +3364,7 @@ private struct NoteFullPageScreen: View {
                 HStack(alignment: .center, spacing: 12) {
                     ZStack(alignment: .leading) {
                         if followUpDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                            Text("Ask about this")
+                            Text("Continue creeping...")
                                 .font(AppFont.meta(11))
                                 .tracking(1.2)
                                 .foregroundStyle(.black.opacity(0.34))
@@ -3411,17 +3449,26 @@ private struct NoteFullPageScreen: View {
         return lastMessage.text
     }
 
-    private var shouldShowInlineContinueThoughtCTA: Bool {
-        hasAIGrowthParagraphs && !isAwaitingAssistantReply
+    private var baseEnrichment: APIEnrichment? {
+        note.enrichments
+            .filter { $0.followUpContext == nil }
+            .sorted { $0.createdAt > $1.createdAt }
+            .first
     }
 
-    private var growthParagraphs: [String] {
-        let expansion = note.enrichments.first?.expansion.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    private var followUpEnrichments: [APIEnrichment] {
+        note.enrichments
+            .filter { $0.followUpContext != nil }
+            .sorted { $0.createdAt < $1.createdAt }
+    }
+
+    private var baseGrowthParagraphs: [String] {
+        let expansion = baseEnrichment?.expansion.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return paragraphs(from: expansion)
     }
 
     private var hasAIGrowthParagraphs: Bool {
-        !growthParagraphs.isEmpty
+        !baseGrowthParagraphs.isEmpty
     }
 
     private var shouldShowCenteredCreepingSection: Bool {
@@ -3431,7 +3478,7 @@ private struct NoteFullPageScreen: View {
         guard note.prompts.isEmpty else { return false }
         guard note.sources.isEmpty else { return false }
         guard ["queued", "running", "retrying"].contains(note.status) else { return false }
-        return Date().timeIntervalSince(note.createdAt) < 24 * 60 * 60
+        return Date().timeIntervalSince(note.createdAt) < 12 * 60 * 60
     }
 
     private var centeredExploringSection: some View {
@@ -3511,7 +3558,7 @@ private struct NoteFullPageScreen: View {
     }
 
     private var noteTimestamp: String {
-        noteDetailTimestampLabel(for: note.updatedAt)
+        noteDetailTimestampLabel(for: note.createdAt)
     }
 
     private var divider: some View {
@@ -3884,7 +3931,7 @@ private struct NoteCard: View {
                 .padding(1.5)
             }
         }
-        .overlay(alignment: .bottomTrailing) {
+        .overlay(alignment: .topTrailing) {
             if let statusDot = statusDot {
                 Circle()
                     .fill(noteAccentColor)
@@ -3892,8 +3939,8 @@ private struct NoteCard: View {
                         width: statusDotDiameter(for: statusDot),
                         height: statusDotDiameter(for: statusDot)
                     )
-                    .padding(.trailing, 18)
-                    .padding(.bottom, 18)
+                    .padding(.trailing, 12)
+                    .padding(.top, 12)
                     .opacity(1)
             }
         }
@@ -3921,6 +3968,9 @@ private struct NoteCard: View {
     private var statusText: String? {
         guard statusDot == nil else { return nil }
 
+        if note.status == "retrying" {
+            return "still growing"
+        }
         if isActivelyGrowing {
             return nil
         }
@@ -3948,7 +3998,7 @@ private struct NoteCard: View {
 
     private var summaryText: some View {
         Text(cardBodyText)
-            .font(AppFont.body(18))
+            .font(AppFont.body(noteCardSummaryFontSize(for: cardBodyText)))
             .foregroundStyle(Color(red: 0.17, green: 0.17, blue: 0.17))
             .multilineTextAlignment(.leading)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -3969,7 +4019,7 @@ private struct NoteCard: View {
     }
 
     private var noteTimestamp: String {
-        noteCardTimestampLabel(for: note.updatedAt)
+        noteCardTimestampLabel(for: note.createdAt)
     }
 
     private func jiggleState(at date: Date) -> (rotation: Double, offset: CGSize) {

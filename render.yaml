@@ -15,7 +15,9 @@ services:
       - key: SEARCH_PROVIDER
         value: none
       - key: OPENAI_MODEL
-        value: gpt-4.1-mini
+        value: gpt-5.1
+      - key: OPENAI_FALLBACK_MODELS
+        value: gpt-5-mini,gpt-4.1-mini
       - key: OPENAI_BASE_URL
         value: https://api.openai.com/v1
       - key: AUTO_ENRICH_ON_CREATE

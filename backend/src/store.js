@@ -264,7 +264,17 @@ function migrateEnrichment(enrichment) {
         relatedIdeas: Array.isArray(enrichment.relatedIdeas) ? enrichment.relatedIdeas.filter((item) => typeof item === "string") : [],
         prompts: Array.isArray(enrichment.prompts) ? enrichment.prompts.filter((item) => typeof item === "string") : [],
         links: Array.isArray(enrichment.links) ? enrichment.links.map(migrateLink) : [],
-        sources: Array.isArray(enrichment.sources) ? enrichment.sources.map(migrateSource) : []
+        sources: Array.isArray(enrichment.sources) ? enrichment.sources.map(migrateSource) : [],
+        followUpContext:
+            enrichment.followUpContext &&
+            typeof enrichment.followUpContext === "object" &&
+            typeof enrichment.followUpContext.highlight === "string"
+                ? {
+                      prefix: typeof enrichment.followUpContext.prefix === "string" ? enrichment.followUpContext.prefix : "",
+                      highlight: enrichment.followUpContext.highlight,
+                      suffix: typeof enrichment.followUpContext.suffix === "string" ? enrichment.followUpContext.suffix : ""
+                  }
+                : null
     };
 }
 
@@ -383,6 +393,7 @@ function buildDefaultNote({ id, title, text, status, updatedAt, grownCount, grow
                       relatedIdeas: [],
                       prompts,
                       links: [],
+                      followUpContext: null,
                       sources: sources.map((source) => ({
                           id: randomUUID(),
                           title: source.title,

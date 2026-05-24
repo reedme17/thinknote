@@ -70,10 +70,24 @@ Important variables in `.env`:
 - `SEARCH_PROVIDER=none|embedded|remote`
 - `SEARCH_API_URL=...` when using remote retrieval
 - `OPENAI_API_KEY=...` or `CEREBRAS_API_KEY=...`
+- `OPENAI_MODEL=gpt-4.1-mini`
+- `OPENAI_FALLBACK_MODELS=...` as a comma-separated OpenAI model routing list
+- `AI_REQUEST_TIMEOUT_MS=30000`
+- `AI_REQUEST_MAX_RETRIES=2`
+- `AI_REQUEST_RETRY_BASE_MS=500`
+- `AI_REQUEST_RETRY_MAX_MS=8000`
+- `OPENAI_ENRICHMENT_MAX_OUTPUT_TOKENS=900`
+- `OPENAI_CHAT_MAX_OUTPUT_TOKENS=700`
+- `JOB_MAX_RETRIES=3`
+- `JOB_RETRY_MAX_DELAY_MS=300000`
 
 Production-style behavior:
 
 - Do not rely on silent fallback. If the configured AI provider fails, enrichment/chat requests fail and the client should tell the user.
+- OpenAI calls use request-level retries with exponential backoff and jitter for transient 429/5xx/network failures.
+- OpenAI model routing tries `OPENAI_MODEL` first, then `OPENAI_FALLBACK_MODELS` when the current model fails with a retryable error.
+- Enrichment uses OpenAI structured outputs so the backend receives schema-shaped JSON instead of prompt-only JSON.
+- Enrichment can be queued with `wait=false`; the API returns `202` with the latest note and job so clients can show growth/loading while the backend retries transient failures.
 - Embedded search is opt-in and meant for local development only.
 
 ## Search API Contract

@@ -59,6 +59,8 @@ test("manual enrichment can be scheduled for later without mutating raw text", a
         });
 
         assert.equal(enqueueResponse.status, 202);
+        assert.equal(enqueueResponse.json.note.id, noteId);
+        assert.equal(enqueueResponse.json.note.status, "queued");
         assert.equal(enqueueResponse.json.job.earliestRunAt, future);
         assert.equal(enqueueResponse.json.job.priority, "background");
 
@@ -73,6 +75,41 @@ test("manual enrichment can be scheduled for later without mutating raw text", a
         assert.equal(noteResponse.json.note.rawText, "A note should stay raw while background growth appends a better headline later.");
         assert.ok(noteResponse.json.note.title.length > 0);
         assert.ok(noteResponse.json.note.enrichments[0].growthParagraphs.length > 0);
+    } finally {
+        await app.close();
+    }
+});
+
+test("follow-up guidance enriches the next section instead of creating a chat reply", async () => {
+    const app = await createApp();
+    try {
+        const createResponse = await request(app, "/api/notes", {
+            method: "POST",
+            body: {
+                text: "A note should keep growing as one essay even when the reader nudges it toward a nearby question."
+            }
+        });
+
+        const noteId = createResponse.json.note.id;
+        const enrichResponse = await request(app, `/api/notes/${noteId}/enrich`, {
+            method: "POST",
+            body: {
+                wait: true,
+                followUpGuidance: "What changes if we look at this from the reader's point of view?"
+            }
+        });
+
+        assert.equal(enrichResponse.status, 200);
+        assert.equal(enrichResponse.json.note.latestChatReply, null);
+        assert.equal(
+            enrichResponse.json.note.enrichments[0].followUpContext.highlight,
+            "What changes if we look at this from the reader's point of view?"
+        );
+        assert.match(enrichResponse.json.note.enrichments[0].expansion, /follow-up|reader|section/i);
+        assert.equal(
+            enrichResponse.json.note.rawText,
+            "A note should keep growing as one essay even when the reader nudges it toward a nearby question."
+        );
     } finally {
         await app.close();
     }
@@ -256,6 +293,7 @@ test("health reports cerebras provider when configured", async () => {
 
 test("openai provider uses responses API for enrichment", async () => {
     const requestedUrls = [];
+    const requestedBodies = [];
     const app = await createApp(
         {
             env: {
@@ -264,8 +302,9 @@ test("openai provider uses responses API for enrichment", async () => {
                 OPENAI_BASE_URL: "https://api.openai.test/v1"
             }
         },
-        async (url) => {
+        async (url, options) => {
             requestedUrls.push(String(url));
+            requestedBodies.push(JSON.parse(options.body));
             return {
                 ok: true,
                 status: 200,
@@ -292,8 +331,179 @@ test("openai provider uses responses API for enrichment", async () => {
             relatedNotes: []
         });
 
-        assert.equal(result.provider, "openai");
+        assert.equal(result.provider, "openai:gpt-4.1-mini");
         assert.equal(requestedUrls[0], "https://api.openai.test/v1/responses");
+        assert.equal(requestedBodies[0].text.format.type, "json_schema");
+        assert.equal(requestedBodies[0].text.format.strict, true);
+        assert.deepEqual(
+            new Set(requestedBodies[0].text.format.schema.required),
+            new Set(Object.keys(requestedBodies[0].text.format.schema.properties))
+        );
+    } finally {
+        await app.close();
+    }
+});
+
+test("openai provider retries transient errors before succeeding", async () => {
+    const statuses = [503, 200];
+    const requestedUrls = [];
+    const app = await createApp(
+        {
+            env: {
+                AI_PROVIDER: "openai",
+                OPENAI_API_KEY: "test-openai-key",
+                OPENAI_BASE_URL: "https://api.openai.test/v1",
+                AI_REQUEST_MAX_RETRIES: "1",
+                AI_REQUEST_RETRY_BASE_MS: "1",
+                AI_REQUEST_RETRY_MAX_MS: "1"
+            }
+        },
+        async (url) => {
+            requestedUrls.push(String(url));
+            const status = statuses.shift();
+            if (status !== 200) {
+                return {
+                    ok: false,
+                    status,
+                    headers: new Headers(),
+                    async text() {
+                        return "temporary outage";
+                    }
+                };
+            }
+
+            return {
+                ok: true,
+                status: 200,
+                async json() {
+                    return {
+                        output_text: JSON.stringify({
+                            headline: "Recovered after retry.",
+                            growthParagraphs: ["The retry path completed."],
+                            timelineSummary: "Growth added",
+                            relatedIdeas: [],
+                            prompts: [],
+                            sources: []
+                        })
+                    };
+                }
+            };
+        }
+    );
+
+    try {
+        const result = await app.services.ai.generateEnrichment({
+            note: { id: "n1", title: "Original", rawText: "Original raw text", text: "Original raw text" },
+            focus: "",
+            relatedNotes: []
+        });
+
+        assert.equal(result.headline, "Recovered after retry.");
+        assert.equal(requestedUrls.length, 2);
+    } finally {
+        await app.close();
+    }
+});
+
+test("openai provider routes to a fallback model after primary model retries fail", async () => {
+    const requestedModels = [];
+    const app = await createApp(
+        {
+            env: {
+                AI_PROVIDER: "openai",
+                OPENAI_API_KEY: "test-openai-key",
+                OPENAI_BASE_URL: "https://api.openai.test/v1",
+                OPENAI_MODEL: "primary-model",
+                OPENAI_FALLBACK_MODELS: "fallback-model",
+                AI_REQUEST_MAX_RETRIES: "0"
+            }
+        },
+        async (_url, options) => {
+            const body = JSON.parse(options.body);
+            requestedModels.push(body.model);
+            if (body.model === "primary-model") {
+                return {
+                    ok: false,
+                    status: 503,
+                    headers: new Headers(),
+                    async text() {
+                        return "primary busy";
+                    }
+                };
+            }
+
+            return {
+                ok: true,
+                status: 200,
+                async json() {
+                    return {
+                        output_text: JSON.stringify({
+                            headline: "Fallback model answered.",
+                            growthParagraphs: ["The fallback route completed."],
+                            timelineSummary: "Growth added",
+                            relatedIdeas: [],
+                            prompts: [],
+                            sources: []
+                        })
+                    };
+                }
+            };
+        }
+    );
+
+    try {
+        const result = await app.services.ai.generateEnrichment({
+            note: { id: "n1", title: "Original", rawText: "Original raw text", text: "Original raw text" },
+            focus: "",
+            relatedNotes: []
+        });
+
+        assert.deepEqual(requestedModels, ["primary-model", "fallback-model"]);
+        assert.equal(result.provider, "openai:fallback-model");
+        assert.equal(result.headline, "Fallback model answered.");
+    } finally {
+        await app.close();
+    }
+});
+
+test("enrichment job marks note retrying after the first provider failure", async () => {
+    const app = await createApp(
+        {
+            env: {
+                AI_PROVIDER: "openai",
+                OPENAI_API_KEY: "test-openai-key",
+                SEARCH_PROVIDER: "none",
+                AI_REQUEST_MAX_RETRIES: "0"
+            },
+            jobMaxRetries: 3,
+            jobRetryBaseMs: 1,
+            jobRetryMaxDelayMs: 1
+        },
+        async () => ({
+            ok: false,
+            status: 503,
+            async text() {
+                return "provider unavailable";
+            }
+        })
+    );
+
+    try {
+        const createResponse = await request(app, "/api/notes", {
+            method: "POST",
+            body: {
+                text: "A note that should stay in growth while retries continue."
+            }
+        });
+
+        const job = await app.services.jobs.enqueueEnrichment(createResponse.json.note.id, {}, "manual");
+        await app.services.jobs.runDueJobs(new Date());
+
+        const noteResponse = await request(app, `/api/notes/${createResponse.json.note.id}`);
+        const storedJob = app.services.store.getJob(job.id);
+        assert.equal(storedJob.status, "retrying");
+        assert.equal(storedJob.retryCount, 1);
+        assert.equal(noteResponse.json.note.status, "retrying");
     } finally {
         await app.close();
     }
@@ -373,7 +583,8 @@ test("waited enrichment returns an error when the AI provider fails", async () =
             env: {
                 AI_PROVIDER: "openai",
                 OPENAI_API_KEY: "test-openai-key",
-                SEARCH_PROVIDER: "none"
+                SEARCH_PROVIDER: "none",
+                AI_REQUEST_MAX_RETRIES: "0"
             },
             jobMaxRetries: 0
         },
@@ -425,7 +636,7 @@ async function createApp(overrides = {}, fetchImpl = mockFetch) {
         jobPollIntervalMs: 1000000,
         jobMaxRetries: 2,
         autoEnrichOnCreate: false,
-        autoEnrichDelayHours: 24,
+        autoEnrichDelayHours: 12,
         seedDefaultNotes: false,
         ...restOverrides
     };

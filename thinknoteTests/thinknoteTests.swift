@@ -6,7 +6,7 @@ import Testing
 private actor MockRemoteService: ThinknoteRemoteServing {
     func upsert(note: APINote) async throws {}
 
-    func requestEnrichment(for note: APINote, triggerSource: String) async throws -> APINote {
+    func requestEnrichment(for note: APINote, triggerSource: String, followUpGuidance: String?) async throws -> APINote {
         let now = Date()
         let source = APISource(
             id: "source-\(note.id)",
@@ -14,15 +14,23 @@ private actor MockRemoteService: ThinknoteRemoteServing {
             url: "https://example.com/\(note.id)",
             snippet: "Remote enrichment source"
         )
+        let followUpContext = followUpGuidance.map {
+            APIFollowUpContext(
+                prefix: "A related question here is ",
+                highlight: $0,
+                suffix: ", and that changes where the next section goes."
+            )
+        }
         let enrichment = APIEnrichment(
             id: "enrichment-\(note.id)-\(triggerSource)",
             createdAt: now,
             provider: "test-remote",
-            expansion: "Expanded thinking for \(note.title)",
+            expansion: followUpGuidance == nil ? "Expanded thinking for \(note.title)" : "Continued thinking guided by \(followUpGuidance!)",
             relatedIdeas: ["What assumption is doing the work here?"],
             prompts: ["What would make this claim more concrete?"],
             links: [],
-            sources: [source]
+            sources: [source],
+            followUpContext: followUpContext
         )
 
         return APINote(
@@ -49,7 +57,7 @@ private actor MockRemoteService: ThinknoteRemoteServing {
                     isNewSinceLastView: true
                 )
             ],
-            latestChatReply: note.latestChatReply,
+            latestChatReply: nil,
             changesSinceLastViewedCount: 1
         )
     }
@@ -81,12 +89,28 @@ private actor MockRemoteService: ThinknoteRemoteServing {
     }
 }
 
+private final class MockHeadlineSummarizer: NoteHeadlineSummarizing {
+    let headline: String?
+
+    init(headline: String? = nil) {
+        self.headline = headline
+    }
+
+    func cardHeadline(for text: String) async throws -> String? {
+        headline
+    }
+}
+
 struct thinknoteTests {
-    private func makeRepository(container: ModelContainer) -> ThinknoteRepository {
+    private func makeRepository(
+        container: ModelContainer,
+        headlineSummarizer: any NoteHeadlineSummarizing = MockHeadlineSummarizer()
+    ) -> ThinknoteRepository {
         ThinknoteRepository(
             localStore: ThinknoteLocalStore(container: container),
             remoteSync: NoopThinknoteRemoteSync(),
-            remoteService: MockRemoteService()
+            remoteService: MockRemoteService(),
+            headlineSummarizer: headlineSummarizer
         )
     }
 
@@ -147,6 +171,58 @@ struct thinknoteTests {
     }
 
     @Test
+    func seedNotesUseInstallDateAndAreNotRecreatedOnBootstrap() async throws {
+        let container = try ThinknotePersistence.makeContainer(inMemory: true)
+        let store = ThinknoteLocalStore(container: container)
+        let installDate = Date(timeIntervalSince1970: 1_750_000_000)
+        let prototypeDate = installDate.addingTimeInterval(-60 * 60 * 24 * 30)
+        let seed = APINote(
+            id: "seed-test-note",
+            title: "Template thought",
+            text: "Template thought",
+            createdAt: prototypeDate,
+            updatedAt: prototypeDate.addingTimeInterval(900),
+            lastViewedAt: prototypeDate,
+            lastEnrichedAt: nil,
+            sortIndex: 0,
+            status: "captured",
+            enrichments: [],
+            links: [],
+            sources: [],
+            prompts: [],
+            timeline: [
+                APITimelineEvent(
+                    id: "seed-test-note-created",
+                    type: TimelineEventKind.noteCreated.rawValue,
+                    createdAt: prototypeDate,
+                    summary: "Template created"
+                )
+            ],
+            latestChatReply: nil
+        )
+
+        try await store.seedIfNeeded(using: [seed], installedAt: installDate)
+
+        let firstBootstrap = try #require(try await store.fetchNote(noteID: seed.id))
+        #expect(firstBootstrap.createdAt == installDate)
+        #expect(firstBootstrap.timeline.first?.createdAt == installDate)
+        #expect(firstBootstrap.updatedAt == prototypeDate.addingTimeInterval(900))
+        #expect(firstBootstrap.lastViewedAt == prototypeDate)
+
+        try await store.seedIfNeeded(using: [seed], installedAt: installDate)
+
+        let secondBootstrap = try #require(try await store.fetchNote(noteID: seed.id))
+        #expect(secondBootstrap.createdAt == installDate)
+        #expect(secondBootstrap.updatedAt == prototypeDate.addingTimeInterval(900))
+        #expect(secondBootstrap.lastViewedAt == prototypeDate)
+
+        let context = ModelContext(container)
+        #expect(try context.fetch(FetchDescriptor<NoteRecord>()).count == 1)
+        #expect(try context.fetch(FetchDescriptor<RevisionRecord>()).count == 1)
+        #expect(try context.fetch(FetchDescriptor<TimelineEventRecord>()).count == 1)
+    }
+
+    @Test
     func initialCaptureKeepsHeadlineEqualToUserInput() async throws {
         let container = try ThinknotePersistence.makeContainer(inMemory: true)
         let repository = makeRepository(container: container)
@@ -156,7 +232,26 @@ struct thinknoteTests {
 
         #expect(note.title == text)
         #expect(note.displayHeadline == text)
+        #expect(note.text == text)
         #expect(note.enrichments.isEmpty)
+    }
+
+    @Test
+    func longDraftUsesLocalSummaryForCardWithoutReplacingFullText() async throws {
+        let container = try ThinknotePersistence.makeContainer(inMemory: true)
+        let repository = makeRepository(
+            container: container,
+            headlineSummarizer: MockHeadlineSummarizer(headline: "A short local card summary")
+        )
+
+        let text = """
+        This is a deliberately long thought about how the home card should stay readable even when the captured note is much longer than the available card surface, while the full detail page should preserve every word the user originally wrote.
+        """
+        let note = try await repository.saveDraft(noteID: nil, text: text)
+
+        #expect(note.title == "A short local card summary")
+        #expect(note.displayHeadline == "A short local card summary")
+        #expect(note.text == text)
     }
 
     @Test
@@ -166,6 +261,9 @@ struct thinknoteTests {
         let note = try await repository.saveDraft(noteID: nil, text: "taste = pattern recognition at scale")
 
         let createdAt = note.createdAt
+        let scheduledGrowth = try #require(try await repository.nextDeferredGrowthDate(now: createdAt))
+        #expect(scheduledGrowth == createdAt.addingTimeInterval(60 * 60 * 12))
+
         let notYetDue = createdAt.addingTimeInterval(60 * 60 * 12)
         let dueLater = createdAt.addingTimeInterval(60 * 60 * 30)
 
@@ -178,6 +276,7 @@ struct thinknoteTests {
 
         let processed = try await repository.processEligibleJobs(now: dueLater)
         #expect(processed.count == 1)
+        #expect(try await repository.nextDeferredGrowthDate(now: dueLater) == nil)
 
         let enriched = try #require(try await repository.loadNote(noteID: note.id))
         #expect(enriched.status == "enriched")
@@ -217,6 +316,53 @@ struct thinknoteTests {
         #expect(jobs.first?.status == .completed)
         #expect(jobs.first?.priority == .high)
         #expect(jobs.first?.triggerSource == "manual")
+    }
+
+    @Test
+    func remoteGrowthDoesNotReplaceCardHeadline() async throws {
+        let container = try ThinknotePersistence.makeContainer(inMemory: true)
+        let store = ThinknoteLocalStore(container: container)
+        let note = try await store.upsertDraft(
+            noteID: nil,
+            text: "A long captured note that already has a local card summary.",
+            displayTitle: "Local card summary"
+        )
+        let now = Date()
+        let enrichment = APIEnrichment(
+            id: "remote-enrichment",
+            createdAt: now,
+            provider: "test-remote",
+            expansion: "Remote growth should live below the original note.",
+            relatedIdeas: [],
+            prompts: [],
+            links: [],
+            sources: [],
+            followUpContext: nil
+        )
+        let remoteNote = APINote(
+            id: note.id,
+            title: "Remote AI headline should not win",
+            text: note.text,
+            createdAt: note.createdAt,
+            updatedAt: now,
+            lastViewedAt: note.lastViewedAt,
+            lastEnrichedAt: now,
+            sortIndex: note.sortIndex,
+            status: "enriched",
+            enrichments: [enrichment],
+            links: [],
+            sources: [],
+            prompts: [],
+            timeline: [],
+            latestChatReply: nil
+        )
+
+        let merged = try await store.mergeRemoteNote(noteID: note.id, remoteNote: remoteNote, triggerSource: "manual")
+
+        #expect(merged.title == "Local card summary")
+        #expect(merged.displayHeadline == "Local card summary")
+        #expect(merged.text == note.text)
+        #expect(merged.enrichments.count == 1)
     }
 
     @Test
@@ -273,7 +419,8 @@ struct thinknoteTests {
         #expect(pendingThread?.messages.last?.role == MessageRole.user.rawValue)
 
         let updated = try await repository.requestEnrichment(noteID: note.id)
-        #expect(updated.latestChatReply != nil)
+        #expect(updated.latestChatReply == nil)
+        #expect(updated.enrichments.first?.followUpContext?.highlight == "What is the strongest version of this?")
         #expect(updated.prompts.isEmpty)
 
         let thread = try await repository.fetchConversationThread(noteID: note.id)

@@ -17,9 +17,11 @@ export function loadConfig() {
         port: Number(env.PORT || 8787),
         env,
         jobPollIntervalMs: Number(env.JOB_POLL_INTERVAL_MS || 500),
-        jobMaxRetries: Number(env.JOB_MAX_RETRIES || 3),
+        jobMaxRetries: Number(env.JOB_MAX_RETRIES ?? 3),
+        jobRetryBaseMs: Number(env.JOB_RETRY_BASE_MS || 1500),
+        jobRetryMaxDelayMs: Number(env.JOB_RETRY_MAX_DELAY_MS || 300000),
         autoEnrichOnCreate: env.AUTO_ENRICH_ON_CREATE === "true",
-        autoEnrichDelayHours: Number(env.AUTO_ENRICH_DELAY_HOURS || 24),
+        autoEnrichDelayHours: Number(env.AUTO_ENRICH_DELAY_HOURS || 12),
         seedDefaultNotes: env.SEED_DEFAULT_NOTES !== "false",
         aiProvider: normalizeAIProvider(env.AI_PROVIDER),
         searchProvider: normalizeSearchProvider(env.SEARCH_PROVIDER)

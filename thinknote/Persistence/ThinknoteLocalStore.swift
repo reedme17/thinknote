@@ -14,16 +14,16 @@ actor ThinknoteLocalStore {
 
     private let container: ModelContainer
     private let sortSpacing: Double = 1_024
-    private let deferredGrowthDelay: TimeInterval = 60 * 60 * 24
+    private let deferredGrowthDelay: TimeInterval = 60 * 60 * 12
 
     init(container: ModelContainer) {
         self.container = container
     }
 
-    func seedIfNeeded(using notes: [APINote]) throws {
+    func seedIfNeeded(using notes: [APINote], installedAt: Date = ThinknoteInstallationDate.current()) throws {
         let context = ModelContext(container)
         for (index, note) in notes.enumerated() {
-            upsertSeed(note, sortIndex: Double(index) * sortSpacing, into: context)
+            upsertSeed(note, installedAt: installedAt, sortIndex: Double(index) * sortSpacing, into: context)
         }
 
         try context.save()
@@ -45,14 +45,15 @@ actor ThinknoteLocalStore {
         return makeAPINote(from: note)
     }
 
-    func upsertDraft(noteID: String?, text: String) throws -> APINote {
+    func upsertDraft(noteID: String?, text: String, displayTitle: String? = nil) throws -> APINote {
         let context = ModelContext(container)
         let now = Date()
+        let title = displayHeadline(from: displayTitle ?? text)
         let note: NoteRecord
 
         if let noteID, let existing = try fetchNoteRecord(noteID: noteID, in: context) {
             existing.rawText = text
-            existing.title = displayHeadline(from: text)
+            existing.title = title
             existing.updatedAt = now
             existing.status = hasPendingEnrichmentJob(for: existing) ? .queued : .edited
 
@@ -87,7 +88,7 @@ actor ThinknoteLocalStore {
             note = existing
         } else {
             let created = NoteRecord(
-                title: displayHeadline(from: text),
+                title: title,
                 rawText: text,
                 status: .queued,
                 createdAt: now,
@@ -237,6 +238,20 @@ actor ThinknoteLocalStore {
         return try eligibleEnrichmentJobs(in: context, now: now, noteID: nil, limit: limit).compactMap { $0.note?.id }
     }
 
+    func nextEligibleRemoteGrowthDate(now: Date = .now) throws -> Date? {
+        let context = ModelContext(container)
+        let jobs = try context.fetch(FetchDescriptor<JobRecord>())
+        return jobs
+            .filter { job in
+                job.type == .enrichNote &&
+                    [.queued, .retrying].contains(job.status) &&
+                    job.runCount < job.maxRunCount &&
+                    job.note != nil
+            }
+            .map { max($0.scheduledRunAt, $0.nextRunAt) }
+            .min()
+    }
+
     func mergeRemoteNote(noteID: String, remoteNote: APINote, triggerSource: String) throws -> APINote {
         let context = ModelContext(container)
         guard let note = try fetchNoteRecord(noteID: noteID, in: context) else {
@@ -247,12 +262,17 @@ actor ThinknoteLocalStore {
         let insertedRevisionIDs = mergeRemoteEnrichments(into: note, remoteNote: remoteNote, in: context)
         replaceNoteSources(for: note, remoteSources: remoteNote.sources, retrievedAt: remoteNote.lastEnrichedAt ?? remoteNote.updatedAt, in: context)
 
-        note.title = remoteNote.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? note.title : remoteNote.title
         note.updatedAt = max(note.updatedAt, remoteNote.updatedAt)
         note.lastEnrichedAt = remoteNote.lastEnrichedAt ?? note.lastEnrichedAt ?? remoteNote.updatedAt
-        note.latestChatReply = remoteNote.latestChatReply ?? note.latestChatReply
+        if remoteNote.latestChatReply != nil || remoteNote.enrichments.contains(where: { $0.followUpContext != nil }) {
+            note.latestChatReply = remoteNote.latestChatReply
+        }
         note.promptSuggestions = remoteNote.prompts
-        note.status = remoteNote.enrichments.isEmpty ? note.status : .enriched
+        if remoteNote.enrichments.isEmpty {
+            note.status = NoteStatus(rawValue: remoteNote.status) ?? note.status
+        } else {
+            note.status = .enriched
+        }
 
         if !insertedRevisionIDs.isEmpty {
             let summary = remoteNote.timeline.first(where: { $0.type == TimelineEventKind.noteEnriched.rawValue })?.summary ?? "New growth added"
@@ -269,7 +289,9 @@ actor ThinknoteLocalStore {
             )
         }
 
-        completeActiveEnrichmentJobs(for: note, completedAt: now, triggerSource: triggerSource, in: context)
+        if !insertedRevisionIDs.isEmpty {
+            completeActiveEnrichmentJobs(for: note, completedAt: now, triggerSource: triggerSource, in: context)
+        }
         try context.save()
         return makeAPINote(from: note)
     }
@@ -335,13 +357,61 @@ actor ThinknoteLocalStore {
         return makeAPINote(from: note)
     }
 
-    private func importSeed(_ note: APINote, sortIndex: Double, into context: ModelContext) {
+    func resolvePendingFollowUpWithEnrichment(
+        noteID: String,
+        replyText: String,
+        provider: String,
+        sources: [APISource],
+        createdAt: Date = .now
+    ) throws -> APINote {
+        let context = ModelContext(container)
+        guard let note = try fetchNoteRecord(noteID: noteID, in: context) else {
+            throw LocalStoreError.noteNotFound(noteID)
+        }
+        guard let thread = try fetchThread(for: noteID, in: context) else {
+            return makeAPINote(from: note)
+        }
+
+        let orderedMessages = thread.messages.sorted { $0.createdAt < $1.createdAt }
+        guard orderedMessages.last?.role == .user else {
+            return makeAPINote(from: note)
+        }
+
+        let assistantMessage = MessageRecord(
+            role: .assistant,
+            text: replyText,
+            provider: provider,
+            createdAt: createdAt,
+            thread: thread
+        )
+        context.insert(assistantMessage)
+
+        for source in sources {
+            let sourceRecord = SourceRecord(
+                id: source.id,
+                title: source.title,
+                urlString: source.url,
+                snippet: source.snippet,
+                retrievedAt: createdAt,
+                message: assistantMessage
+            )
+            context.insert(sourceRecord)
+        }
+
+        thread.updatedAt = createdAt
+        note.updatedAt = max(note.updatedAt, createdAt)
+        note.latestChatReply = nil
+        try context.save()
+        return makeAPINote(from: note)
+    }
+
+    private func importSeed(_ note: APINote, installedAt: Date, sortIndex: Double, into context: ModelContext) {
         let record = NoteRecord(
             id: note.id,
             title: note.title,
             rawText: note.text,
             status: NoteStatus(rawValue: note.status) ?? .captured,
-            createdAt: note.createdAt,
+            createdAt: installedAt,
             updatedAt: note.updatedAt,
             lastViewedAt: note.lastViewedAt,
             lastEnrichedAt: note.enrichments.isEmpty ? nil : note.updatedAt,
@@ -353,7 +423,7 @@ actor ThinknoteLocalStore {
 
         let initialRevision = RevisionRecord(
             id: "\(note.id)-seed-user",
-            createdAt: note.createdAt,
+            createdAt: installedAt,
             kind: .userCapture,
             summary: "Initial thought capture",
             text: note.text,
@@ -365,11 +435,12 @@ actor ThinknoteLocalStore {
         for enrichment in note.enrichments {
             let revision = RevisionRecord(
                 id: enrichment.id,
-                createdAt: enrichment.createdAt,
+                createdAt: installedAt,
                 kind: .aiEnrichment,
                 summary: "AI interpretation refreshed",
                 text: enrichment.expansion,
                 provider: enrichment.provider,
+                followUpContext: enrichment.followUpContext,
                 note: record
             )
             context.insert(revision)
@@ -381,7 +452,7 @@ actor ThinknoteLocalStore {
                 title: source.title,
                 urlString: source.url,
                 snippet: source.snippet,
-                retrievedAt: note.updatedAt,
+                retrievedAt: installedAt,
                 note: record
             )
             context.insert(sourceRecord)
@@ -392,7 +463,7 @@ actor ThinknoteLocalStore {
                 type: note.enrichments.isEmpty ? .noteCreated : .noteEnriched,
                 summary: note.enrichments.isEmpty ? "Note created" : "AI interpretation refreshed",
                 note: record,
-                createdAt: note.updatedAt,
+                createdAt: installedAt,
                 in: context
             )
         } else {
@@ -403,18 +474,33 @@ actor ThinknoteLocalStore {
                     type: mappedType,
                     summary: event.summary,
                     note: record,
-                    createdAt: event.createdAt,
+                    createdAt: installedAt,
                     in: context
                 )
             }
         }
     }
 
-    private func upsertSeed(_ note: APINote, sortIndex: Double, into context: ModelContext) {
+    private func upsertSeed(_ note: APINote, installedAt: Date, sortIndex: Double, into context: ModelContext) {
         if let existing = try? fetchNoteRecord(noteID: note.id, in: context) {
-            context.delete(existing)
+            normalizeExistingSeed(existing, installedAt: installedAt, sortIndex: sortIndex)
+            return
         }
-        importSeed(note, sortIndex: sortIndex, into: context)
+        importSeed(note, installedAt: installedAt, sortIndex: sortIndex, into: context)
+    }
+
+    private func normalizeExistingSeed(_ note: NoteRecord, installedAt: Date, sortIndex: Double) {
+        let seedCreatedAt = installedAt
+        note.createdAt = seedCreatedAt
+        note.sortIndex = note.sortIndex ?? sortIndex
+
+        for revision in note.revisions where revision.kind == .userCapture {
+            revision.createdAt = seedCreatedAt
+        }
+
+        for event in note.timelineEvents where event.type == .noteCreated {
+            event.createdAt = seedCreatedAt
+        }
     }
 
     private func orderedNotes(in context: ModelContext) throws -> [NoteRecord] {
@@ -588,6 +674,7 @@ actor ThinknoteLocalStore {
                 summary: "AI interpretation refreshed",
                 text: enrichment.expansion,
                 provider: enrichment.provider,
+                followUpContext: enrichment.followUpContext,
                 note: note
             )
             context.insert(revision)
@@ -710,7 +797,8 @@ actor ThinknoteLocalStore {
                     relatedIdeas: [],
                     prompts: note.promptSuggestions,
                     links: links,
-                    sources: sources
+                    sources: sources,
+                    followUpContext: revision.followUpContext
                 )
             }
 
@@ -869,16 +957,8 @@ actor ThinknoteLocalStore {
     }
 
     private func displayHeadline(from text: String) -> String {
-        let normalized = normalizeHeadlineSource(text)
+        let normalized = NoteCardHeadlinePolicy.normalizedHeadlineSource(text)
         return normalized.isEmpty ? "Untitled" : normalized
-    }
-
-    private func normalizeHeadlineSource(_ text: String) -> String {
-        text
-            .components(separatedBy: .whitespacesAndNewlines)
-            .filter { !$0.isEmpty }
-            .joined(separator: " ")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private func sortComparator(_ lhs: NoteRecord, _ rhs: NoteRecord) -> Bool {
@@ -902,5 +982,18 @@ enum LocalStoreError: LocalizedError {
         case .noteNotFound(let noteID):
             return "Could not find thought \(noteID)."
         }
+    }
+}
+
+enum ThinknoteInstallationDate {
+    private static let defaultsKey = "thinknote.installationDate"
+
+    static func current(defaults: UserDefaults = .standard, now: Date = .now) -> Date {
+        if let stored = defaults.object(forKey: defaultsKey) as? Date {
+            return stored
+        }
+
+        defaults.set(now, forKey: defaultsKey)
+        return now
     }
 }
