@@ -28,23 +28,8 @@ extension AttributeDynamicLookup {
     }
 }
 
-final class BridgeHighlightRectStore: ObservableObject, @unchecked Sendable {
-    @Published var rects: [String: CGRect] = [:]
-
-    func update(_ rect: CGRect, for id: String) {
-        if rects[id] != rect {
-            rects[id] = rect
-        }
-    }
-}
-
 struct BridgeHighlightMeasurer: TextRenderer {
-    var enrichmentID: String?
-    var rectStore: BridgeHighlightRectStore?
-
     func draw(layout: Text.Layout, in ctx: inout GraphicsContext) {
-        var union: CGRect = .zero
-        var found = false
         for line in layout {
             for run in line {
                 guard run[BridgeHighlightAttribute.self] != nil else {
@@ -58,21 +43,158 @@ struct BridgeHighlightMeasurer: TextRenderer {
                 italicContext.concatenate(CGAffineTransform(a: 1, b: 0, c: -0.18, d: 1, tx: 0, ty: 0))
                 italicContext.translateBy(x: -rect.minX, y: -rect.minY)
                 italicContext.draw(run)
+            }
+        }
+    }
+}
 
-                if found {
-                    union = union.union(rect)
-                } else {
-                    union = rect
-                    found = true
+private final class BridgeHighlightHitTestView: UIView {
+    private let textStorage = NSTextStorage()
+    private let layoutManager = NSLayoutManager()
+    private let textContainer = NSTextContainer(size: .zero)
+    private var highlightRange = NSRange(location: NSNotFound, length: 0)
+    var onHighlightTap: ((CGRect) -> Void)?
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        isOpaque = false
+        backgroundColor = .clear
+        textContainer.lineFragmentPadding = 0
+        textContainer.maximumNumberOfLines = 0
+        textContainer.lineBreakMode = .byWordWrapping
+        layoutManager.addTextContainer(textContainer)
+        textStorage.addLayoutManager(layoutManager)
+
+        let recognizer = UITapGestureRecognizer(target: self, action: #selector(handleTap(_:)))
+        addGestureRecognizer(recognizer)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        textContainer.size = bounds.size
+        layoutManager.ensureLayout(for: textContainer)
+    }
+
+    override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
+        highlightSegment(containing: point) != nil
+    }
+
+    func configure(prefix: String, highlight: String, suffix: String) {
+        let bodyFont = UIFont(name: "DavidLibre-Regular", size: 19) ?? UIFont.systemFont(ofSize: 19)
+        let highlightFont = UIFont(name: "DavidLibre-Medium", size: 19) ?? bodyFont
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.lineSpacing = 4
+        paragraphStyle.lineBreakMode = .byWordWrapping
+
+        let text = NSMutableAttributedString()
+        if !prefix.isEmpty {
+            text.append(NSAttributedString(
+                string: "\(prefix) ",
+                attributes: [
+                    .font: bodyFont,
+                    .foregroundColor: UIColor.black.withAlphaComponent(0.82),
+                    .paragraphStyle: paragraphStyle
+                ]
+            ))
+        }
+
+        let highlightStart = text.length
+        text.append(NSAttributedString(
+            string: highlight,
+            attributes: [
+                .font: highlightFont,
+                .foregroundColor: UIColor(red: 0.53, green: 0.66, blue: 0.61, alpha: 1),
+                .paragraphStyle: paragraphStyle,
+                .obliqueness: -0.18
+            ]
+        ))
+        highlightRange = NSRange(location: highlightStart, length: (highlight as NSString).length)
+
+        if !suffix.isEmpty {
+            text.append(NSAttributedString(
+                string: " \(suffix)",
+                attributes: [
+                    .font: bodyFont,
+                    .foregroundColor: UIColor.black.withAlphaComponent(0.82),
+                    .paragraphStyle: paragraphStyle
+                ]
+            ))
+        }
+
+        textStorage.setAttributedString(text)
+        setNeedsLayout()
+    }
+
+    @objc private func handleTap(_ recognizer: UITapGestureRecognizer) {
+        guard recognizer.state == .ended,
+              let anchor = highlightSegment(containing: recognizer.location(in: self)) else {
+            return
+        }
+        onHighlightTap?(anchor)
+    }
+
+    private func highlightSegment(containing point: CGPoint) -> CGRect? {
+        guard bounds.width > 0,
+              bounds.height > 0,
+              highlightRange.location != NSNotFound,
+              highlightRange.length > 0 else {
+            return nil
+        }
+
+        textContainer.size = bounds.size
+        layoutManager.ensureLayout(for: textContainer)
+
+        let highlightGlyphRange = layoutManager.glyphRange(
+            forCharacterRange: highlightRange,
+            actualCharacterRange: nil
+        )
+        var glyphIndex = highlightGlyphRange.location
+        let glyphEnd = NSMaxRange(highlightGlyphRange)
+
+        while glyphIndex < glyphEnd {
+            var lineGlyphRange = NSRange(location: 0, length: 0)
+            _ = layoutManager.lineFragmentUsedRect(
+                forGlyphAt: glyphIndex,
+                effectiveRange: &lineGlyphRange,
+                withoutAdditionalLayout: false
+            )
+
+            let segmentGlyphRange = NSIntersectionRange(lineGlyphRange, highlightGlyphRange)
+            if segmentGlyphRange.length > 0 {
+                let segmentRect = layoutManager.boundingRect(
+                    forGlyphRange: segmentGlyphRange,
+                    in: textContainer
+                )
+                if segmentRect.contains(point) {
+                    return segmentRect
                 }
             }
+
+            let nextGlyphIndex = NSMaxRange(lineGlyphRange)
+            glyphIndex = nextGlyphIndex > glyphIndex ? nextGlyphIndex : glyphIndex + 1
         }
-        if found, let id = enrichmentID, let store = rectStore {
-            let measured = union
-            DispatchQueue.main.async {
-                store.update(measured, for: id)
-            }
-        }
+
+        return nil
+    }
+}
+
+private struct BridgeHighlightHitArea: UIViewRepresentable {
+    let prefix: String
+    let highlight: String
+    let suffix: String
+    let onHighlightTap: (CGRect) -> Void
+
+    func makeUIView(context: Context) -> BridgeHighlightHitTestView {
+        BridgeHighlightHitTestView()
+    }
+
+    func updateUIView(_ uiView: BridgeHighlightHitTestView, context: Context) {
+        uiView.configure(prefix: prefix, highlight: highlight, suffix: suffix)
+        uiView.onHighlightTap = onHighlightTap
     }
 }
 
@@ -2985,7 +3107,6 @@ private struct NoteFullPageScreen: View {
     @State private var homeIndicatorHeight: CGFloat = 18
     @State private var followUpPopover: FollowUpPopoverState?
     @State private var isFollowUpPopoverPresented = false
-    @StateObject private var bridgeHighlightStore = BridgeHighlightRectStore()
 
     private struct FollowUpPopoverState: Equatable {
         let enrichmentID: String
@@ -3534,33 +3655,24 @@ private struct NoteFullPageScreen: View {
         return Text(attributed)
             .font(AppFont.body(19))
             .lineSpacing(4)
-            .textRenderer(BridgeHighlightMeasurer(
-                enrichmentID: enrichment.id,
-                rectStore: bridgeHighlightStore
-            ))
+            .textRenderer(BridgeHighlightMeasurer())
             .overlay(
                 GeometryReader { proxy in
-                    Color.clear
-                        .contentShape(Rectangle())
-                        .onTapGesture(coordinateSpace: .local) { location in
-                            let bridgeFrame = proxy.frame(in: .named("detail-surface"))
-                            let anchor: CGRect
-
-                            if let localHighlight = bridgeHighlightStore.rects[enrichment.id] {
-                                let hitRect = localHighlight.insetBy(dx: -4, dy: -4)
-                                guard hitRect.contains(location) else { return }
-                                anchor = CGRect(
-                                    x: bridgeFrame.minX + localHighlight.minX,
-                                    y: bridgeFrame.minY + localHighlight.minY,
-                                    width: localHighlight.width,
-                                    height: localHighlight.height
-                                )
-                            } else {
-                                anchor = bridgeFrame
-                            }
-
-                            showFollowUpPopover(for: enrichment, anchor: anchor)
-                        }
+                    BridgeHighlightHitArea(
+                        prefix: prefix,
+                        highlight: highlight,
+                        suffix: suffix
+                    ) { localAnchor in
+                        let bridgeFrame = proxy.frame(in: .named("detail-surface"))
+                        let anchor = CGRect(
+                            x: bridgeFrame.minX + localAnchor.minX,
+                            y: bridgeFrame.minY + localAnchor.minY,
+                            width: localAnchor.width,
+                            height: localAnchor.height
+                        )
+                        showFollowUpPopover(for: enrichment, anchor: anchor)
+                    }
+                    .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
                 }
             )
     }
@@ -4631,7 +4743,7 @@ private struct EmptyNoteCard: View {
                     Spacer(minLength: 0)
 
                     Text("Start a thought...")
-                        .font(AppFont.ui(20))
+                        .font(.custom("AlegreyaSans-Regular", size: 20))
                         .foregroundStyle(Color(red: 0.17, green: 0.17, blue: 0.17))
                 }
                 .padding(.horizontal, 18)
