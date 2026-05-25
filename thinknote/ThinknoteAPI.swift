@@ -496,6 +496,63 @@ final class ContentViewModel: ObservableObject {
         }
     }
 
+    @discardableResult
+    func deleteBaseEnrichment(noteID: String) async -> Bool {
+        do {
+            let updated = try await repository.deleteBaseEnrichment(noteID: noteID)
+            replace(note: updated)
+            activeError = nil
+            return true
+        } catch {
+            presentError(title: "Couldn’t remove growth", message: "Try again in a moment.")
+            return false
+        }
+    }
+
+    @discardableResult
+    func redoBaseEnrichment(noteID: String) async -> Bool {
+        guard await deleteBaseEnrichment(noteID: noteID) else { return false }
+        return await requestResponse(for: noteID)
+    }
+
+    @discardableResult
+    func deleteFollowUpEnrichment(noteID: String, enrichmentID: String, keepUserMessage: Bool = false) async -> Bool {
+        do {
+            let updated = try await repository.deleteFollowUpEnrichment(noteID: noteID, enrichmentID: enrichmentID, keepUserMessage: keepUserMessage)
+            replace(note: updated)
+            activeError = nil
+            return true
+        } catch {
+            presentError(title: "Couldn’t remove growth", message: "Try again in a moment.")
+            return false
+        }
+    }
+
+    @discardableResult
+    func redoFollowUpEnrichment(noteID: String, enrichmentID: String, question: String) async -> Bool {
+        guard await deleteFollowUpEnrichment(noteID: noteID, enrichmentID: enrichmentID, keepUserMessage: false) else { return false }
+        guard await sendFollowUp(noteID: noteID, message: question) else { return false }
+        return await requestResponse(for: noteID)
+    }
+
+    @discardableResult
+    func revertFollowUpEnrichment(noteID: String, enrichmentID: String) async -> Bool {
+        await deleteFollowUpEnrichment(noteID: noteID, enrichmentID: enrichmentID, keepUserMessage: true)
+    }
+
+    @discardableResult
+    func deletePendingFollowUp(noteID: String) async -> Bool {
+        do {
+            let updated = try await repository.deletePendingFollowUp(noteID: noteID)
+            replace(note: updated)
+            activeError = nil
+            return true
+        } catch {
+            presentError(title: "Couldn’t remove follow-up", message: "Try again in a moment.")
+            return false
+        }
+    }
+
     func refreshCurrentNote() async {
         guard let selectedNoteID else { return }
 

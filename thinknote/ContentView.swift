@@ -9,6 +9,64 @@ import Combine
 import SwiftUI
 import UIKit
 
+struct BridgeHighlightAttribute: CodableAttributedStringKey, TextAttribute, Codable, Hashable {
+    typealias Value = BridgeHighlightAttribute
+    static let name = "bridgeHighlight"
+}
+
+extension AttributeScopes {
+    struct ThinknoteAttributes: AttributeScope {
+        let bridgeHighlight: BridgeHighlightAttribute
+        let swiftUI: SwiftUIAttributes
+    }
+    var thinknote: ThinknoteAttributes.Type { ThinknoteAttributes.self }
+}
+
+extension AttributeDynamicLookup {
+    subscript<T: AttributedStringKey>(dynamicMember keyPath: KeyPath<AttributeScopes.ThinknoteAttributes, T>) -> T {
+        self[T.self]
+    }
+}
+
+final class BridgeHighlightRectStore: ObservableObject, @unchecked Sendable {
+    @Published var rects: [String: CGRect] = [:]
+
+    func update(_ rect: CGRect, for id: String) {
+        if rects[id] != rect {
+            rects[id] = rect
+        }
+    }
+}
+
+struct BridgeHighlightMeasurer: TextRenderer {
+    var enrichmentID: String?
+    var rectStore: BridgeHighlightRectStore?
+
+    func draw(layout: Text.Layout, in ctx: inout GraphicsContext) {
+        var union: CGRect = .zero
+        var found = false
+        for line in layout {
+            for run in line {
+                ctx.draw(run)
+                guard run[BridgeHighlightAttribute.self] != nil else { continue }
+                let rect = run.typographicBounds.rect
+                if found {
+                    union = union.union(rect)
+                } else {
+                    union = rect
+                    found = true
+                }
+            }
+        }
+        if found, let id = enrichmentID, let store = rectStore {
+            let measured = union
+            DispatchQueue.main.async {
+                store.update(measured, for: id)
+            }
+        }
+    }
+}
+
 private let noteTransitionAnimation = Animation.timingCurve(0.2, 0.9, 0.1, 1.0, duration: 0.55)
 private let noteMorphDuration: Double = 0.55
 private let trashLabelText = "TRASH CAN"
@@ -2936,64 +2994,100 @@ private struct NoteFullPageScreen: View {
     @State private var detailAnchorPositions: [String: CGFloat] = [:]
     @State private var detailAnchorBaselines: [String: CGFloat] = [:]
     @State private var homeIndicatorHeight: CGFloat = 18
+    @State private var followUpPopover: FollowUpPopoverState?
+    @State private var isFollowUpPopoverPresented = false
+    @StateObject private var bridgeHighlightStore = BridgeHighlightRectStore()
+
+    private struct FollowUpPopoverState: Equatable {
+        let enrichmentID: String
+        let question: String
+        let anchor: CGRect
+    }
 
     var body: some View {
         GeometryReader { geometry in
             let topInset = geometry.safeAreaInsets.top
+            let popoverBlurRadius: CGFloat = 0
 
-            ZStack(alignment: .topTrailing) {
-                detailSurface(topInset: topInset)
+            ZStack {
+                ZStack(alignment: .topTrailing) {
+                    detailSurface(topInset: topInset)
 
-                Button {
-                    closeDetail()
-                } label: {
-                    Text("home")
-                        .font(AppFont.meta(11))
-                        .tracking(1.2)
-                        .foregroundStyle(noteAccentColor)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 10)
-                        .glassCapsuleButtonChrome()
-                }
-                .padding(.top, 8)
-                .padding(.trailing, 18)
-                .opacity(showChrome ? 1 : 0)
-            }
-            .frame(width: geometry.size.width, height: geometry.size.height, alignment: .topLeading)
-            .coordinateSpace(name: "detail-surface")
-            .offset(y: dragOffset)
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { value in
-                        guard !isClosing else { return }
-                        let dy = value.translation.height
-                        let dx = value.translation.width
-                        guard dy > 18, dy > abs(dx), isDetailAtTop || dragOffset > 0 else { return }
-                        dragOffset = dy * 0.55
+                    HStack(spacing: 8) {
+                        Menu {
+                            Button {
+                                UIPasteboard.general.string = note.text
+                            } label: {
+                                Label("copy", systemImage: "doc.on.doc")
+                            }
+                        } label: {
+                            Image(systemName: "ellipsis")
+                                .font(.system(size: 12, weight: .regular))
+                                .foregroundStyle(noteAccentColor)
+                                .frame(width: 32, height: 32)
+                                .glassCircleButtonChrome()
+                        }
+
+                        Button {
+                            closeDetail()
+                        } label: {
+                            Text("home")
+                                .font(AppFont.meta(11))
+                                .tracking(1.2)
+                                .foregroundStyle(noteAccentColor)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 10)
+                                .glassCapsuleButtonChrome()
+                        }
                     }
-                    .onEnded { value in
-                        guard !isClosing else { return }
-                        let dy = value.translation.height
-                        let dx = value.translation.width
-                        let predicted = value.predictedEndTranslation.height
-                        let wasEligible = isDetailAtTop || dragOffset > 0
-                        guard dy > 18, dy > abs(dx), wasEligible else {
-                            if dragOffset > 0 {
+                    .padding(.top, 8)
+                    .padding(.trailing, 18)
+                    .opacity(showChrome ? 1 : 0)
+                }
+                .frame(width: geometry.size.width, height: geometry.size.height, alignment: .topLeading)
+                .coordinateSpace(name: "detail-surface")
+                .offset(y: dragOffset)
+                .blur(radius: popoverBlurRadius)
+                .simultaneousGesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { value in
+                            guard !isClosing else { return }
+                            guard !isFollowUpPopoverPresented else { return }
+                            let dy = value.translation.height
+                            let dx = value.translation.width
+                            guard dy > 18, dy > abs(dx), isDetailAtTop || dragOffset > 0 else { return }
+                            dragOffset = dy * 0.55
+                        }
+                        .onEnded { value in
+                            guard !isClosing else { return }
+                            guard !isFollowUpPopoverPresented else { return }
+                            let dy = value.translation.height
+                            let dx = value.translation.width
+                            let predicted = value.predictedEndTranslation.height
+                            let wasEligible = isDetailAtTop || dragOffset > 0
+                            guard dy > 18, dy > abs(dx), wasEligible else {
+                                if dragOffset > 0 {
+                                    withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
+                                        dragOffset = 0
+                                    }
+                                }
+                                return
+                            }
+                            if dy > 120 || predicted > 220 {
+                                closeDetail()
+                            } else {
                                 withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
                                     dragOffset = 0
                                 }
                             }
-                            return
                         }
-                        if dy > 120 || predicted > 220 {
-                            closeDetail()
-                        } else {
-                            withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
-                                dragOffset = 0
-                            }
-                        }
-                    }
-            )
+                )
+
+                if isFollowUpPopoverPresented, let popover = followUpPopover {
+                    followUpPopoverOverlay(popover: popover, containerSize: geometry.size)
+                        .transition(.opacity)
+                }
+            }
             .onAppear {
                 detailContentOffsetY = 0
                 detailTopContentOffsetY = 0
@@ -3087,16 +3181,6 @@ private struct NoteFullPageScreen: View {
                                 .padding(.top, hasAIGrowthParagraphs ? 28 : 26)
                         }
 
-                        if !note.sources.isEmpty {
-                            footnotesSection
-                                .padding(.top, 28)
-                        }
-
-                        if !note.prompts.isEmpty && pendingFollowUpText == nil {
-                            openAnglesSection
-                                .padding(.top, 28)
-                        }
-
                         if followUpEnrichments.isEmpty,
                            let latestReply = note.latestChatReply,
                            !latestReply.isEmpty {
@@ -3113,11 +3197,47 @@ private struct NoteFullPageScreen: View {
                             centeredExploringSection
                                 .padding(.top, 28)
                         }
+
+                        if hasAIGrowthParagraphs || !followUpEnrichments.isEmpty || pendingFollowUpText != nil || (followUpEnrichments.isEmpty && !(note.latestChatReply ?? "").isEmpty) {
+                            divider
+                                .padding(.top, 30)
+                        }
+
+                        bottomBar(bottomInset: 0)
+                            .padding(.top, 16)
+                            .padding(.horizontal, -18)
+
+                        if !note.prompts.isEmpty && pendingFollowUpText == nil {
+                            openAnglesSection
+                                .padding(.top, 28)
+                        }
+
+                        if !note.sources.isEmpty {
+                            footnotesSection
+                                .padding(.top, 28)
+                        }
                     }
                     .padding(.horizontal, 28)
                     .padding(.bottom, 24)
                 }
                 .scrollDisabled(dragOffset > 0)
+                .simultaneousGesture(
+                    TapGesture().onEnded {
+                        if isFollowUpFocused {
+                            isFollowUpFocused = false
+                        }
+                    }
+                )
+                .onScrollGeometryChange(for: CGFloat.self) { geo in
+                    geo.contentOffset.y
+                } action: { oldValue, newValue in
+                    if isFollowUpPopoverPresented && abs(newValue - oldValue) > 0.5 {
+                        dismissFollowUpPopover()
+                    }
+                    if isFollowUpFocused && abs(newValue - oldValue) > 0.5 {
+                        isFollowUpFocused = false
+                    }
+                }
                 .onPreferenceChange(DetailAnchorPreferenceKey.self) { anchors in
                     detailAnchorPositions = anchors
                     for (id, value) in anchors where detailAnchorBaselines[id] == nil {
@@ -3126,11 +3246,12 @@ private struct NoteFullPageScreen: View {
                     detailTopContentOffsetY = 0
                     if let current = anchors[detailPrimaryScrollAnchorID],
                        let baseline = detailAnchorBaselines[detailPrimaryScrollAnchorID] {
-                        detailContentOffsetY = max(baseline - current, 0)
+                        let newOffset = max(baseline - current, 0)
+                        if isFollowUpPopoverPresented && abs(newOffset - detailContentOffsetY) > 2 {
+                            dismissFollowUpPopover()
+                        }
+                        detailContentOffsetY = newOffset
                     }
-                }
-                .safeAreaInset(edge: .bottom, spacing: 0) {
-                    bottomBar(bottomInset: homeIndicatorHeight)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .transition(.opacity)
@@ -3155,6 +3276,95 @@ private struct NoteFullPageScreen: View {
         .opacity(showPrimaryContent ? 1 : 0)
     }
 
+    private enum EditableGrowthItem: Equatable {
+        case initialGrowth
+        case followUpGrowth(enrichmentID: String)
+        case pendingFollowUp
+    }
+
+    private var lastEditableGrowthItem: EditableGrowthItem? {
+        if pendingFollowUpText != nil {
+            return .pendingFollowUp
+        }
+        if let last = followUpEnrichments.last {
+            return .followUpGrowth(enrichmentID: last.id)
+        }
+        if hasAIGrowthParagraphs {
+            return .initialGrowth
+        }
+        return nil
+    }
+
+    @ViewBuilder
+    private func editMenuButton(for item: EditableGrowthItem) -> some View {
+        Menu {
+            switch item {
+            case .initialGrowth:
+                Button {
+                    Task {
+                        await viewModel.redoBaseEnrichment(noteID: note.id)
+                        currentThread = await viewModel.fetchConversationThread(noteID: note.id)
+                    }
+                } label: {
+                    Label("redo", systemImage: "arrow.clockwise")
+                }
+                Button(role: .destructive) {
+                    Task {
+                        await viewModel.deleteBaseEnrichment(noteID: note.id)
+                        currentThread = await viewModel.fetchConversationThread(noteID: note.id)
+                    }
+                } label: {
+                    Label("delete", systemImage: "trash")
+                }
+            case .followUpGrowth(let enrichmentID):
+                Button {
+                    Task {
+                        await viewModel.revertFollowUpEnrichment(noteID: note.id, enrichmentID: enrichmentID)
+                        currentThread = await viewModel.fetchConversationThread(noteID: note.id)
+                    }
+                } label: {
+                    Label("revert", systemImage: "arrow.uturn.backward")
+                }
+                Button {
+                    Task {
+                        if let enrichment = followUpEnrichments.first(where: { $0.id == enrichmentID }),
+                           let question = originalFollowUpQuestion(for: enrichment) {
+                            await viewModel.redoFollowUpEnrichment(noteID: note.id, enrichmentID: enrichmentID, question: question)
+                            currentThread = await viewModel.fetchConversationThread(noteID: note.id)
+                        }
+                    }
+                } label: {
+                    Label("redo", systemImage: "arrow.clockwise")
+                }
+                Button(role: .destructive) {
+                    Task {
+                        await viewModel.deleteFollowUpEnrichment(noteID: note.id, enrichmentID: enrichmentID)
+                        currentThread = await viewModel.fetchConversationThread(noteID: note.id)
+                    }
+                } label: {
+                    Label("delete", systemImage: "trash")
+                }
+            case .pendingFollowUp:
+                Button(role: .destructive) {
+                    Task {
+                        await viewModel.deletePendingFollowUp(noteID: note.id)
+                        currentThread = await viewModel.fetchConversationThread(noteID: note.id)
+                    }
+                } label: {
+                    Label("delete", systemImage: "trash")
+                }
+            }
+        } label: {
+            Text("edit")
+                .font(AppFont.meta(11))
+                .tracking(1.2)
+                .foregroundStyle(noteAccentColor)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .glassCapsuleButtonChrome()
+        }
+    }
+
     private var aiGrowthSection: some View {
         VStack(alignment: .leading, spacing: 20) {
             ForEach(Array(baseGrowthParagraphs.enumerated()), id: \.offset) { _, paragraph in
@@ -3162,6 +3372,14 @@ private struct NoteFullPageScreen: View {
                     .font(AppFont.body(19))
                     .lineSpacing(4)
                     .foregroundStyle(.black.opacity(0.82))
+            }
+
+            if case .initialGrowth = lastEditableGrowthItem {
+                HStack(spacing: 0) {
+                    Spacer(minLength: 0)
+                    editMenuButton(for: .initialGrowth)
+                }
+                .padding(.top, 4)
             }
         }
         .opacity(showGrowthContent ? 1 : 0)
@@ -3177,7 +3395,7 @@ private struct NoteFullPageScreen: View {
                     }
 
                     if let context = enrichment.followUpContext {
-                        followUpBridgeText(context)
+                        followUpBridgeText(for: enrichment, context: context)
                     }
 
                     ForEach(Array(paragraphs(from: enrichment.expansion).enumerated()), id: \.offset) { _, paragraph in
@@ -3185,6 +3403,14 @@ private struct NoteFullPageScreen: View {
                             .font(AppFont.body(19))
                             .lineSpacing(4)
                             .foregroundStyle(.black.opacity(0.82))
+                    }
+
+                    if case let .followUpGrowth(id) = lastEditableGrowthItem, id == enrichment.id {
+                        HStack(spacing: 0) {
+                            Spacer(minLength: 0)
+                            editMenuButton(for: .followUpGrowth(enrichmentID: enrichment.id))
+                        }
+                        .padding(.top, 4)
                     }
                 }
             }
@@ -3213,13 +3439,11 @@ private struct NoteFullPageScreen: View {
                     Button {
                         askAboutPrompt(prompt)
                     } label: {
-                        Text("ask")
-                            .font(AppFont.meta(11))
-                            .tracking(1.2)
+                        Image(systemName: "arrow.turn.right.up")
+                            .font(.system(size: 12, weight: .regular))
                             .foregroundStyle(noteAccentColor)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 10)
-                            .glassCapsuleButtonChrome()
+                            .frame(width: 32, height: 32)
+                            .glassCircleButtonChrome()
                     }
                     .padding(.top, -2)
                 }
@@ -3296,28 +3520,162 @@ private struct NoteFullPageScreen: View {
         .offset(y: showGrowthContent ? 0 : 12)
     }
 
-    private func followUpBridgeText(_ context: APIFollowUpContext) -> some View {
+    private func followUpBridgeText(for enrichment: APIEnrichment, context: APIFollowUpContext) -> some View {
         let prefix = context.prefix.trimmingCharacters(in: .whitespacesAndNewlines)
         let highlight = context.highlight.trimmingCharacters(in: .whitespacesAndNewlines)
         let suffix = context.suffix.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        return (
-            Text(prefix.isEmpty ? "" : "\(prefix) ")
-                .foregroundStyle(.black.opacity(0.82)) +
-            Text(highlight)
-                .foregroundStyle(noteAccentColor)
-                .baselineOffset(2)
-                .underline(true, pattern: .dot, color: noteAccentColor) +
-            Text(suffix.isEmpty ? "" : " \(suffix)")
+        var attributed = AttributedString()
+        if !prefix.isEmpty {
+            var prefixPart = AttributedString("\(prefix) ")
+            prefixPart.foregroundColor = UIColor.black.withAlphaComponent(0.82)
+            attributed.append(prefixPart)
+        }
+        var highlightPart = AttributedString(highlight)
+        highlightPart.foregroundColor = UIColor(noteAccentColor)
+        highlightPart.font = Font.custom("DavidLibre-Regular", size: 19).italic()
+        highlightPart[BridgeHighlightAttribute.self] = BridgeHighlightAttribute()
+        attributed.append(highlightPart)
+        if !suffix.isEmpty {
+            var suffixPart = AttributedString(" \(suffix)")
+            suffixPart.foregroundColor = UIColor.black.withAlphaComponent(0.82)
+            attributed.append(suffixPart)
+        }
+
+        return Text(attributed)
+            .font(AppFont.body(19))
+            .lineSpacing(4)
+            .textRenderer(BridgeHighlightMeasurer(
+                enrichmentID: enrichment.id,
+                rectStore: bridgeHighlightStore
+            ))
+            .overlay(
+                GeometryReader { proxy in
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .onTapGesture(coordinateSpace: .local) { location in
+                            guard let localHighlight = bridgeHighlightStore.rects[enrichment.id] else { return }
+                            let hitRect = localHighlight.insetBy(dx: -4, dy: -4)
+                            guard hitRect.contains(location) else { return }
+                            let bridgeFrame = proxy.frame(in: .named("detail-surface"))
+                            let anchor = CGRect(
+                                x: bridgeFrame.minX + localHighlight.minX,
+                                y: bridgeFrame.minY + localHighlight.minY,
+                                width: localHighlight.width,
+                                height: localHighlight.height
+                            )
+                            showFollowUpPopover(for: enrichment, anchor: anchor)
+                        }
+                }
+            )
+    }
+
+    private func followUpPopoverOverlay(popover state: FollowUpPopoverState, containerSize: CGSize) -> some View {
+        let horizontalMargin: CGFloat = 24
+        let verticalMargin: CGFloat = 24
+        let maxWidth: CGFloat = min(containerSize.width - horizontalMargin * 2, 300)
+        let preferredLeading = state.anchor.midX - maxWidth / 2
+        let leadingX = max(horizontalMargin, min(preferredLeading, containerSize.width - horizontalMargin - maxWidth))
+
+        let estimatedHeight = popoverHeightEstimate(for: state.question, maxWidth: maxWidth)
+        let verticalGap: CGFloat = 40
+        let belowTop = state.anchor.maxY + verticalGap
+        let aboveTop = state.anchor.minY - estimatedHeight - verticalGap
+        let bottomLimit = containerSize.height - verticalMargin - estimatedHeight
+        let topY: CGFloat
+        if belowTop <= bottomLimit {
+            topY = belowTop
+        } else if aboveTop >= verticalMargin {
+            topY = aboveTop
+        } else {
+            topY = max(verticalMargin, min(belowTop, bottomLimit))
+        }
+
+        let centerX = leadingX + maxWidth / 2
+        let centerY = topY + estimatedHeight / 2
+
+        return ZStack {
+            Color.black.opacity(0.001)
+                .ignoresSafeArea()
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    DispatchQueue.main.async { dismissFollowUpPopover() }
+                }
+
+            Text("\u{201C}\(state.question)\u{201D}")
+                .font(AppFont.body(15))
+                .lineSpacing(3)
                 .foregroundStyle(.black.opacity(0.82))
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .frame(maxWidth: maxWidth, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(noteSurfaceColor)
+                )
+                .overlay {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(noteBorderColor.opacity(0.6), lineWidth: 1)
+                }
+                .shadow(color: .black.opacity(0.10), radius: 14, x: 0, y: 8)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    DispatchQueue.main.async { dismissFollowUpPopover() }
+                }
+                .position(x: centerX, y: centerY)
+                .transition(.opacity)
+        }
+        .transition(.opacity)
+    }
+
+    private func popoverHeightEstimate(for text: String, maxWidth: CGFloat) -> CGFloat {
+        let font = UIFont(name: "DavidLibre-Regular", size: 15) ?? UIFont.systemFont(ofSize: 15)
+        let contentWidth = max(maxWidth - 32, 1)
+        let bounding = ("\u{201C}\(text)\u{201D}" as NSString).boundingRect(
+            with: CGSize(width: contentWidth, height: .greatestFiniteMagnitude),
+            options: [.usesLineFragmentOrigin, .usesFontLeading],
+            attributes: [.font: font],
+            context: nil
         )
-        .font(AppFont.body(19))
-        .lineSpacing(4)
+        return ceil(bounding.height) + 24 + 8
+    }
+
+    private func showFollowUpPopover(for enrichment: APIEnrichment, anchor: CGRect) {
+        guard let question = originalFollowUpQuestion(for: enrichment),
+              !question.isEmpty else { return }
+        followUpPopover = FollowUpPopoverState(
+            enrichmentID: enrichment.id,
+            question: question,
+            anchor: anchor
+        )
+        withAnimation(.spring(response: 0.26, dampingFraction: 0.86)) {
+            isFollowUpPopoverPresented = true
+        }
+    }
+
+    private func dismissFollowUpPopover() {
+        guard isFollowUpPopoverPresented else { return }
+        withAnimation(.easeOut(duration: 0.20)) {
+            isFollowUpPopoverPresented = false
+        }
+    }
+
+    private func originalFollowUpQuestion(for enrichment: APIEnrichment) -> String? {
+        guard let thread = currentThread else { return nil }
+        let userMessages = thread.messages
+            .filter { $0.role == MessageRole.user.rawValue }
+            .sorted { $0.createdAt < $1.createdAt }
+        guard let index = followUpEnrichments.firstIndex(where: { $0.id == enrichment.id }),
+              index < userMessages.count else { return nil }
+        return userMessages[index].text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private func pendingFollowUpSection(_ followUp: String) -> some View {
         VStack(alignment: .leading, spacing: 20) {
-            divider
+            if hasAIGrowthParagraphs || !followUpEnrichments.isEmpty || !(note.latestChatReply ?? "").isEmpty {
+                divider
+            }
 
             VStack(alignment: .leading, spacing: 20) {
                 ForEach(Array(paragraphs(from: followUp).enumerated()), id: \.offset) { _, paragraph in
@@ -3327,6 +3685,14 @@ private struct NoteFullPageScreen: View {
                         .foregroundStyle(noteAccentColor)
                 }
             }
+
+            if case .pendingFollowUp = lastEditableGrowthItem {
+                HStack(spacing: 0) {
+                    Spacer(minLength: 0)
+                    editMenuButton(for: .pendingFollowUp)
+                }
+                .padding(.top, 4)
+            }
         }
         .opacity(showGrowthContent ? 1 : 0)
         .offset(y: showGrowthContent ? 0 : 12)
@@ -3334,35 +3700,7 @@ private struct NoteFullPageScreen: View {
 
     private func bottomBar(bottomInset: CGFloat) -> some View {
         VStack(spacing: 12) {
-            if shouldShowRequestResponseOnlyCTA {
-                Group {
-                    if !isEnriching {
-                        VStack(spacing: 10) {
-                            Button {
-                                Task { await requestResponse() }
-                            } label: {
-                                Text("grow this idea")
-                                    .font(AppFont.meta(11))
-                                    .tracking(1.2)
-                                    .foregroundStyle(noteAccentColor)
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 10)
-                                    .glassCapsuleButtonChrome()
-                            }
-
-                            if note.status == "failed" {
-                                Text("AI couldn’t respond last time. Try again.")
-                                    .font(AppFont.meta(10))
-                                    .tracking(1.0)
-                                    .foregroundStyle(.black.opacity(0.46))
-                                    .multilineTextAlignment(.center)
-                            }
-                        }
-                    }
-                }
-                .frame(maxWidth: .infinity)
-            } else {
-                HStack(alignment: .center, spacing: 12) {
+            HStack(alignment: .center, spacing: 12) {
                     ZStack(alignment: .leading) {
                         if followUpDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                             Text("Continue creeping...")
@@ -3401,11 +3739,18 @@ private struct NoteFullPageScreen: View {
                         .fill(Color(red: 0.985, green: 0.985, blue: 0.98))
                 )
                 .overlay {
-                    RoundedRectangle(cornerRadius: 26, style: .continuous)
-                        .stroke(noteBorderColor.opacity(0.92), lineWidth: 1)
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 26, style: .continuous)
+                            .stroke(noteBorderColor.opacity(0.92), lineWidth: 1)
+                            .opacity(isFollowUpFocused ? 0 : 1)
+                        RoundedRectangle(cornerRadius: 26, style: .continuous)
+                            .stroke(noteAccentColor.opacity(0.55), lineWidth: 1.4)
+                            .opacity(isFollowUpFocused ? 1 : 0)
+                    }
+                    .animation(.easeInOut(duration: 0.22), value: isFollowUpFocused)
                 }
-                .shadow(color: .black.opacity(0.035), radius: 10, x: 0, y: 6)
-            }
+                .shadow(color: .black.opacity(isFollowUpFocused ? 0.07 : 0.035), radius: isFollowUpFocused ? 14 : 10, x: 0, y: 6)
+                .animation(.easeInOut(duration: 0.22), value: isFollowUpFocused)
         }
         .padding(.horizontal, 18)
         .padding(.top, 14)
@@ -3422,8 +3767,6 @@ private struct NoteFullPageScreen: View {
                 endPoint: .bottom
             )
         )
-        .opacity(showChrome ? 1 : 0)
-        .offset(y: showChrome ? 0 : 10)
     }
 
     private var shouldShowDeferredGrowthCTA: Bool {
@@ -3839,17 +4182,6 @@ private struct NoteCard: View {
                     }
 
                 Spacer()
-
-                if let statusText = statusText {
-                    Text(statusText)
-                        .font(AppFont.meta(11))
-                        .tracking(1.2)
-                        .textCase(.uppercase)
-                        .foregroundStyle(hasAIResponse ? noteAccentColor : .black.opacity(0.62))
-                        .lineLimit(1)
-                        .allowsTightening(true)
-                        .minimumScaleFactor(0.82)
-                }
             }
         }
         .opacity(isContentReady ? 1 : 0)
@@ -3964,30 +4296,6 @@ private struct NoteCard: View {
         )
         .opacity(isExpanded ? 0.001 : 1)
         .animation(.easeInOut(duration: 0.18), value: isReordering)
-    }
-
-    private var statusText: String? {
-        guard statusDot == nil else { return nil }
-
-        if note.status == "retrying" {
-            return "still growing"
-        }
-        if isActivelyGrowing {
-            return nil
-        }
-        if hasUnreadAIResponse {
-            return nil
-        }
-        if note.hasChangesSinceLastVisit {
-            return note.changesSinceLastViewedCount == 1 ? "updated" : "\(note.changesSinceLastViewedCount) new"
-        }
-        if note.status == "enriched" {
-            return nil
-        }
-        if note.status == "failed" {
-            return "AI unavailable"
-        }
-        return note.status
     }
 
     private var statusDot: StatusDot? {

@@ -173,6 +173,28 @@ final class ThinknoteRepository: @unchecked Sendable {
         return note
     }
 
+    func deleteBaseEnrichment(noteID: String) async throws -> APINote {
+        let updated = try await localStore.deleteBaseEnrichment(noteID: noteID)
+        await remoteSync.enqueue(.noteUpsert(noteID: noteID))
+        return updated
+    }
+
+    func deleteFollowUpEnrichment(noteID: String, enrichmentID: String, keepUserMessage: Bool) async throws -> APINote {
+        let updated = try await localStore.deleteFollowUpEnrichment(noteID: noteID, enrichmentID: enrichmentID, keepUserMessage: keepUserMessage)
+        if let thread = try await localStore.fetchThread(noteID: noteID) {
+            await remoteSync.enqueue(.threadUpdated(noteID: noteID, threadID: thread.id))
+        }
+        return updated
+    }
+
+    func deletePendingFollowUp(noteID: String) async throws -> APINote {
+        let updated = try await localStore.deletePendingFollowUpMessage(noteID: noteID)
+        if let thread = try await localStore.fetchThread(noteID: noteID) {
+            await remoteSync.enqueue(.threadUpdated(noteID: noteID, threadID: thread.id))
+        }
+        return updated
+    }
+
     func fetchConversationThread(noteID: String) async throws -> APIConversationThread? {
         try await localStore.fetchThread(noteID: noteID)
     }

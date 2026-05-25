@@ -405,6 +405,86 @@ actor ThinknoteLocalStore {
         return makeAPINote(from: note)
     }
 
+    func deleteBaseEnrichment(noteID: String) throws -> APINote {
+        let context = ModelContext(container)
+        guard let note = try fetchNoteRecord(noteID: noteID, in: context) else {
+            throw LocalStoreError.noteNotFound(noteID)
+        }
+        let baseRevisions = note.revisions.filter { $0.kind == .aiEnrichment && $0.followUpContext == nil }
+        for revision in baseRevisions {
+            context.delete(revision)
+        }
+        for source in note.sources {
+            context.delete(source)
+        }
+        let stillHasFollowUp = note.revisions.contains { $0.kind == .aiEnrichment && $0.followUpContext != nil && !baseRevisions.contains($0) }
+        note.status = stillHasFollowUp ? .enriched : .edited
+        note.lastEnrichedAt = stillHasFollowUp ? note.lastEnrichedAt : nil
+        note.promptSuggestions = []
+        note.updatedAt = .now
+        try context.save()
+        return makeAPINote(from: note)
+    }
+
+    func deleteFollowUpEnrichment(noteID: String, enrichmentID: String, keepUserMessage: Bool) throws -> APINote {
+        let context = ModelContext(container)
+        guard let note = try fetchNoteRecord(noteID: noteID, in: context) else {
+            throw LocalStoreError.noteNotFound(noteID)
+        }
+        let target = note.revisions.first { $0.id == enrichmentID }
+        let enrichmentCreatedAt = target?.createdAt
+        if let target {
+            context.delete(target)
+        }
+        if let thread = try fetchThread(for: noteID, in: context), let enrichmentCreatedAt {
+            let ordered = thread.messages.sorted { $0.createdAt < $1.createdAt }
+            if let assistantMsg = ordered
+                .filter({ $0.role == .assistant })
+                .min(by: { abs($0.createdAt.timeIntervalSince(enrichmentCreatedAt)) < abs($1.createdAt.timeIntervalSince(enrichmentCreatedAt)) }) {
+                context.delete(assistantMsg)
+            }
+            if !keepUserMessage,
+               let userMsg = ordered
+                   .filter({ $0.role == .user && $0.createdAt <= enrichmentCreatedAt })
+                   .last {
+                context.delete(userMsg)
+            }
+            thread.updatedAt = .now
+        }
+        let remaining = note.revisions
+            .filter { $0.kind == .aiEnrichment && $0.id != enrichmentID }
+        let hasAny = !remaining.isEmpty
+        if !hasAny {
+            note.status = .edited
+            note.lastEnrichedAt = nil
+        }
+        note.latestChatReply = nil
+        note.promptSuggestions = []
+        for source in note.sources {
+            context.delete(source)
+        }
+        note.updatedAt = .now
+        try context.save()
+        return makeAPINote(from: note)
+    }
+
+    func deletePendingFollowUpMessage(noteID: String) throws -> APINote {
+        let context = ModelContext(container)
+        guard let note = try fetchNoteRecord(noteID: noteID, in: context) else {
+            throw LocalStoreError.noteNotFound(noteID)
+        }
+        if let thread = try fetchThread(for: noteID, in: context) {
+            let ordered = thread.messages.sorted { $0.createdAt < $1.createdAt }
+            if let last = ordered.last, last.role == .user {
+                context.delete(last)
+                thread.updatedAt = .now
+            }
+        }
+        note.updatedAt = .now
+        try context.save()
+        return makeAPINote(from: note)
+    }
+
     private func importSeed(_ note: APINote, installedAt: Date, sortIndex: Double, into context: ModelContext) {
         let record = NoteRecord(
             id: note.id,

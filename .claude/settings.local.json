@@ -17,7 +17,9 @@
       "Bash(xcrun simctl *)",
       "Bash(xcodebuild -scheme thinknote -destination 'platform=iOS Simulator,id=3557AD54-34F7-435F-A116-A276B6507431' build)",
       "Bash(xcodebuild -scheme thinknote -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=18.4' build)",
-      "Bash(xcodebuild -scheme thinknote -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build)"
+      "Bash(xcodebuild -scheme thinknote -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build)",
+      "Bash(xcodebuild -scheme thinknote -destination 'generic/platform=iOS Simulator' build)",
+      "Bash(xcodebuild -scheme thinknote -destination 'platform=iOS Simulator,name=iPhone 17' -quiet build)"
     ]
   }
 }

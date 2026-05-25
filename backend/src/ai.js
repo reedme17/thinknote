@@ -746,12 +746,38 @@ function normalizeHeadline(value, note) {
     return (boundary > 50 ? sliced.slice(0, boundary) : sliced).trim();
 }
 
+const GROWTH_PARAGRAPH_MAX_CHARS = 320;
+const GROWTH_MAX_PARAGRAPHS = 2;
+
 function normalizeGrowthParagraphs(value) {
     const paragraphs = Array.isArray(value)
         ? value.filter((item) => typeof item === "string").map((item) => item.trim()).filter(Boolean)
         : [];
 
-    return paragraphs.slice(0, 3);
+    return paragraphs.slice(0, GROWTH_MAX_PARAGRAPHS).map(capParagraphLength);
+}
+
+function capParagraphLength(paragraph) {
+    if (paragraph.length <= GROWTH_PARAGRAPH_MAX_CHARS) {
+        return paragraph;
+    }
+    const slice = paragraph.slice(0, GROWTH_PARAGRAPH_MAX_CHARS);
+    const lastSentenceEnd = Math.max(
+        slice.lastIndexOf("."),
+        slice.lastIndexOf("。"),
+        slice.lastIndexOf("!"),
+        slice.lastIndexOf("?"),
+        slice.lastIndexOf("！"),
+        slice.lastIndexOf("？")
+    );
+    if (lastSentenceEnd >= GROWTH_PARAGRAPH_MAX_CHARS * 0.5) {
+        return slice.slice(0, lastSentenceEnd + 1).trim();
+    }
+    const lastSpace = slice.lastIndexOf(" ");
+    if (lastSpace >= GROWTH_PARAGRAPH_MAX_CHARS * 0.5) {
+        return slice.slice(0, lastSpace).trim() + "…";
+    }
+    return slice.trim() + "…";
 }
 
 function normalizeTimelineSummary(value) {

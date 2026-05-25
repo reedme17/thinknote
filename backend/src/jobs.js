@@ -348,7 +348,7 @@ function normalizeGrowthParagraphs(value) {
         .map((item) => item.trim())
         .filter(Boolean);
 
-    return paragraphs.length > 0 ? paragraphs.slice(0, 3) : ["A new growth pass completed, but no structured paragraphs were returned."];
+    return paragraphs.length > 0 ? paragraphs.slice(0, 2) : ["A new growth pass completed, but no structured paragraphs were returned."];
 }
 
 function normalizeHeadline(value, note) {
