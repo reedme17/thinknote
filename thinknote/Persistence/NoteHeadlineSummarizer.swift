@@ -8,7 +8,7 @@ import FoundationModels
 enum NoteCardHeadlinePolicy {
     static let horizontalPadding: CGFloat = 18
     static let summaryFontSize: CGFloat = 18
-    static let chineseSummaryFontSize: CGFloat = 17
+    static let chineseSummaryFontSize: CGFloat = 16
     static let summaryLineSpacing: CGFloat = 2
     static let maxLines = 5
 

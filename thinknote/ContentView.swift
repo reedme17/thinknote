@@ -47,9 +47,18 @@ struct BridgeHighlightMeasurer: TextRenderer {
         var found = false
         for line in layout {
             for run in line {
-                ctx.draw(run)
-                guard run[BridgeHighlightAttribute.self] != nil else { continue }
+                guard run[BridgeHighlightAttribute.self] != nil else {
+                    ctx.draw(run)
+                    continue
+                }
+
                 let rect = run.typographicBounds.rect
+                var italicContext = ctx
+                italicContext.translateBy(x: rect.minX, y: rect.minY)
+                italicContext.concatenate(CGAffineTransform(a: 1, b: 0, c: -0.18, d: 1, tx: 0, ty: 0))
+                italicContext.translateBy(x: -rect.minX, y: -rect.minY)
+                italicContext.draw(run)
+
                 if found {
                     union = union.union(rect)
                 } else {
@@ -173,9 +182,9 @@ private let noteCardHorizontalPadding: CGFloat = 18
 private let noteCardVerticalPadding: CGFloat = 18
 private let noteCardBodySpacing: CGFloat = 14
 private let noteCardSummaryFontSize: CGFloat = 18
-private let noteCardChineseSummaryFontSize: CGFloat = 17
+private let noteCardChineseSummaryFontSize: CGFloat = 16
 private let noteDetailPrimaryFontSize: CGFloat = 25
-private let noteDetailChinesePrimaryFontSize: CGFloat = 24
+private let noteDetailChinesePrimaryFontSize: CGFloat = 22
 private let noteCardSummaryLineSpacing: CGFloat = 2
 private let noteCardSummaryMaxLines = 5
 private let noteCardMetaFontSize: CGFloat = 10
@@ -514,6 +523,10 @@ private enum AppFont {
         .custom("DavidLibre-Regular", size: size)
     }
 
+    static func ui(_ size: CGFloat, emphasis: Bool = false) -> Font {
+        .custom("AlegreyaSans-Medium", size: size)
+    }
+
     static func meta(_ size: CGFloat) -> Font {
         .custom("GeistMono-Regular", size: size)
     }
@@ -523,7 +536,6 @@ private enum AppFont {
 struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var viewModel: ContentViewModel
-    @State private var isAssistantPresented = false
     private let shouldBootstrap: Bool
     @Namespace private var noteTransitionNamespace
     @Namespace private var newThoughtNamespace
@@ -555,9 +567,6 @@ struct ContentView: View {
                 },
                 onDeleteNote: { noteID in
                     await viewModel.deleteNote(noteID: noteID)
-                },
-                onShowAssistant: {
-                    isAssistantPresented = true
                 }
             )
             .equatable()
@@ -608,7 +617,7 @@ struct ContentView: View {
                             Button(actionTitle) {
                                 Task { await viewModel.performErrorAction() }
                             }
-                            .font(AppFont.meta(11))
+                            .font(AppFont.ui(12, emphasis: true))
                             .tracking(1.2)
                             .foregroundStyle(noteAccentColor)
                             .buttonStyle(.plain)
@@ -617,7 +626,7 @@ struct ContentView: View {
                         Button("close") {
                             viewModel.dismissError()
                         }
-                        .font(AppFont.meta(11))
+                        .font(AppFont.ui(12, emphasis: true))
                         .tracking(1.2)
                         .foregroundStyle(.black.opacity(0.5))
                         .buttonStyle(.plain)
@@ -636,11 +645,6 @@ struct ContentView: View {
                 .transition(.move(edge: .bottom).combined(with: .opacity))
                 .zIndex(3)
             }
-        }
-        .sheet(isPresented: $isAssistantPresented) {
-            AssistantSheet(viewModel: viewModel)
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
         }
         .task {
             guard shouldBootstrap else { return }
@@ -694,7 +698,6 @@ private struct HomeScreen: View {
     let onOpenNewNote: () -> Void
     let onPersistManualOrder: ([String]) async -> Void
     let onDeleteNote: (String) async -> Bool
-    let onShowAssistant: () -> Void
     @State private var orderedNoteIDs: [String] = []
     @State private var affinityGroups: [AffinityGroup] = []
     @State private var activeDragNoteID: String?
@@ -980,19 +983,6 @@ private struct HomeScreen: View {
                         cancelDragging()
                     }
                 }
-
-                Button {
-                    onShowAssistant()
-                } label: {
-                    Text("AI")
-                        .font(AppFont.heading(16, weight: .semibold))
-                        .foregroundStyle(.black)
-                        .frame(width: 58, height: 58)
-                        .glassCircleButtonChrome()
-                }
-                .padding(.trailing, 22)
-                .padding(.bottom, isReorderMode ? 148 : 26)
-                .blur(radius: homeModalBlurRadius)
 
                 if isDeleteConfirmationPresented {
                     Color.white.opacity(0.025)
@@ -2472,7 +2462,7 @@ private struct HomeScreen: View {
                     Button("cancel") {
                         dismissDeleteConfirmation()
                     }
-                    .font(AppFont.meta(11))
+                    .font(AppFont.ui(12, emphasis: true))
                     .tracking(1.2)
                     .foregroundStyle(.black.opacity(0.56))
                     .buttonStyle(.plain)
@@ -2481,7 +2471,7 @@ private struct HomeScreen: View {
 
                     Button(action: confirmDelete) {
                         Text(isDeleteConfirmationBusy ? "trashing..." : "trash it")
-                            .font(AppFont.meta(11))
+                            .font(AppFont.ui(12, emphasis: true))
                             .tracking(1.2)
                             .foregroundStyle(Color(red: 0.74, green: 0.17, blue: 0.14))
                     }
@@ -2914,17 +2904,16 @@ private struct NewNoteScreen: View {
             ZStack(alignment: .topLeading) {
                 if viewModel.draftText.isEmpty {
                     Text("start a thought")
-                        .font(AppFont.meta(11))
-                        .tracking(1.2)
+                        .font(AppFont.body(noteCardSummaryFontSize(for: viewModel.draftText)))
                         .foregroundStyle(.black.opacity(0.34))
-                        .padding(.top, 5)
                 }
 
                 TextField("", text: $viewModel.draftText, axis: .vertical)
                     .focused($isEditorFocused)
                     .textFieldStyle(.plain)
-                    .font(AppFont.body(21))
-                    .foregroundStyle(.black)
+                    .font(AppFont.body(noteCardSummaryFontSize(for: viewModel.draftText)))
+                    .foregroundStyle(Color(red: 0.17, green: 0.17, blue: 0.17))
+                    .lineSpacing(noteCardSummaryLineSpacing)
                     .lineLimit(1...8)
             }
             .padding(.horizontal, 20)
@@ -2935,7 +2924,7 @@ private struct NewNoteScreen: View {
                 Button("cancel") {
                     closeNewNote()
                 }
-                .font(AppFont.meta(11))
+                .font(AppFont.ui(12, emphasis: true))
                 .tracking(1.2)
                 .foregroundStyle(.black.opacity(0.58))
                 .buttonStyle(.plain)
@@ -2960,7 +2949,7 @@ private struct NewNoteScreen: View {
                     }
                 } label: {
                     Text("add")
-                        .font(AppFont.meta(11))
+                        .font(AppFont.ui(12, emphasis: true))
                         .tracking(1.2)
                         .foregroundStyle(noteAccentColor)
                 }
@@ -3032,7 +3021,7 @@ private struct NoteFullPageScreen: View {
                             closeDetail()
                         } label: {
                             Text("home")
-                                .font(AppFont.meta(11))
+                                .font(AppFont.ui(12, emphasis: true))
                                 .tracking(1.2)
                                 .foregroundStyle(noteAccentColor)
                                 .padding(.horizontal, 16)
@@ -3188,8 +3177,8 @@ private struct NoteFullPageScreen: View {
                                 .padding(.top, 28)
                         }
 
-                        if let pendingFollowUp = pendingFollowUpText {
-                            pendingFollowUpSection(pendingFollowUp)
+                        if !pendingFollowUpTexts.isEmpty {
+                            pendingFollowUpSections
                                 .padding(.top, 28)
                         }
 
@@ -3198,7 +3187,7 @@ private struct NoteFullPageScreen: View {
                                 .padding(.top, 28)
                         }
 
-                        if hasAIGrowthParagraphs || !followUpEnrichments.isEmpty || pendingFollowUpText != nil || (followUpEnrichments.isEmpty && !(note.latestChatReply ?? "").isEmpty) {
+                        if hasAIGrowthParagraphs || !followUpEnrichments.isEmpty || !pendingFollowUpTexts.isEmpty || (followUpEnrichments.isEmpty && !(note.latestChatReply ?? "").isEmpty) {
                             divider
                                 .padding(.top, 30)
                         }
@@ -3207,7 +3196,7 @@ private struct NoteFullPageScreen: View {
                             .padding(.top, 16)
                             .padding(.horizontal, -18)
 
-                        if !note.prompts.isEmpty && pendingFollowUpText == nil {
+                        if !note.prompts.isEmpty && pendingFollowUpTexts.isEmpty {
                             openAnglesSection
                                 .padding(.top, 28)
                         }
@@ -3283,7 +3272,7 @@ private struct NoteFullPageScreen: View {
     }
 
     private var lastEditableGrowthItem: EditableGrowthItem? {
-        if pendingFollowUpText != nil {
+        if !pendingFollowUpTexts.isEmpty {
             return .pendingFollowUp
         }
         if let last = followUpEnrichments.last {
@@ -3356,7 +3345,7 @@ private struct NoteFullPageScreen: View {
             }
         } label: {
             Text("edit")
-                .font(AppFont.meta(11))
+                .font(AppFont.ui(12, emphasis: true))
                 .tracking(1.2)
                 .foregroundStyle(noteAccentColor)
                 .padding(.horizontal, 16)
@@ -3533,7 +3522,7 @@ private struct NoteFullPageScreen: View {
         }
         var highlightPart = AttributedString(highlight)
         highlightPart.foregroundColor = UIColor(noteAccentColor)
-        highlightPart.font = Font.custom("DavidLibre-Regular", size: 19).italic()
+        highlightPart.font = Font.custom("DavidLibre-Medium", size: 19)
         highlightPart[BridgeHighlightAttribute.self] = BridgeHighlightAttribute()
         attributed.append(highlightPart)
         if !suffix.isEmpty {
@@ -3554,16 +3543,22 @@ private struct NoteFullPageScreen: View {
                     Color.clear
                         .contentShape(Rectangle())
                         .onTapGesture(coordinateSpace: .local) { location in
-                            guard let localHighlight = bridgeHighlightStore.rects[enrichment.id] else { return }
-                            let hitRect = localHighlight.insetBy(dx: -4, dy: -4)
-                            guard hitRect.contains(location) else { return }
                             let bridgeFrame = proxy.frame(in: .named("detail-surface"))
-                            let anchor = CGRect(
-                                x: bridgeFrame.minX + localHighlight.minX,
-                                y: bridgeFrame.minY + localHighlight.minY,
-                                width: localHighlight.width,
-                                height: localHighlight.height
-                            )
+                            let anchor: CGRect
+
+                            if let localHighlight = bridgeHighlightStore.rects[enrichment.id] {
+                                let hitRect = localHighlight.insetBy(dx: -4, dy: -4)
+                                guard hitRect.contains(location) else { return }
+                                anchor = CGRect(
+                                    x: bridgeFrame.minX + localHighlight.minX,
+                                    y: bridgeFrame.minY + localHighlight.minY,
+                                    width: localHighlight.width,
+                                    height: localHighlight.height
+                                )
+                            } else {
+                                anchor = bridgeFrame
+                            }
+
                             showFollowUpPopover(for: enrichment, anchor: anchor)
                         }
                 }
@@ -3578,7 +3573,7 @@ private struct NoteFullPageScreen: View {
         let leadingX = max(horizontalMargin, min(preferredLeading, containerSize.width - horizontalMargin - maxWidth))
 
         let estimatedHeight = popoverHeightEstimate(for: state.question, maxWidth: maxWidth)
-        let verticalGap: CGFloat = 40
+        let verticalGap: CGFloat = 0
         let belowTop = state.anchor.maxY + verticalGap
         let aboveTop = state.anchor.minY - estimatedHeight - verticalGap
         let bottomLimit = containerSize.height - verticalMargin - estimatedHeight
@@ -3671,9 +3666,23 @@ private struct NoteFullPageScreen: View {
         return userMessages[index].text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private func pendingFollowUpSection(_ followUp: String) -> some View {
+    private var pendingFollowUpSections: some View {
         VStack(alignment: .leading, spacing: 20) {
-            if hasAIGrowthParagraphs || !followUpEnrichments.isEmpty || !(note.latestChatReply ?? "").isEmpty {
+            ForEach(Array(pendingFollowUpTexts.enumerated()), id: \.offset) { index, followUp in
+                pendingFollowUpSection(
+                    followUp,
+                    showsLeadingDivider: index > 0 || hasAIGrowthParagraphs || !followUpEnrichments.isEmpty || !(note.latestChatReply ?? "").isEmpty,
+                    isLastPendingFollowUp: index == pendingFollowUpTexts.count - 1
+                )
+            }
+        }
+        .opacity(showGrowthContent ? 1 : 0)
+        .offset(y: showGrowthContent ? 0 : 12)
+    }
+
+    private func pendingFollowUpSection(_ followUp: String, showsLeadingDivider: Bool, isLastPendingFollowUp: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 20) {
+            if showsLeadingDivider {
                 divider
             }
 
@@ -3686,7 +3695,7 @@ private struct NoteFullPageScreen: View {
                 }
             }
 
-            if case .pendingFollowUp = lastEditableGrowthItem {
+            if isLastPendingFollowUp, case .pendingFollowUp = lastEditableGrowthItem {
                 HStack(spacing: 0) {
                     Spacer(minLength: 0)
                     editMenuButton(for: .pendingFollowUp)
@@ -3694,8 +3703,6 @@ private struct NoteFullPageScreen: View {
                 .padding(.top, 4)
             }
         }
-        .opacity(showGrowthContent ? 1 : 0)
-        .offset(y: showGrowthContent ? 0 : 12)
     }
 
     private func bottomBar(bottomInset: CGFloat) -> some View {
@@ -3704,17 +3711,17 @@ private struct NoteFullPageScreen: View {
                     ZStack(alignment: .leading) {
                         if followUpDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                             Text("Continue creeping...")
-                                .font(AppFont.meta(11))
+                                .font(AppFont.ui(12, emphasis: true))
                                 .tracking(1.2)
                                 .foregroundStyle(.black.opacity(0.34))
                         }
 
                         TextField("", text: $followUpDraft, axis: .vertical)
                             .textFieldStyle(.plain)
-                            .font(AppFont.meta(11))
-                            .tracking(1.2)
-                            .foregroundStyle(.black)
+                            .font(AppFont.body(19))
+                            .foregroundStyle(.black.opacity(0.82))
                             .focused($isFollowUpFocused)
+                            .lineSpacing(4)
                             .lineLimit(1...4)
                     }
 
@@ -3722,7 +3729,7 @@ private struct NoteFullPageScreen: View {
                         Button("send") {
                             Task { await sendFollowUp() }
                         }
-                        .font(AppFont.meta(11))
+                        .font(AppFont.ui(12, emphasis: true))
                         .tracking(1.2)
                         .foregroundStyle(noteAccentColor)
                         .buttonStyle(.plain)
@@ -3784,13 +3791,17 @@ private struct NoteFullPageScreen: View {
         shouldShowDeferredGrowthCTA || isAwaitingAssistantReply
     }
 
-    private var pendingFollowUpText: String? {
-        guard let currentThread,
-              let lastMessage = currentThread.messages.last,
-              lastMessage.role == MessageRole.user.rawValue else {
-            return nil
+    private var pendingFollowUpTexts: [String] {
+        guard let currentThread else { return [] }
+        var pending: [String] = []
+        for message in currentThread.messages.reversed() {
+            guard message.role == MessageRole.user.rawValue else { break }
+            let text = message.text.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !text.isEmpty {
+                pending.append(text)
+            }
         }
-        return lastMessage.text
+        return pending.reversed()
     }
 
     private var baseEnrichment: APIEnrichment? {
@@ -3817,7 +3828,7 @@ private struct NoteFullPageScreen: View {
 
     private var shouldShowCenteredCreepingSection: Bool {
         guard !hasAIGrowthParagraphs else { return false }
-        guard pendingFollowUpText == nil else { return false }
+        guard pendingFollowUpTexts.isEmpty else { return false }
         guard (note.latestChatReply?.isEmpty ?? true) else { return false }
         guard note.prompts.isEmpty else { return false }
         guard note.sources.isEmpty else { return false }
@@ -4040,56 +4051,6 @@ private struct AnimatedLoadingLabel: View {
                     dotCount = dotCount % 3 + 1
                 }
             }
-    }
-}
-
-private struct AssistantSheet: View {
-    @ObservedObject var viewModel: ContentViewModel
-    @Environment(\.dismiss) private var dismiss
-    @State private var assistantDraft = ""
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Text("AI Assistant")
-                    .font(AppFont.heading(22, weight: .semibold))
-                Spacer()
-                Button("Done") {
-                    dismiss()
-                }
-                .foregroundStyle(.black)
-            }
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    if let note = viewModel.currentNote {
-                        Text("Current thought")
-                            .font(AppFont.heading(18, weight: .semibold))
-                        Text(note.text)
-                            .font(AppFont.body(18))
-                    } else {
-                        Text("Start from a thought, question, or fragment.")
-                            .font(AppFont.body(18))
-                    }
-
-                    TextField("Ask about this idea...", text: $assistantDraft, axis: .vertical)
-                        .textFieldStyle(.roundedBorder)
-
-                    Button("Save as thought") {
-                        Task {
-                            let text = assistantDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-                            guard await viewModel.createNoteFromAssistant(text: text) else { return }
-                            assistantDraft = ""
-                            dismiss()
-                        }
-                    }
-                    .buttonStyle(.bordered)
-                    .disabled(assistantDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                }
-            }
-        }
-        .padding(20)
-        .presentationBackground(Color(red: 0.96, green: 0.96, blue: 0.96))
     }
 }
 
@@ -4670,7 +4631,7 @@ private struct EmptyNoteCard: View {
                     Spacer(minLength: 0)
 
                     Text("Start a thought...")
-                        .font(AppFont.body(20))
+                        .font(AppFont.ui(20))
                         .foregroundStyle(Color(red: 0.17, green: 0.17, blue: 0.17))
                 }
                 .padding(.horizontal, 18)

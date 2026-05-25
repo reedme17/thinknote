@@ -299,11 +299,6 @@ final class ContentViewModel: ObservableObject {
         self.repository = repository ?? .shared
     }
 
-    var currentNote: APINote? {
-        guard let selectedNoteID else { return nil }
-        return note(for: selectedNoteID)
-    }
-
     var trimmedDraftText: String {
         draftText.trimmingCharacters(in: .whitespacesAndNewlines)
     }
@@ -634,22 +629,6 @@ final class ContentViewModel: ObservableObject {
             )
             return false
         }
-    }
-
-    @discardableResult
-    func createNoteFromAssistant(text: String) async -> Bool {
-        guard !text.isEmpty else { return false }
-
-        draftText = text
-        draftNoteID = nil
-        lastSavedDraftText = ""
-        await autosaveDraftIfNeeded()
-
-        if let draftNoteID {
-            openNote(noteID: draftNoteID)
-            return true
-        }
-        return false
     }
 
     func note(for noteID: String) -> APINote? {
